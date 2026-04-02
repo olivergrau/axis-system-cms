@@ -1,0 +1,17 @@
+# Core numerical support (lightweight, optional but useful)
+numpy>=1.26,<3.0
+
+# Data validation / structured models
+pydantic>=2.0,<3.0
+
+# Testing
+pytest>=8.0,<9.0
+
+# Optional: richer test assertions
+pytest-cov>=4.0,<5.0
+
+# Optional: configuration handling
+pyyaml>=6.0,<7.0
+
+# Optional: better typing support at runtime (only if needed later)
+typing-extensions>=4.8,<5.0
