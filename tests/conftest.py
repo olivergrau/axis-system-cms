@@ -6,6 +6,7 @@ from axis_system_a import (
     Cell,
     CellObservation,
     CellType,
+    MemoryEntry,
     MemoryState,
     Observation,
     Position,
@@ -67,6 +68,11 @@ def sample_observation(
 @pytest.fixture
 def empty_memory() -> MemoryState:
     return MemoryState(capacity=5)
+
+
+@pytest.fixture
+def sample_memory_entry(sample_observation: Observation) -> MemoryEntry:
+    return MemoryEntry(timestep=0, observation=sample_observation)
 
 
 # --- WP2 Fixtures ---

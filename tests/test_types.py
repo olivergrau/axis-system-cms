@@ -6,9 +6,11 @@ from pydantic import ValidationError
 from axis_system_a import (
     AgentState,
     CellObservation,
+    MemoryEntry,
     MemoryState,
     Observation,
     Position,
+    clip_energy,
 )
 
 
@@ -122,24 +124,60 @@ class TestObservation:
         assert reconstructed == sample_observation
 
 
+class TestMemoryEntry:
+    def test_creation(self, sample_observation: Observation):
+        entry = MemoryEntry(timestep=0, observation=sample_observation)
+        assert entry.timestep == 0
+        assert entry.observation == sample_observation
+
+    def test_creation_positive_timestep(self, sample_observation: Observation):
+        entry = MemoryEntry(timestep=5, observation=sample_observation)
+        assert entry.timestep == 5
+
+    def test_frozen(self, sample_memory_entry: MemoryEntry):
+        with pytest.raises(ValidationError):
+            sample_memory_entry.timestep = 10
+
+    def test_negative_timestep_invalid(self, sample_observation: Observation):
+        with pytest.raises(ValidationError):
+            MemoryEntry(timestep=-1, observation=sample_observation)
+
+    def test_has_exactly_two_fields(self):
+        assert set(MemoryEntry.model_fields.keys()) == {
+            "timestep", "observation"}
+
+    def test_no_position_field(self):
+        assert "position" not in MemoryEntry.model_fields
+
+    def test_serialization_roundtrip(self, sample_memory_entry: MemoryEntry):
+        dump = sample_memory_entry.model_dump()
+        reconstructed = MemoryEntry(**dump)
+        assert reconstructed == sample_memory_entry
+
+    def test_json_roundtrip(self, sample_memory_entry: MemoryEntry):
+        json_str = sample_memory_entry.model_dump_json()
+        reconstructed = MemoryEntry.model_validate_json(json_str)
+        assert reconstructed == sample_memory_entry
+
+
 class TestMemoryState:
     def test_empty(self, empty_memory: MemoryState):
-        assert len(empty_memory.observations) == 0
+        assert len(empty_memory.entries) == 0
         assert empty_memory.capacity == 5
 
-    def test_with_observations(self, sample_observation: Observation):
-        ms = MemoryState(observations=(sample_observation,), capacity=5)
-        assert len(ms.observations) == 1
+    def test_with_entries(self, sample_memory_entry: MemoryEntry):
+        ms = MemoryState(entries=(sample_memory_entry,), capacity=5)
+        assert len(ms.entries) == 1
 
-    def test_at_capacity(self, sample_observation: Observation):
-        obs = tuple(sample_observation for _ in range(3))
-        ms = MemoryState(observations=obs, capacity=3)
-        assert len(ms.observations) == 3
+    def test_at_capacity(self, sample_memory_entry: MemoryEntry):
+        entries = tuple(sample_memory_entry for _ in range(3))
+        ms = MemoryState(entries=entries, capacity=3)
+        assert len(ms.entries) == 3
 
-    def test_exceeds_capacity(self, sample_observation: Observation):
-        obs = tuple(sample_observation for _ in range(4))
+    def test_exceeds_capacity(self, sample_memory_entry: MemoryEntry):
+        entries = tuple(sample_memory_entry for _ in range(4))
         with pytest.raises(ValidationError):
-            MemoryState(observations=obs, capacity=3)
+            MemoryState(entries=entries, capacity=3)
 
     def test_frozen(self, empty_memory: MemoryState):
         with pytest.raises(ValidationError):
@@ -148,9 +186,9 @@ class TestMemoryState:
     def test_capacity_accessible(self, empty_memory: MemoryState):
         assert empty_memory.capacity == 5
 
-    def test_observations_accessible(self, sample_observation: Observation):
-        ms = MemoryState(observations=(sample_observation,), capacity=5)
-        assert ms.observations[0] == sample_observation
+    def test_entries_accessible(self, sample_memory_entry: MemoryEntry):
+        ms = MemoryState(entries=(sample_memory_entry,), capacity=5)
+        assert ms.entries[0] == sample_memory_entry
 
     def test_capacity_zero_invalid(self):
         with pytest.raises(ValidationError):
@@ -158,7 +196,7 @@ class TestMemoryState:
 
     def test_serialization(self, empty_memory: MemoryState):
         dump = empty_memory.model_dump()
-        assert dump == {"observations": (), "capacity": 5}
+        assert dump == {"entries": (), "capacity": 5}
 
 
 class TestAgentState:
@@ -198,3 +236,20 @@ class TestAgentState:
         json_str = state.model_dump_json()
         reconstructed = AgentState.model_validate_json(json_str)
         assert reconstructed == state
+
+
+class TestClipEnergy:
+    def test_within_bounds(self):
+        assert clip_energy(50.0, 100.0) == 50.0
+
+    def test_below_zero(self):
+        assert clip_energy(-10.0, 100.0) == 0.0
+
+    def test_above_max(self):
+        assert clip_energy(150.0, 100.0) == 100.0
+
+    def test_at_zero(self):
+        assert clip_energy(0.0, 100.0) == 0.0
+
+    def test_at_max(self):
+        assert clip_energy(100.0, 100.0) == 100.0

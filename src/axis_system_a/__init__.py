@@ -9,13 +9,16 @@ from axis_system_a.config import (
     WorldConfig,
 )
 from axis_system_a.enums import Action, CellType, SelectionMode
+from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
 from axis_system_a.types import (
     AgentState,
     CellObservation,
+    MemoryEntry,
     MemoryState,
     Observation,
     Position,
+    clip_energy,
 )
 from axis_system_a.world import Cell, World, create_world
 
@@ -28,6 +31,7 @@ __all__ = [
     "CellType",
     "ExecutionConfig",
     "GeneralConfig",
+    "MemoryEntry",
     "MemoryState",
     "Observation",
     "PolicyConfig",
@@ -37,5 +41,7 @@ __all__ = [
     "World",
     "WorldConfig",
     "build_observation",
+    "clip_energy",
     "create_world",
+    "update_memory",
 ]
