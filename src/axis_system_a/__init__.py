@@ -8,6 +8,7 @@ from axis_system_a.config import (
     SimulationConfig,
     WorldConfig,
 )
+from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
 from axis_system_a.enums import Action, CellType, SelectionMode
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
@@ -31,6 +32,7 @@ __all__ = [
     "CellType",
     "ExecutionConfig",
     "GeneralConfig",
+    "HungerDriveOutput",
     "MemoryEntry",
     "MemoryState",
     "Observation",
@@ -42,6 +44,7 @@ __all__ = [
     "WorldConfig",
     "build_observation",
     "clip_energy",
+    "compute_hunger_drive",
     "create_world",
     "update_memory",
 ]
