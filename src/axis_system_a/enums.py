@@ -22,3 +22,11 @@ class SelectionMode(str, enum.Enum):
 
     SAMPLE = "sample"
     ARGMAX = "argmax"
+
+
+class CellType(str, enum.Enum):
+    """Grid cell type."""
+
+    EMPTY = "empty"
+    RESOURCE = "resource"
+    OBSTACLE = "obstacle"

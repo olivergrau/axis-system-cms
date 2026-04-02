@@ -1,12 +1,17 @@
-"""Shared test fixtures for WP1."""
+"""Shared test fixtures for WP1 and WP2."""
 
 import pytest
 
 from axis_system_a import (
+    Cell,
     CellObservation,
+    CellType,
     MemoryState,
     Observation,
+    Position,
     SimulationConfig,
+    World,
+    WorldConfig,
 )
 
 
@@ -62,3 +67,48 @@ def sample_observation(
 @pytest.fixture
 def empty_memory() -> MemoryState:
     return MemoryState(capacity=5)
+
+
+# --- WP2 Fixtures ---
+
+
+@pytest.fixture
+def empty_cell() -> Cell:
+    return Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+
+
+@pytest.fixture
+def resource_cell() -> Cell:
+    return Cell(cell_type=CellType.RESOURCE, resource_value=0.7)
+
+
+@pytest.fixture
+def obstacle_cell() -> Cell:
+    return Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
+
+
+@pytest.fixture
+def small_world_config() -> WorldConfig:
+    return WorldConfig(grid_width=3, grid_height=3)
+
+
+@pytest.fixture
+def small_world(
+    empty_cell: Cell,
+    resource_cell: Cell,
+    obstacle_cell: Cell,
+) -> World:
+    """3x3 world (y increases downward):
+
+    Row 0: [EMPTY,    RESOURCE, EMPTY   ]
+    Row 1: [EMPTY,    EMPTY,    OBSTACLE]
+    Row 2: [RESOURCE, EMPTY,    EMPTY   ]
+
+    Agent at (1, 1) (center).
+    """
+    grid = [
+        [empty_cell, resource_cell, empty_cell],
+        [empty_cell, empty_cell, obstacle_cell],
+        [resource_cell, empty_cell, empty_cell],
+    ]
+    return World(grid=grid, agent_position=Position(x=1, y=1))

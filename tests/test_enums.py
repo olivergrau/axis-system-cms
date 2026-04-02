@@ -1,6 +1,6 @@
-"""Tests for Action and SelectionMode enums."""
+"""Tests for Action, SelectionMode, and CellType enums."""
 
-from axis_system_a import Action, SelectionMode
+from axis_system_a import Action, CellType, SelectionMode
 
 
 class TestAction:
@@ -56,3 +56,25 @@ class TestSelectionMode:
     def test_from_string(self):
         assert SelectionMode("sample") == SelectionMode.SAMPLE
         assert SelectionMode("argmax") == SelectionMode.ARGMAX
+
+
+class TestCellType:
+    def test_has_exactly_three_members(self):
+        assert len(CellType) == 3
+
+    def test_members(self):
+        assert set(CellType.__members__.keys()) == {
+            "EMPTY",
+            "RESOURCE",
+            "OBSTACLE",
+        }
+
+    def test_values(self):
+        assert CellType.EMPTY.value == "empty"
+        assert CellType.RESOURCE.value == "resource"
+        assert CellType.OBSTACLE.value == "obstacle"
+
+    def test_from_string(self):
+        assert CellType("empty") == CellType.EMPTY
+        assert CellType("resource") == CellType.RESOURCE
+        assert CellType("obstacle") == CellType.OBSTACLE

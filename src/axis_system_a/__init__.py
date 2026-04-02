@@ -8,7 +8,8 @@ from axis_system_a.config import (
     SimulationConfig,
     WorldConfig,
 )
-from axis_system_a.enums import Action, SelectionMode
+from axis_system_a.enums import Action, CellType, SelectionMode
+from axis_system_a.observation import build_observation
 from axis_system_a.types import (
     AgentState,
     CellObservation,
@@ -16,12 +17,15 @@ from axis_system_a.types import (
     Observation,
     Position,
 )
+from axis_system_a.world import Cell, World, create_world
 
 __all__ = [
     "Action",
     "AgentConfig",
     "AgentState",
+    "Cell",
     "CellObservation",
+    "CellType",
     "ExecutionConfig",
     "GeneralConfig",
     "MemoryState",
@@ -30,5 +34,8 @@ __all__ = [
     "Position",
     "SelectionMode",
     "SimulationConfig",
+    "World",
     "WorldConfig",
+    "build_observation",
+    "create_world",
 ]
