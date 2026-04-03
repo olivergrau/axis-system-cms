@@ -85,6 +85,26 @@ class TestWorldConfigValidation:
         with pytest.raises(ValidationError):
             WorldConfig(grid_width=10, grid_height=0)
 
+    def test_regen_rate_zero_valid(self):
+        config = WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=0.0)
+        assert config.resource_regen_rate == 0.0
+
+    def test_regen_rate_one_valid(self):
+        config = WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=1.0)
+        assert config.resource_regen_rate == 1.0
+
+    def test_regen_rate_default_zero(self):
+        config = WorldConfig(grid_width=10, grid_height=10)
+        assert config.resource_regen_rate == 0.0
+
+    def test_regen_rate_negative_invalid(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=-0.1)
+
+    def test_regen_rate_above_one_invalid(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=1.1)
+
 
 class TestAgentConfigValidation:
     def test_initial_energy_zero(self):

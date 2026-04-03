@@ -161,6 +161,7 @@ def default_step_kwargs() -> dict:
         max_consume=1.0,
         energy_gain_factor=10.0,
         max_energy=100.0,
+        resource_regen_rate=0.0,
     )
 
 

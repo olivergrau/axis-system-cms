@@ -22,6 +22,7 @@ class WorldConfig(BaseModel):
 
     grid_width: int = Field(..., gt=0)
     grid_height: int = Field(..., gt=0)
+    resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
 
 
 class AgentConfig(BaseModel):

@@ -67,6 +67,36 @@ def _get_action_cost(
     return stay_cost
 
 
+def _apply_regeneration(world: World, *, regen_rate: float) -> None:
+    """Apply deterministic cell regeneration to all traversable cells.
+
+    For each non-obstacle cell: r_next = min(1.0, r_current + regen_rate).
+    EMPTY cells that gain resource become RESOURCE cells.
+    """
+    if regen_rate == 0.0:
+        return
+
+    for y in range(world.height):
+        for x in range(world.width):
+            pos = Position(x=x, y=y)
+            cell = world.get_cell(pos)
+
+            if cell.cell_type is CellType.OBSTACLE:
+                continue
+
+            new_resource = min(1.0, cell.resource_value + regen_rate)
+            if new_resource == cell.resource_value:
+                continue
+
+            if new_resource > 0:
+                new_cell = Cell(
+                    cell_type=CellType.RESOURCE, resource_value=new_resource,
+                )
+            else:
+                new_cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+            world.set_cell(pos, new_cell)
+
+
 def _apply_movement(world: World, action: Action) -> bool:
     """Attempt movement. Returns True if position changed.
 
@@ -122,12 +152,13 @@ def step(
     stay_cost: float,
     max_consume: float,
     energy_gain_factor: float,
+    resource_regen_rate: float = 0.0,
 ) -> StepResult:
     """Execute one complete transition step.
 
     Follows the strict 6-phase pipeline:
 
-    1. World regeneration (no-op in baseline)
+    1. World regeneration (additive cell resource increase)
     2. Action application (movement / consume / stay)
     3. Next observation construction
     4. Agent energy update
@@ -146,15 +177,15 @@ def step(
     stay_cost : Energy cost for STAY.
     max_consume : Maximum resource extractable per consume (c_max).
     energy_gain_factor : Resource-to-energy conversion factor (kappa).
+    resource_regen_rate : Per-step additive resource regeneration rate.
     """
     # --- Pre-state capture ---
     position_before = world.agent_position
     energy_before = agent_state.energy
     memory_entries_before = len(agent_state.memory_state.entries)
 
-    # --- Phase 1: World Regeneration (no-op) ---
-    # Current Cell model lacks regeneration_rate / max_resource fields.
-    # Baseline worked examples use alpha=0 everywhere.
+    # --- Phase 1: World Regeneration ---
+    _apply_regeneration(world, regen_rate=resource_regen_rate)
 
     # --- Phase 2: Action Application ---
     moved = False

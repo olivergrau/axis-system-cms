@@ -67,6 +67,7 @@ _DEFAULT_KWARGS = dict(
     max_consume=1.0,
     energy_gain_factor=10.0,
     max_energy=100.0,
+    resource_regen_rate=0.0,
 )
 
 
@@ -515,8 +516,8 @@ class TestPhaseOrdering:
         # Now at (1,0), current cell is RESOURCE(0.7)
         assert result.observation.current.resource == pytest.approx(0.7)
 
-    def test_world_unchanged_before_action(self):
-        """Phase 1 (world regen) is a no-op."""
+    def test_world_unchanged_when_regen_rate_zero(self):
+        """With regen_rate=0.0, world resources are unchanged before action."""
         world = _3x3_world()
         resource_cell = world.get_cell(Position(x=1, y=0))
         assert resource_cell.resource_value == pytest.approx(0.7)
@@ -592,3 +593,131 @@ class TestEdgeCases:
         result = step(world, _agent(energy=50.0), Action.CONSUME, 0, **kwargs)
         # No gain, just cost: 50 - 1 = 49
         assert result.agent_state.energy == pytest.approx(49.0)
+
+
+# ---------------------------------------------------------------------------
+# Regeneration tests
+# ---------------------------------------------------------------------------
+
+
+class TestRegeneration:
+    def test_regen_increases_resource(self):
+        """EMPTY cell gains resource from regeneration."""
+        grid = [[_cell()]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        cell = world.get_cell(Position(x=0, y=0))
+        assert cell.resource_value == pytest.approx(0.1)
+
+    def test_regen_clipped_at_one(self):
+        """Resource cannot exceed 1.0."""
+        grid = [[_cell("resource", 0.9)]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.2}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        cell = world.get_cell(Position(x=0, y=0))
+        assert cell.resource_value == pytest.approx(1.0)
+
+    def test_obstacle_does_not_regenerate(self):
+        grid = [
+            [_cell(), _cell("obstacle")],
+        ]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.5}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        obstacle = world.get_cell(Position(x=1, y=0))
+        assert obstacle.cell_type is CellType.OBSTACLE
+        assert obstacle.resource_value == 0.0
+
+    def test_regen_zero_rate_is_noop(self):
+        grid = [[_cell("resource", 0.3)]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.0}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        cell = world.get_cell(Position(x=0, y=0))
+        assert cell.resource_value == pytest.approx(0.3)
+
+    def test_regen_all_cells_updated(self):
+        """All non-obstacle cells regenerate."""
+        grid = [
+            [_cell(), _cell("resource", 0.5)],
+            [_cell("obstacle"), _cell()],
+        ]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.get_cell(Position(x=0, y=0)).resource_value == pytest.approx(0.1)
+        assert world.get_cell(Position(x=1, y=0)).resource_value == pytest.approx(0.6)
+        assert world.get_cell(Position(x=0, y=1)).resource_value == 0.0  # obstacle
+        assert world.get_cell(Position(x=1, y=1)).resource_value == pytest.approx(0.1)
+
+    def test_regen_cell_type_empty_to_resource(self):
+        """EMPTY cell becomes RESOURCE after regeneration adds resource."""
+        grid = [[_cell()]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.2}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        cell = world.get_cell(Position(x=0, y=0))
+        assert cell.cell_type is CellType.RESOURCE
+        assert cell.resource_value == pytest.approx(0.2)
+
+    def test_regen_already_at_max(self):
+        """Cell at resource=1.0 stays at 1.0."""
+        grid = [[_cell("resource", 1.0)]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        cell = world.get_cell(Position(x=0, y=0))
+        assert cell.resource_value == pytest.approx(1.0)
+
+    def test_regen_before_action(self):
+        """Consume sees post-regeneration resource value."""
+        grid = [[_cell("resource", 0.3)]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        # regen adds 0.2 → 0.5, then consume takes min(0.5, 1.0) = 0.5
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.2}
+        result = step(world, _agent(), Action.CONSUME, 0, **kwargs)
+        assert result.trace.resource_consumed == pytest.approx(0.5)
+
+    def test_regen_before_observation(self):
+        """Observation reflects both regen and action effects."""
+        grid = [
+            [_cell(), _cell("resource", 0.4)],
+        ]
+        world = _make_world(grid, agent_pos=(0, 0))
+        # regen adds 0.1 to both cells: (0,0)→0.1, (1,0)→0.5
+        # agent stays, no consume → observation sees post-regen values
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        result = step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert result.observation.current.resource == pytest.approx(0.1)
+        assert result.observation.right.resource == pytest.approx(0.5)
+
+    def test_regen_does_not_affect_position(self):
+        world = _3x3_world()
+        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.agent_position == Position(x=1, y=1)
+
+    def test_regen_does_not_affect_agent_state(self):
+        """Regen changes world only, not energy or memory."""
+        world = _3x3_world()
+        agent = _agent(energy=50.0)
+        kwargs_regen = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        r_regen = step(world, agent, Action.STAY, 0, **kwargs_regen)
+        world2 = _3x3_world()
+        r_no_regen = step(world2, agent, Action.STAY, 0, **_DEFAULT_KWARGS)
+        # Energy and memory should be identical
+        assert r_regen.agent_state.energy == r_no_regen.agent_state.energy
+        assert len(r_regen.agent_state.memory_state.entries) == len(
+            r_no_regen.agent_state.memory_state.entries)
+
+    def test_regen_deterministic(self):
+        """Same state + same rate → same result."""
+        for _ in range(3):
+            grid = [[_cell("resource", 0.5)]]
+            world = _make_world(grid, agent_pos=(0, 0))
+            kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.15}
+            step(world, _agent(), Action.STAY, 0, **kwargs)
+            assert world.get_cell(
+                Position(x=0, y=0)).resource_value == pytest.approx(0.65)
