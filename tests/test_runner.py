@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import copy
-
 import numpy as np
-import pytest
 
 from axis_system_a import (
     AgentState,
@@ -19,7 +16,7 @@ from axis_system_a import (
     World,
     build_observation,
 )
-from axis_system_a.results import EpisodeResult, EpisodeStepRecord
+from axis_system_a.results import EpisodeResult, EpisodeSummary, StepResult
 from axis_system_a.runner import episode_step, run_episode
 
 
@@ -119,7 +116,7 @@ class TestEpisodeStep:
             world, agent_state, obs, 0, config, rng,
         )
 
-        assert isinstance(record, EpisodeStepRecord)
+        assert isinstance(record, StepResult)
         assert record.timestep == 0
         assert isinstance(new_state, AgentState)
         assert isinstance(new_obs, Observation)
@@ -135,7 +132,7 @@ class TestEpisodeStep:
 
         _, _, record = episode_step(world, agent_state, obs, 0, config, rng)
 
-        assert record.action is record.decision_result.selected_action
+        assert record.selected_action is record.decision_result.selected_action
 
     def test_energy_after_matches_trace(self):
         config = _make_config()
@@ -301,7 +298,7 @@ class TestDeterminism:
 
         assert result1.total_steps == result2.total_steps
         for r1, r2 in zip(result1.steps, result2.steps):
-            assert r1.action == r2.action
+            assert r1.selected_action == r2.selected_action
             assert r1.energy_after == r2.energy_after
             assert r1.transition_trace == r2.transition_trace
 
@@ -321,8 +318,8 @@ class TestDeterminism:
         result2 = run_episode(config2, world2)
 
         # With different seeds and stochastic sampling, at least one action should differ
-        actions1 = [r.action for r in result1.steps]
-        actions2 = [r.action for r in result2.steps]
+        actions1 = [r.selected_action for r in result1.steps]
+        actions2 = [r.selected_action for r in result2.steps]
         assert actions1 != actions2
 
 
@@ -449,5 +446,95 @@ class TestIntegration:
         result2 = run_episode(config, world2)
 
         for r1, r2 in zip(result1.steps, result2.steps):
-            assert r1.action == r2.action
+            assert r1.selected_action == r2.selected_action
             assert r1.energy_after == r2.energy_after
+
+
+# ---------------------------------------------------------------------------
+# WP8: Result & Trace structure tests
+# ---------------------------------------------------------------------------
+
+
+class TestWP8ResultStructures:
+    def test_result_has_summary(self):
+        config = _make_config(overrides={"execution": {"max_steps": 3}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        assert isinstance(result.summary, EpisodeSummary)
+
+    def test_summary_survival_length(self):
+        config = _make_config(overrides={"execution": {"max_steps": 5}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        assert result.summary.survival_length == result.total_steps
+
+    def test_summary_action_counts_sum(self):
+        config = _make_config(overrides={"execution": {"max_steps": 5}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        assert sum(result.summary.action_counts.values()) == result.total_steps
+
+    def test_step_has_energy_before(self):
+        config = _make_config(overrides={"execution": {"max_steps": 3}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        for record in result.steps:
+            assert hasattr(record, "energy_before")
+            assert record.energy_before >= 0.0
+
+    def test_energy_before_chain(self):
+        """Each step's energy_before equals the previous step's energy_after."""
+        config = _make_config(overrides={"execution": {"max_steps": 5}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        assert result.steps[0].energy_before == config.agent.initial_energy
+        for i in range(1, len(result.steps)):
+            assert result.steps[i].energy_before == result.steps[i - 1].energy_after
+
+    def test_world_snapshots_in_trace(self):
+        config = _make_config(overrides={"execution": {"max_steps": 3}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        for record in result.steps:
+            trace = record.transition_trace
+            assert trace.world_before is not None
+            assert trace.world_after_regen is not None
+            assert trace.world_after_action is not None
+
+    def test_agent_snapshots_in_trace(self):
+        config = _make_config(overrides={"execution": {"max_steps": 3}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        for record in result.steps:
+            trace = record.transition_trace
+            assert trace.agent_snapshot_before is not None
+            assert trace.agent_snapshot_after is not None
+
+    def test_serialization_round_trip(self):
+        import json
+
+        config = _make_config(overrides={"execution": {"max_steps": 3}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        d = result.to_dict()
+        assert isinstance(d, dict)
+        json.dumps(d, default=str)  # should not raise
+
+    def test_step_serialization(self):
+        import json
+
+        config = _make_config(overrides={"execution": {"max_steps": 1}})
+        world = _make_resource_world()
+        result = run_episode(config, world)
+
+        d = result.steps[0].to_dict()
+        assert isinstance(d, dict)
+        json.dumps(d, default=str)  # should not raise

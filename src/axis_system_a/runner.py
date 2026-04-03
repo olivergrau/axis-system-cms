@@ -9,7 +9,11 @@ from axis_system_a.drives import compute_hunger_drive
 from axis_system_a.enums import TerminationReason
 from axis_system_a.observation import build_observation
 from axis_system_a.policy import select_action
-from axis_system_a.results import EpisodeResult, EpisodeStepRecord
+from axis_system_a.results import (
+    EpisodeResult,
+    StepResult,
+    compute_episode_summary,
+)
 from axis_system_a.transition import step as transition_step
 from axis_system_a.types import AgentState, MemoryState, Observation
 from axis_system_a.world import World
@@ -22,7 +26,7 @@ def episode_step(
     timestep: int,
     config: SimulationConfig,
     rng: np.random.Generator,
-) -> tuple[AgentState, Observation, EpisodeStepRecord]:
+) -> tuple[AgentState, Observation, StepResult]:
     """Execute one full orchestration cycle.
 
     Chain: observation -> drive -> policy -> transition.
@@ -72,16 +76,18 @@ def episode_step(
         max_consume=config.transition.max_consume,
         energy_gain_factor=config.transition.energy_gain_factor,
         resource_regen_rate=config.world.resource_regen_rate,
+        observation_before=observation,
     )
 
     # Build record
-    record = EpisodeStepRecord(
+    record = StepResult(
         timestep=timestep,
         observation=observation,
-        action=decision_result.selected_action,
+        selected_action=decision_result.selected_action,
         drive_output=drive_output,
         decision_result=decision_result,
         transition_trace=result.trace,
+        energy_before=agent_state.energy,
         energy_after=result.agent_state.energy,
         terminated=result.terminated,
     )
@@ -111,7 +117,7 @@ def run_episode(config: SimulationConfig, world: World) -> EpisodeResult:
     observation = build_observation(world, world.agent_position)
 
     # Execute
-    records: list[EpisodeStepRecord] = []
+    records: list[StepResult] = []
 
     for timestep in range(config.execution.max_steps):
         agent_state, observation, record = episode_step(
@@ -125,11 +131,15 @@ def run_episode(config: SimulationConfig, world: World) -> EpisodeResult:
     else:
         termination_reason = TerminationReason.MAX_STEPS_REACHED
 
+    steps_tuple = tuple(records)
+    summary = compute_episode_summary(steps_tuple)
+
     return EpisodeResult(
-        steps=tuple(records),
+        steps=steps_tuple,
         total_steps=len(records),
         termination_reason=termination_reason,
         final_agent_state=agent_state,
         final_position=world.agent_position,
         final_observation=observation,
+        summary=summary,
     )

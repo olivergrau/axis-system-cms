@@ -12,7 +12,7 @@ from axis_system_a import (
     CellType,
     MemoryState,
     Position,
-    StepResult,
+    TransitionStepResult,
     TransitionTrace,
     World,
     step,
@@ -405,6 +405,17 @@ class TestTransitionTrace:
             "memory_entries_before",
             "memory_entries_after",
             "terminated",
+            "world_before",
+            "world_after_regen",
+            "world_after_action",
+            "agent_snapshot_before",
+            "agent_snapshot_after",
+            "memory_state_before",
+            "memory_state_after",
+            "observation_before",
+            "observation_after",
+            "regen_summary",
+            "termination_reason",
         }
 
     def test_trace_is_frozen(self):
@@ -438,9 +449,9 @@ class TestTransitionTrace:
 # ---------------------------------------------------------------------------
 
 
-class TestStepResult:
+class TestTransitionStepResult:
     def test_has_required_fields(self):
-        assert set(StepResult.model_fields.keys()) == {
+        assert set(TransitionStepResult.model_fields.keys()) == {
             "agent_state",
             "observation",
             "terminated",

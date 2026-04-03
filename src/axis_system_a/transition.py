@@ -4,10 +4,23 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from axis_system_a.enums import Action, CellType
+from axis_system_a.enums import Action, CellType, TerminationReason
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
-from axis_system_a.types import AgentState, Observation, Position, clip_energy
+from axis_system_a.snapshots import (
+    AgentSnapshot,
+    RegenSummary,
+    WorldSnapshot,
+    snapshot_agent,
+    snapshot_world,
+)
+from axis_system_a.types import (
+    AgentState,
+    MemoryState,
+    Observation,
+    Position,
+    clip_energy,
+)
 from axis_system_a.world import Cell, World
 
 _MOVEMENT_DELTAS: dict[Action, tuple[int, int]] = {
@@ -40,9 +53,30 @@ class TransitionTrace(BaseModel):
     memory_entries_after: int
     terminated: bool
 
+    # State snapshots (full spec compliance)
+    world_before: WorldSnapshot
+    world_after_regen: WorldSnapshot
+    world_after_action: WorldSnapshot
+    agent_snapshot_before: AgentSnapshot
+    agent_snapshot_after: AgentSnapshot
+    memory_state_before: MemoryState
+    memory_state_after: MemoryState
+    observation_before: Observation | None
+    observation_after: Observation
 
-class StepResult(BaseModel):
-    """Aggregated output of a single transition step."""
+    # Regeneration summary
+    regen_summary: RegenSummary
+
+    # Termination reason
+    termination_reason: TerminationReason | None
+
+    def to_dict(self) -> dict:
+        """Serialize to a JSON-compatible dict."""
+        return self.model_dump(mode="python")
+
+
+class TransitionStepResult(BaseModel):
+    """Internal output of the transition engine's step function."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -67,15 +101,18 @@ def _get_action_cost(
     return stay_cost
 
 
-def _apply_regeneration(world: World, *, regen_rate: float) -> None:
+def _apply_regeneration(world: World, *, regen_rate: float) -> int:
     """Apply deterministic cell regeneration to all traversable cells.
 
     For each non-obstacle cell: r_next = min(1.0, r_current + regen_rate).
     EMPTY cells that gain resource become RESOURCE cells.
+
+    Returns the number of cells updated.
     """
     if regen_rate == 0.0:
-        return
+        return 0
 
+    count = 0
     for y in range(world.height):
         for x in range(world.width):
             pos = Position(x=x, y=y)
@@ -88,6 +125,7 @@ def _apply_regeneration(world: World, *, regen_rate: float) -> None:
             if new_resource == cell.resource_value:
                 continue
 
+            count += 1
             if new_resource > 0:
                 new_cell = Cell(
                     cell_type=CellType.RESOURCE, resource_value=new_resource,
@@ -95,6 +133,8 @@ def _apply_regeneration(world: World, *, regen_rate: float) -> None:
             else:
                 new_cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
             world.set_cell(pos, new_cell)
+
+    return count
 
 
 def _apply_movement(world: World, action: Action) -> bool:
@@ -153,7 +193,8 @@ def step(
     max_consume: float,
     energy_gain_factor: float,
     resource_regen_rate: float = 0.0,
-) -> StepResult:
+    observation_before: Observation | None = None,
+) -> TransitionStepResult:
     """Execute one complete transition step.
 
     Follows the strict 6-phase pipeline:
@@ -178,14 +219,20 @@ def step(
     max_consume : Maximum resource extractable per consume (c_max).
     energy_gain_factor : Resource-to-energy conversion factor (kappa).
     resource_regen_rate : Per-step additive resource regeneration rate.
+    observation_before : Pre-step observation (for trace). Optional for
+        backward compatibility; the runner always supplies it.
     """
     # --- Pre-state capture ---
     position_before = world.agent_position
     energy_before = agent_state.energy
     memory_entries_before = len(agent_state.memory_state.entries)
+    memory_state_before = agent_state.memory_state
+    agent_snap_before = snapshot_agent(agent_state, position_before)
+    world_snap_before = snapshot_world(world)
 
     # --- Phase 1: World Regeneration ---
-    _apply_regeneration(world, regen_rate=resource_regen_rate)
+    regen_count = _apply_regeneration(world, regen_rate=resource_regen_rate)
+    world_snap_after_regen = snapshot_world(world)
 
     # --- Phase 2: Action Application ---
     moved = False
@@ -199,6 +246,8 @@ def step(
             world, max_consume=max_consume,
         )
     # STAY: no world effect
+
+    world_snap_after_action = snapshot_world(world)
 
     # --- Phase 3: Next Observation ---
     new_observation = build_observation(world, world.agent_position)
@@ -222,6 +271,9 @@ def step(
 
     # --- Phase 6: Termination ---
     terminated = new_energy <= 0.0
+    termination_reason = (
+        TerminationReason.ENERGY_DEPLETED if terminated else None
+    )
 
     # --- Build trace ---
     trace = TransitionTrace(
@@ -237,9 +289,25 @@ def step(
         memory_entries_before=memory_entries_before,
         memory_entries_after=len(new_memory.entries),
         terminated=terminated,
+        world_before=world_snap_before,
+        world_after_regen=world_snap_after_regen,
+        world_after_action=world_snap_after_action,
+        agent_snapshot_before=agent_snap_before,
+        agent_snapshot_after=snapshot_agent(
+            new_agent_state, world.agent_position,
+        ),
+        memory_state_before=memory_state_before,
+        memory_state_after=new_memory,
+        observation_before=observation_before,
+        observation_after=new_observation,
+        regen_summary=RegenSummary(
+            cells_updated=regen_count,
+            regen_rate=resource_regen_rate,
+        ),
+        termination_reason=termination_reason,
     )
 
-    return StepResult(
+    return TransitionStepResult(
         agent_state=new_agent_state,
         observation=new_observation,
         terminated=terminated,

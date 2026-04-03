@@ -395,6 +395,8 @@ class TestDecisionTrace:
             "masked_contributions",
             "probabilities",
             "selected_action",
+            "temperature",
+            "selection_mode",
         }
 
     def test_internal_consistency(self):

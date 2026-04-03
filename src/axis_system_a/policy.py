@@ -27,6 +27,8 @@ class DecisionResult(BaseModel):
     masked_contributions: tuple[float, float, float, float, float, float]
     probabilities: tuple[float, float, float, float, float, float]
     selected_action: Action
+    temperature: float
+    selection_mode: SelectionMode
 
 
 def _compute_admissibility_mask(
@@ -124,4 +126,6 @@ def select_action(
         masked_contributions=masked,
         probabilities=probs,
         selected_action=action,
+        temperature=temperature,
+        selection_mode=selection_mode,
     )
