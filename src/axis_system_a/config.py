@@ -75,6 +75,28 @@ class ExecutionConfig(BaseModel):
     max_steps: int = Field(..., gt=0)
 
 
+class LoggingConfig(BaseModel):
+    """Logging and observability configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    console_enabled: bool = True
+    jsonl_enabled: bool = False
+    jsonl_path: str | None = None
+    include_decision_trace: bool = True
+    include_transition_trace: bool = True
+    verbosity: str = "compact"  # "compact" | "verbose"
+
+    @model_validator(mode="after")
+    def check_jsonl_path_required(self) -> LoggingConfig:
+        if self.jsonl_enabled and self.jsonl_path is None:
+            raise ValueError(
+                "jsonl_path must be provided when jsonl_enabled is True"
+            )
+        return self
+
+
 class SimulationConfig(BaseModel):
     """Top-level simulation configuration. Single source of truth for all runtime parameters."""
 
@@ -86,3 +108,4 @@ class SimulationConfig(BaseModel):
     policy: PolicyConfig
     transition: TransitionConfig
     execution: ExecutionConfig
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)

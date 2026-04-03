@@ -7,6 +7,7 @@ import numpy as np
 from axis_system_a.config import SimulationConfig
 from axis_system_a.drives import compute_hunger_drive
 from axis_system_a.enums import TerminationReason
+from axis_system_a.logging import AxisLogger
 from axis_system_a.observation import build_observation
 from axis_system_a.policy import select_action
 from axis_system_a.results import (
@@ -115,31 +116,39 @@ def run_episode(config: SimulationConfig, world: World) -> EpisodeResult:
             entries=(), capacity=config.agent.memory_capacity),
     )
     observation = build_observation(world, world.agent_position)
+    logger = AxisLogger(config.logging)
 
-    # Execute
-    records: list[StepResult] = []
+    try:
+        # Execute
+        records: list[StepResult] = []
 
-    for timestep in range(config.execution.max_steps):
-        agent_state, observation, record = episode_step(
-            world, agent_state, observation, timestep, config, rng,
+        for timestep in range(config.execution.max_steps):
+            agent_state, observation, record = episode_step(
+                world, agent_state, observation, timestep, config, rng,
+            )
+            records.append(record)
+            logger.log_step(record)
+
+            if record.terminated:
+                termination_reason = TerminationReason.ENERGY_DEPLETED
+                break
+        else:
+            termination_reason = TerminationReason.MAX_STEPS_REACHED
+
+        steps_tuple = tuple(records)
+        summary = compute_episode_summary(steps_tuple)
+
+        result = EpisodeResult(
+            steps=steps_tuple,
+            total_steps=len(records),
+            termination_reason=termination_reason,
+            final_agent_state=agent_state,
+            final_position=world.agent_position,
+            final_observation=observation,
+            summary=summary,
         )
-        records.append(record)
+        logger.log_episode(result)
+    finally:
+        logger.close()
 
-        if record.terminated:
-            termination_reason = TerminationReason.ENERGY_DEPLETED
-            break
-    else:
-        termination_reason = TerminationReason.MAX_STEPS_REACHED
-
-    steps_tuple = tuple(records)
-    summary = compute_episode_summary(steps_tuple)
-
-    return EpisodeResult(
-        steps=steps_tuple,
-        total_steps=len(records),
-        termination_reason=termination_reason,
-        final_agent_state=agent_state,
-        final_position=world.agent_position,
-        final_observation=observation,
-        summary=summary,
-    )
+    return result

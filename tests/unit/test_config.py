@@ -9,6 +9,7 @@ from axis_system_a import (
     AgentConfig,
     ExecutionConfig,
     GeneralConfig,
+    LoggingConfig,
     PolicyConfig,
     SimulationConfig,
     TransitionConfig,
@@ -270,3 +271,37 @@ class TestTransitionConfigValidation:
                 move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
                 max_consume=1.0, energy_gain_factor=-1.0,
             )
+
+
+class TestLoggingConfig:
+    def test_defaults(self):
+        config = LoggingConfig()
+        assert config.enabled is True
+        assert config.console_enabled is True
+        assert config.jsonl_enabled is False
+        assert config.jsonl_path is None
+        assert config.include_decision_trace is True
+        assert config.include_transition_trace is True
+        assert config.verbosity == "compact"
+
+    def test_jsonl_requires_path(self):
+        with pytest.raises(ValidationError):
+            LoggingConfig(jsonl_enabled=True, jsonl_path=None)
+
+    def test_jsonl_with_path_valid(self):
+        config = LoggingConfig(jsonl_enabled=True, jsonl_path="/tmp/out.jsonl")
+        assert config.jsonl_path == "/tmp/out.jsonl"
+
+    def test_frozen(self):
+        config = LoggingConfig()
+        assert_model_frozen(config, "enabled", False)
+
+    def test_simulation_config_logging_optional(self, valid_config_dict: dict):
+        """SimulationConfig without explicit logging key still works."""
+        config = SimulationConfig(**valid_config_dict)
+        assert config.logging.enabled is True  # default
+
+    def test_simulation_config_with_logging(self, valid_config_dict: dict):
+        d = {**valid_config_dict, "logging": {"enabled": False}}
+        config = SimulationConfig(**d)
+        assert config.logging.enabled is False

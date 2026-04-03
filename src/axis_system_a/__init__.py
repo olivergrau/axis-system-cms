@@ -4,6 +4,7 @@ from axis_system_a.config import (
     AgentConfig,
     ExecutionConfig,
     GeneralConfig,
+    LoggingConfig,
     PolicyConfig,
     SimulationConfig,
     TransitionConfig,
@@ -11,6 +12,7 @@ from axis_system_a.config import (
 )
 from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
 from axis_system_a.enums import Action, CellType, SelectionMode, TerminationReason
+from axis_system_a.logging import AxisLogger
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
 from axis_system_a.policy import DecisionTrace, select_action
@@ -46,6 +48,7 @@ __all__ = [
     "AgentConfig",
     "AgentSnapshot",
     "AgentState",
+    "AxisLogger",
     "Cell",
     "CellObservation",
     "CellType",
@@ -56,6 +59,7 @@ __all__ = [
     "ExecutionConfig",
     "GeneralConfig",
     "HungerDriveOutput",
+    "LoggingConfig",
     "MemoryEntry",
     "MemoryState",
     "Observation",
