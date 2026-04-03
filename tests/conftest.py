@@ -34,6 +34,13 @@ def valid_config_dict() -> dict:
             "stay_suppression": 0.1,
             "consume_weight": 1.5,
         },
+        "transition": {
+            "move_cost": 1.0,
+            "consume_cost": 1.0,
+            "stay_cost": 0.5,
+            "max_consume": 1.0,
+            "energy_gain_factor": 10.0,
+        },
         "execution": {"max_steps": 1000},
     }
 

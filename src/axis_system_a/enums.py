@@ -30,3 +30,10 @@ class CellType(str, enum.Enum):
     EMPTY = "empty"
     RESOURCE = "resource"
     OBSTACLE = "obstacle"
+
+
+class TerminationReason(str, enum.Enum):
+    """Reason for episode termination."""
+
+    ENERGY_DEPLETED = "energy_depleted"
+    MAX_STEPS_REACHED = "max_steps_reached"

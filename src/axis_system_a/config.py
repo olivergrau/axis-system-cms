@@ -55,6 +55,18 @@ class PolicyConfig(BaseModel):
     consume_weight: float = Field(..., gt=0)
 
 
+class TransitionConfig(BaseModel):
+    """Transition engine cost and energy parameters."""
+
+    model_config = ConfigDict(frozen=True)
+
+    move_cost: float = Field(..., gt=0)
+    consume_cost: float = Field(..., gt=0)
+    stay_cost: float = Field(..., ge=0)
+    max_consume: float = Field(..., gt=0)
+    energy_gain_factor: float = Field(..., ge=0)
+
+
 class ExecutionConfig(BaseModel):
     """Execution constraints configuration."""
 
@@ -72,4 +84,5 @@ class SimulationConfig(BaseModel):
     world: WorldConfig
     agent: AgentConfig
     policy: PolicyConfig
+    transition: TransitionConfig
     execution: ExecutionConfig

@@ -6,13 +6,16 @@ from axis_system_a.config import (
     GeneralConfig,
     PolicyConfig,
     SimulationConfig,
+    TransitionConfig,
     WorldConfig,
 )
 from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
-from axis_system_a.enums import Action, CellType, SelectionMode
+from axis_system_a.enums import Action, CellType, SelectionMode, TerminationReason
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
 from axis_system_a.policy import DecisionResult, select_action
+from axis_system_a.results import EpisodeResult, EpisodeStepRecord
+from axis_system_a.runner import episode_step, run_episode
 from axis_system_a.transition import StepResult, TransitionTrace, step
 from axis_system_a.types import (
     AgentState,
@@ -33,6 +36,8 @@ __all__ = [
     "CellObservation",
     "CellType",
     "DecisionResult",
+    "EpisodeResult",
+    "EpisodeStepRecord",
     "ExecutionConfig",
     "GeneralConfig",
     "HungerDriveOutput",
@@ -44,6 +49,8 @@ __all__ = [
     "SelectionMode",
     "SimulationConfig",
     "StepResult",
+    "TerminationReason",
+    "TransitionConfig",
     "TransitionTrace",
     "World",
     "WorldConfig",
@@ -51,6 +58,8 @@ __all__ = [
     "clip_energy",
     "compute_hunger_drive",
     "create_world",
+    "episode_step",
+    "run_episode",
     "select_action",
     "step",
     "update_memory",

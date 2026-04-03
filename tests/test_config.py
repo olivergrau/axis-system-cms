@@ -11,6 +11,7 @@ from axis_system_a import (
     GeneralConfig,
     PolicyConfig,
     SimulationConfig,
+    TransitionConfig,
     WorldConfig,
 )
 
@@ -24,6 +25,7 @@ class TestValidConfig:
         assert isinstance(valid_config.world, WorldConfig)
         assert isinstance(valid_config.agent, AgentConfig)
         assert isinstance(valid_config.policy, PolicyConfig)
+        assert isinstance(valid_config.transition, TransitionConfig)
         assert isinstance(valid_config.execution, ExecutionConfig)
 
     def test_frozen(self, valid_config: SimulationConfig):
@@ -205,3 +207,76 @@ class TestMissingRequiredField:
         del d["general"]["seed"]
         with pytest.raises(ValidationError):
             SimulationConfig(**d)
+
+
+class TestTransitionConfigValidation:
+    def test_valid_construction(self):
+        tc = TransitionConfig(
+            move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
+            max_consume=1.0, energy_gain_factor=10.0,
+        )
+        assert tc.move_cost == 1.0
+
+    def test_frozen(self):
+        tc = TransitionConfig(
+            move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
+            max_consume=1.0, energy_gain_factor=10.0,
+        )
+        with pytest.raises(ValidationError):
+            tc.move_cost = 2.0
+
+    def test_move_cost_zero_invalid(self):
+        with pytest.raises(ValidationError):
+            TransitionConfig(
+                move_cost=0.0, consume_cost=1.0, stay_cost=0.5,
+                max_consume=1.0, energy_gain_factor=10.0,
+            )
+
+    def test_move_cost_negative_invalid(self):
+        with pytest.raises(ValidationError):
+            TransitionConfig(
+                move_cost=-1.0, consume_cost=1.0, stay_cost=0.5,
+                max_consume=1.0, energy_gain_factor=10.0,
+            )
+
+    def test_consume_cost_zero_invalid(self):
+        with pytest.raises(ValidationError):
+            TransitionConfig(
+                move_cost=1.0, consume_cost=0.0, stay_cost=0.5,
+                max_consume=1.0, energy_gain_factor=10.0,
+            )
+
+    def test_stay_cost_zero_valid(self):
+        tc = TransitionConfig(
+            move_cost=1.0, consume_cost=1.0, stay_cost=0.0,
+            max_consume=1.0, energy_gain_factor=10.0,
+        )
+        assert tc.stay_cost == 0.0
+
+    def test_stay_cost_negative_invalid(self):
+        with pytest.raises(ValidationError):
+            TransitionConfig(
+                move_cost=1.0, consume_cost=1.0, stay_cost=-0.1,
+                max_consume=1.0, energy_gain_factor=10.0,
+            )
+
+    def test_max_consume_zero_invalid(self):
+        with pytest.raises(ValidationError):
+            TransitionConfig(
+                move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
+                max_consume=0.0, energy_gain_factor=10.0,
+            )
+
+    def test_energy_gain_factor_zero_valid(self):
+        tc = TransitionConfig(
+            move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
+            max_consume=1.0, energy_gain_factor=0.0,
+        )
+        assert tc.energy_gain_factor == 0.0
+
+    def test_energy_gain_factor_negative_invalid(self):
+        with pytest.raises(ValidationError):
+            TransitionConfig(
+                move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
+                max_consume=1.0, energy_gain_factor=-1.0,
+            )
