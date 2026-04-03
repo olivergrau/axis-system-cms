@@ -12,7 +12,7 @@ from axis_system_a import (
     CellObservation,
     Cell,
     CellType,
-    DecisionResult,
+    DecisionTrace,
     HungerDriveOutput,
     MemoryState,
     Observation,
@@ -39,8 +39,8 @@ def _make_drive_output() -> HungerDriveOutput:
     )
 
 
-def _make_decision_result() -> DecisionResult:
-    return DecisionResult(
+def _make_decision_result() -> DecisionTrace:
+    return DecisionTrace(
         raw_contributions=(0.1, 0.1, 0.1, 0.1, 0.3, -0.05),
         admissibility_mask=(True, True, True, True, True, True),
         masked_contributions=(0.1, 0.1, 0.1, 0.1, 0.3, -0.05),

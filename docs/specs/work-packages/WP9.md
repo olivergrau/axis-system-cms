@@ -249,7 +249,7 @@ Important:
 All tests must:
 
 * use `StepResult`, `EpisodeResult`
-* validate against `DecisionResult` and `TransitionTrace`
+* validate against `DecisionTrace` and `TransitionTrace`
 
 Remove:
 

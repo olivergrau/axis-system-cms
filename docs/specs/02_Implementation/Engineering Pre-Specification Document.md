@@ -581,7 +581,7 @@ without modifying policy logic.
 ---
 
 ##### Decision Trace Integration
-The DecisionResult must include:
+The DecisionTrace must include:
 
 - individual drive activations
 - per-drive action contributions (if applicable)
@@ -602,7 +602,7 @@ This design is chosen to:
 ---
 
 #### Decision Trace Requirement
-Each policy decision shall return a structured **DecisionResult** object.
+Each policy decision shall return a structured **DecisionTrace** object.
 This object must support detailed inspection and debugging.
 
 At minimum, it shall contain:
@@ -821,7 +821,7 @@ The goal is to preserve:
 
 ---
 
-#### DecisionResult as a First-Class Output
+#### DecisionTrace as a First-Class Output
 The policy shall not return only a bare action.
 
 Instead, the decision output shall always include the full structured decision result.
@@ -2170,7 +2170,7 @@ However, the system must provide explicit support for episode aggregation, so th
 #### Integration with Existing Traces
 The observability system must integrate naturally with:
 
-- `DecisionResult`
+- `DecisionTrace`
 - `TransitionTrace`
 
 These structures shall be reused or referenced, rather than duplicated in incompatible formats.
@@ -3459,7 +3459,7 @@ At minimum, unit tests shall exist for the following components:
 #### Integration Test Scope
 At minimum, integration tests shall exist for the following interactions:
 
-- policy decision pipeline and `DecisionResult`
+- policy decision pipeline and `DecisionTrace`
 - transition engine and its submodules
 - execution engine across step / episode / run levels
 - observability system integration with execution results

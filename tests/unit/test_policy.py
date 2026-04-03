@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from axis_system_a import (
     Action,
-    DecisionResult,
+    DecisionTrace,
     SelectionMode,
     select_action,
 )
@@ -358,7 +358,7 @@ class TestDecisionTrace:
             result.selected_action = Action.STAY
 
     def test_has_exactly_five_fields(self):
-        assert set(DecisionResult.model_fields.keys()) == {
+        assert set(DecisionTrace.model_fields.keys()) == {
             "raw_contributions",
             "admissibility_mask",
             "masked_contributions",

@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from axis_system_a.drives import HungerDriveOutput
 from axis_system_a.enums import Action, TerminationReason
-from axis_system_a.policy import DecisionResult
+from axis_system_a.policy import DecisionTrace
 from axis_system_a.transition import TransitionTrace
 from axis_system_a.types import AgentState, Observation, Position
 
@@ -24,7 +24,7 @@ class StepResult(BaseModel):
     observation: Observation
     selected_action: Action
     drive_output: HungerDriveOutput
-    decision_result: DecisionResult
+    decision_result: DecisionTrace
     transition_trace: TransitionTrace
     energy_before: float = Field(..., ge=0)
     energy_after: float = Field(..., ge=0)

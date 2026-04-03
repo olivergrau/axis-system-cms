@@ -13,7 +13,7 @@ from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
 from axis_system_a.enums import Action, CellType, SelectionMode, TerminationReason
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
-from axis_system_a.policy import DecisionResult, select_action
+from axis_system_a.policy import DecisionTrace, select_action
 from axis_system_a.results import (
     EpisodeResult,
     EpisodeStepRecord,
@@ -49,7 +49,7 @@ __all__ = [
     "Cell",
     "CellObservation",
     "CellType",
-    "DecisionResult",
+    "DecisionTrace",
     "EpisodeResult",
     "EpisodeStepRecord",
     "EpisodeSummary",

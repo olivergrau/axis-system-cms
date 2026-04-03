@@ -13,7 +13,7 @@ from axis_system_a.types import Observation
 _NEG_INF = float("-inf")
 
 
-class DecisionResult(BaseModel):
+class DecisionTrace(BaseModel):
     """Full decision trace from the policy pipeline.
 
     All tuple fields are indexed by Action enum:
@@ -104,7 +104,7 @@ def select_action(
     selection_mode: SelectionMode,
     temperature: float,
     rng: np.random.Generator | None = None,
-) -> DecisionResult:
+) -> DecisionTrace:
     """Run the full policy pipeline: mask -> logits -> softmax -> select.
 
     Parameters
@@ -120,7 +120,7 @@ def select_action(
     probs = _softmax(contributions, temperature, mask)
     action = _select_from_distribution(probs, selection_mode, rng)
 
-    return DecisionResult(
+    return DecisionTrace(
         raw_contributions=contributions,
         admissibility_mask=mask,
         masked_contributions=masked,
