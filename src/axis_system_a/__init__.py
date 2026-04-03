@@ -12,6 +12,7 @@ from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
 from axis_system_a.enums import Action, CellType, SelectionMode
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
+from axis_system_a.policy import DecisionResult, select_action
 from axis_system_a.types import (
     AgentState,
     CellObservation,
@@ -30,6 +31,7 @@ __all__ = [
     "Cell",
     "CellObservation",
     "CellType",
+    "DecisionResult",
     "ExecutionConfig",
     "GeneralConfig",
     "HungerDriveOutput",
@@ -46,5 +48,6 @@ __all__ = [
     "clip_energy",
     "compute_hunger_drive",
     "create_world",
+    "select_action",
     "update_memory",
 ]

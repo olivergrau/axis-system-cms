@@ -118,3 +118,30 @@ def small_world(
         [resource_cell, empty_cell, empty_cell],
     ]
     return World(grid=grid, agent_position=Position(x=1, y=1))
+
+
+# --- WP5 Fixtures ---
+
+
+@pytest.fixture
+def all_open_observation() -> Observation:
+    """All 4 directions traversable with varying resources."""
+    return Observation(
+        current=CellObservation(traversability=1.0, resource=0.5),
+        up=CellObservation(traversability=1.0, resource=0.3),
+        down=CellObservation(traversability=1.0, resource=0.1),
+        left=CellObservation(traversability=1.0, resource=0.0),
+        right=CellObservation(traversability=1.0, resource=0.8),
+    )
+
+
+@pytest.fixture
+def all_blocked_movement_observation() -> Observation:
+    """All 4 movement directions blocked (only CONSUME/STAY admissible)."""
+    return Observation(
+        current=CellObservation(traversability=1.0, resource=0.5),
+        up=CellObservation(traversability=0.0, resource=0.0),
+        down=CellObservation(traversability=0.0, resource=0.0),
+        left=CellObservation(traversability=0.0, resource=0.0),
+        right=CellObservation(traversability=0.0, resource=0.0),
+    )
