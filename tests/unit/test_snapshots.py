@@ -12,8 +12,6 @@ from axis_system_a import (
     CellType,
     MemoryEntry,
     MemoryState,
-    Observation,
-    CellObservation,
     Position,
     RegenSummary,
     World,
@@ -21,67 +19,64 @@ from axis_system_a import (
     snapshot_agent,
     snapshot_world,
 )
-
-
-def _make_observation() -> Observation:
-    cell = CellObservation(traversability=1.0, resource=0.5)
-    return Observation(current=cell, up=cell, down=cell, left=cell, right=cell)
+from tests.fixtures.observation_fixtures import make_observation
+from tests.fixtures.world_fixtures import empty_cell, resource_cell
 
 
 class TestWorldSnapshot:
     def test_frozen(self):
-        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+        e = empty_cell()
         ws = WorldSnapshot(
-            grid=((empty,),), agent_position=Position(x=0, y=0),
+            grid=((e,),), agent_position=Position(x=0, y=0),
             width=1, height=1,
         )
         with pytest.raises(ValidationError):
             ws.width = 2
 
     def test_grid_is_tuple_of_tuples(self):
-        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+        e = empty_cell()
         ws = WorldSnapshot(
-            grid=((empty, empty), (empty, empty)),
+            grid=((e, e), (e, e)),
             agent_position=Position(x=0, y=0), width=2, height=2,
         )
         assert isinstance(ws.grid, tuple)
         assert isinstance(ws.grid[0], tuple)
 
     def test_snapshot_world_captures_all_cells(self):
-        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
-        res = Cell(cell_type=CellType.RESOURCE, resource_value=0.7)
-        grid = [[empty, res], [res, empty]]
+        e = empty_cell()
+        r = resource_cell()
+        grid = [[e, r], [r, e]]
         world = World(grid=grid, agent_position=Position(x=0, y=0))
         ws = snapshot_world(world)
-        assert ws.grid[0][0] == empty
-        assert ws.grid[0][1] == res
-        assert ws.grid[1][0] == res
-        assert ws.grid[1][1] == empty
+        assert ws.grid[0][0] == e
+        assert ws.grid[0][1] == r
+        assert ws.grid[1][0] == r
+        assert ws.grid[1][1] == e
 
     def test_snapshot_world_captures_agent_position(self):
-        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
-        grid = [[empty, empty], [empty, empty]]
+        e = empty_cell()
+        grid = [[e, e], [e, e]]
         world = World(grid=grid, agent_position=Position(x=1, y=0))
         ws = snapshot_world(world)
         assert ws.agent_position == Position(x=1, y=0)
 
     def test_snapshot_world_dimensions(self):
-        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
-        grid = [[empty, empty, empty], [empty, empty, empty]]
+        e = empty_cell()
+        grid = [[e, e, e], [e, e, e]]
         world = World(grid=grid, agent_position=Position(x=0, y=0))
         ws = snapshot_world(world)
         assert ws.width == 3
         assert ws.height == 2
 
     def test_to_dict_serializable(self):
-        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+        e = empty_cell()
         ws = WorldSnapshot(
-            grid=((empty,),), agent_position=Position(x=0, y=0),
+            grid=((e,),), agent_position=Position(x=0, y=0),
             width=1, height=1,
         )
         d = ws.model_dump(mode="python")
         assert isinstance(d, dict)
-        json.dumps(d, default=str)  # should not raise
+        json.dumps(d, default=str)
 
 
 class TestAgentSnapshot:
@@ -102,7 +97,7 @@ class TestAgentSnapshot:
         assert snap.memory_entry_count == 0
 
     def test_memory_timestep_range_populated(self):
-        obs = _make_observation()
+        obs = make_observation(0.5, 0.5, 0.5, 0.5, 0.5)
         entries = (
             MemoryEntry(timestep=2, observation=obs),
             MemoryEntry(timestep=5, observation=obs),

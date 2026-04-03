@@ -9,44 +9,21 @@ from pydantic import ValidationError
 
 from axis_system_a import (
     Action,
-    CellObservation,
     DecisionResult,
-    Observation,
     SelectionMode,
     select_action,
 )
+from tests.fixtures.observation_fixtures import make_observation
 
 _NEG_INF = float("-inf")
 
 
-def _make_obs(
-    current: float = 0.0,
-    up: float = 0.0,
-    down: float = 0.0,
-    left: float = 0.0,
-    right: float = 0.0,
-    *,
-    b_up: float = 1.0,
-    b_down: float = 1.0,
-    b_left: float = 1.0,
-    b_right: float = 1.0,
-) -> Observation:
-    """Create an observation with specified resource and traversability values."""
-    return Observation(
-        current=CellObservation(traversability=1.0, resource=current),
-        up=CellObservation(traversability=b_up, resource=up),
-        down=CellObservation(traversability=b_down, resource=down),
-        left=CellObservation(traversability=b_left, resource=left),
-        right=CellObservation(traversability=b_right, resource=right),
-    )
+def _all_open_obs():
+    return make_observation(current=0.5, up=0.3, down=0.1, left=0.0, right=0.8)
 
 
-def _all_open_obs() -> Observation:
-    return _make_obs(current=0.5, up=0.3, down=0.1, left=0.0, right=0.8)
-
-
-def _all_blocked_obs() -> Observation:
-    return _make_obs(b_up=0.0, b_down=0.0, b_left=0.0, b_right=0.0, current=0.5)
+def _all_blocked_obs():
+    return make_observation(b_up=0.0, b_down=0.0, b_left=0.0, b_right=0.0, current=0.5)
 
 
 # --- Admissibility mask tests ---
@@ -62,7 +39,7 @@ class TestAdmissibilityMask:
             True, True, True, True, True, True)
 
     def test_single_direction_blocked_up(self):
-        obs = _make_obs(b_up=0.0)
+        obs = make_observation(b_up=0.0)
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
@@ -73,21 +50,21 @@ class TestAdmissibilityMask:
         )
 
     def test_single_direction_blocked_down(self):
-        obs = _make_obs(b_down=0.0)
+        obs = make_observation(b_down=0.0)
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
         assert result.admissibility_mask[Action.DOWN] is False
 
     def test_single_direction_blocked_left(self):
-        obs = _make_obs(b_left=0.0)
+        obs = make_observation(b_left=0.0)
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
         assert result.admissibility_mask[Action.LEFT] is False
 
     def test_single_direction_blocked_right(self):
-        obs = _make_obs(b_right=0.0)
+        obs = make_observation(b_right=0.0)
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
@@ -103,9 +80,8 @@ class TestAdmissibilityMask:
         )
 
     def test_consume_always_admissible(self):
-        """CONSUME is admissible even with zero resource on current cell."""
-        obs = _make_obs(current=0.0, b_up=0.0, b_down=0.0,
-                        b_left=0.0, b_right=0.0)
+        obs = make_observation(current=0.0, b_up=0.0, b_down=0.0,
+                               b_left=0.0, b_right=0.0)
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
@@ -126,7 +102,7 @@ class TestMaskedContributions:
         assert result.masked_contributions == contribs
 
     def test_masked_action_gets_negative_infinity(self):
-        obs = _make_obs(b_up=0.0)
+        obs = make_observation(b_up=0.0)
         contribs = (0.1, 0.2, 0.3, 0.4, 0.5, -0.1)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -134,7 +110,7 @@ class TestMaskedContributions:
         assert result.masked_contributions[Action.UP] == _NEG_INF
 
     def test_multiple_masked_actions(self):
-        obs = _make_obs(b_up=0.0, b_left=0.0)
+        obs = make_observation(b_up=0.0, b_left=0.0)
         contribs = (0.1, 0.2, 0.3, 0.4, 0.5, -0.1)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -145,7 +121,7 @@ class TestMaskedContributions:
         assert result.masked_contributions[Action.RIGHT] == 0.4
 
     def test_raw_contributions_unchanged(self):
-        obs = _make_obs(b_up=0.0)
+        obs = make_observation(b_up=0.0)
         contribs = (0.1, 0.2, 0.3, 0.4, 0.5, -0.1)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -198,12 +174,11 @@ class TestSoftmax:
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=0.01,
         )
-        # Very low beta -> nearly uniform
         for p in result.probabilities:
             assert p == pytest.approx(1.0 / 6.0, abs=0.01)
 
     def test_masked_action_zero_probability(self):
-        obs = _make_obs(b_up=0.0, b_down=0.0)
+        obs = make_observation(b_up=0.0, b_down=0.0)
         contribs = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -232,18 +207,17 @@ class TestSoftmax:
         assert sum(result.probabilities) == pytest.approx(1.0)
 
     def test_all_zero_some_masked_uniform_over_admissible(self):
-        obs = _make_obs(b_up=0.0, b_down=0.0)
+        obs = make_observation(b_up=0.0, b_down=0.0)
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
         assert result.probabilities[Action.UP] == 0.0
         assert result.probabilities[Action.DOWN] == 0.0
-        # Remaining 4 actions share equally
         for a in [Action.LEFT, Action.RIGHT, Action.CONSUME, Action.STAY]:
             assert result.probabilities[a] == pytest.approx(0.25)
 
     def test_probabilities_sum_with_partial_mask(self):
-        obs = _make_obs(b_up=0.0)
+        obs = make_observation(b_up=0.0)
         contribs = (0.3, 0.1, 0.2, 0.4, 0.5, -0.1)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -269,12 +243,10 @@ class TestArgmaxSelection:
         result = select_action(
             (0.0,) * 6, obs, SelectionMode.ARGMAX, temperature=1.0,
         )
-        # All equal -> UP wins (enum value 0)
         assert result.selected_action == Action.UP
 
     def test_two_way_tie_up_vs_down(self):
         obs = _all_open_obs()
-        # Only UP and DOWN have high scores
         contribs = (1.0, 1.0, 0.0, 0.0, 0.0, 0.0)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -282,7 +254,6 @@ class TestArgmaxSelection:
         assert result.selected_action == Action.UP
 
     def test_consume_vs_stay_tie(self):
-        """When only CONSUME and STAY are admissible with equal scores, CONSUME wins."""
         obs = _all_blocked_obs()
         contribs = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = select_action(
@@ -323,7 +294,6 @@ class TestSampleSelection:
         assert r1.selected_action == r2.selected_action
 
     def test_probability_one_always_selected(self):
-        """Single dominant action with very high beta -> always selected."""
         obs = _all_open_obs()
         contribs = (0.0, 0.0, 0.0, 0.0, 10.0, 0.0)
         rng = np.random.default_rng(123)
@@ -334,7 +304,7 @@ class TestSampleSelection:
             assert result.selected_action == Action.CONSUME
 
     def test_masked_action_never_selected(self):
-        obs = _make_obs(b_up=0.0)
+        obs = make_observation(b_up=0.0)
         contribs = (0.5, 0.1, 0.1, 0.1, 0.1, 0.1)
         rng = np.random.default_rng(99)
         for _ in range(200):
@@ -354,7 +324,6 @@ class TestSampleSelection:
                 contribs, obs, SelectionMode.SAMPLE, temperature=1.0, rng=rng,
             )
             counts[result.selected_action] += 1
-        # Uniform 1/6 expected
         for c in counts:
             assert c / n == pytest.approx(1.0 / 6.0, abs=0.03)
 
@@ -400,7 +369,7 @@ class TestDecisionTrace:
         }
 
     def test_internal_consistency(self):
-        obs = _make_obs(b_up=0.0, b_down=0.0)
+        obs = make_observation(b_up=0.0, b_down=0.0)
         contribs = (0.3, 0.2, 0.1, 0.4, 0.5, -0.1)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -441,10 +410,10 @@ class TestEndToEnd:
         )
         for p in result.probabilities:
             assert p == pytest.approx(1.0 / 6.0)
-        assert result.selected_action == Action.UP  # tie-break
+        assert result.selected_action == Action.UP
 
     def test_blocked_directions_excluded(self):
-        obs = _make_obs(b_up=0.0, b_left=0.0)
+        obs = make_observation(b_up=0.0, b_left=0.0)
         contribs = (0.5, 0.1, 0.5, 0.1, 0.1, 0.0)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -477,7 +446,6 @@ class TestEndToEnd:
 
     def test_stay_suppressed(self):
         obs = _all_open_obs()
-        # STAY has negative score, all others zero
         contribs = (0.0, 0.0, 0.0, 0.0, 0.0, -0.5)
         result = select_action(
             contribs, obs, SelectionMode.ARGMAX, temperature=1.0,
@@ -485,10 +453,9 @@ class TestEndToEnd:
         assert result.probabilities[Action.STAY] < result.probabilities[Action.UP]
 
     def test_drive_output_fed_directly(self):
-        """Drive contributions tuple can be passed directly to select_action."""
         from axis_system_a import compute_hunger_drive
 
-        obs = _make_obs(current=0.5, up=0.3, down=0.2, left=0.1, right=0.4)
+        obs = make_observation(current=0.5, up=0.3, down=0.2, left=0.1, right=0.4)
         drive = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.5, stay_suppression=0.1,

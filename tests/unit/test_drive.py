@@ -7,28 +7,10 @@ from pydantic import ValidationError
 
 from axis_system_a import (
     Action,
-    CellObservation,
     HungerDriveOutput,
-    Observation,
     compute_hunger_drive,
 )
-
-
-def _make_obs(
-    current: float = 0.0,
-    up: float = 0.0,
-    down: float = 0.0,
-    left: float = 0.0,
-    right: float = 0.0,
-) -> Observation:
-    """Create an observation with specified resource values (all traversable)."""
-    return Observation(
-        current=CellObservation(traversability=1.0, resource=current),
-        up=CellObservation(traversability=1.0, resource=up),
-        down=CellObservation(traversability=1.0, resource=down),
-        left=CellObservation(traversability=1.0, resource=left),
-        right=CellObservation(traversability=1.0, resource=right),
-    )
+from tests.fixtures.observation_fixtures import make_observation
 
 
 # --- Hunger activation tests ---
@@ -36,7 +18,7 @@ def _make_obs(
 
 class TestHungerActivation:
     def test_max_energy_zero_activation(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=100.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -44,7 +26,7 @@ class TestHungerActivation:
         assert result.activation == 0.0
 
     def test_zero_energy_max_activation(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -52,7 +34,7 @@ class TestHungerActivation:
         assert result.activation == 1.0
 
     def test_half_energy(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -60,7 +42,7 @@ class TestHungerActivation:
         assert result.activation == pytest.approx(0.5)
 
     def test_quarter_energy(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=25.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -68,8 +50,7 @@ class TestHungerActivation:
         assert result.activation == pytest.approx(0.75)
 
     def test_activation_bounded_above_max(self):
-        """Energy slightly above max_energy still produces valid activation."""
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=100.1, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -82,7 +63,7 @@ class TestHungerActivation:
 
 class TestMovementContributions:
     def test_movement_from_observation(self):
-        obs = _make_obs(up=0.8, down=0.6, left=0.4, right=0.2)
+        obs = make_observation(up=0.8, down=0.6, left=0.4, right=0.2)
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -98,7 +79,7 @@ class TestMovementContributions:
             d_h * 0.2)
 
     def test_equal_neighbors_equal_contributions(self):
-        obs = _make_obs(up=0.5, down=0.5, left=0.5, right=0.5)
+        obs = make_observation(up=0.5, down=0.5, left=0.5, right=0.5)
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -109,7 +90,7 @@ class TestMovementContributions:
         assert contributions[Action.LEFT] == contributions[Action.RIGHT]
 
     def test_zero_resource_zero_contribution(self):
-        obs = _make_obs()  # all resources 0
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -120,12 +101,11 @@ class TestMovementContributions:
         assert result.action_contributions[Action.RIGHT] == 0.0
 
     def test_action_ordering_matches_enum(self):
-        obs = _make_obs(up=0.1, down=0.2, left=0.3, right=0.4, current=0.5)
+        obs = make_observation(up=0.1, down=0.2, left=0.3, right=0.4, current=0.5)
         result = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
         )
-        # d_H = 1.0
         assert result.action_contributions[0] == pytest.approx(0.1)  # UP
         assert result.action_contributions[1] == pytest.approx(0.2)  # DOWN
         assert result.action_contributions[2] == pytest.approx(0.3)  # LEFT
@@ -137,17 +117,16 @@ class TestMovementContributions:
 
 class TestConsumeContribution:
     def test_consume_with_resource(self):
-        obs = _make_obs(current=0.6)
+        obs = make_observation(current=0.6)
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.5, stay_suppression=0.0,
         )
-        # d_H = 0.5, s_consume = 0.5 * 1.5 * 0.6 = 0.45
         assert result.action_contributions[Action.CONSUME] == pytest.approx(
             0.45)
 
     def test_consume_weight_applied(self):
-        obs = _make_obs(current=0.5)
+        obs = make_observation(current=0.5)
         r1 = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.0,
@@ -161,7 +140,7 @@ class TestConsumeContribution:
         )
 
     def test_consume_zero_resource(self):
-        obs = _make_obs(current=0.0)
+        obs = make_observation(current=0.0)
         result = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=10.0, stay_suppression=0.0,
@@ -174,7 +153,7 @@ class TestConsumeContribution:
 
 class TestStayContribution:
     def test_stay_negative_or_zero(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.5,
@@ -182,7 +161,7 @@ class TestStayContribution:
         assert result.action_contributions[Action.STAY] <= 0.0
 
     def test_stay_stronger_at_higher_hunger(self):
-        obs = _make_obs()
+        obs = make_observation()
         r_full = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=1.0,
@@ -191,12 +170,11 @@ class TestStayContribution:
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=1.0,
         )
-        # d_H=1.0 -> s_stay=-1.0; d_H=0.5 -> s_stay=-0.5
         assert r_full.action_contributions[Action.STAY] == pytest.approx(-1.0)
         assert r_half.action_contributions[Action.STAY] == pytest.approx(-0.5)
 
     def test_stay_zero_when_no_hunger(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=100.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=1.0,
@@ -209,7 +187,7 @@ class TestStayContribution:
 
 class TestStructureAndSeparation:
     def test_output_has_six_contributions(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.1,
@@ -217,7 +195,7 @@ class TestStructureAndSeparation:
         assert len(result.action_contributions) == 6
 
     def test_output_is_frozen(self):
-        obs = _make_obs()
+        obs = make_observation()
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.0, stay_suppression=0.1,
@@ -231,7 +209,7 @@ class TestStructureAndSeparation:
         assert "world" not in params
 
     def test_does_not_mutate_observation(self):
-        obs = _make_obs(current=0.5, up=0.3)
+        obs = make_observation(current=0.5, up=0.3)
         obs_dump = obs.model_dump()
         compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
@@ -240,7 +218,7 @@ class TestStructureAndSeparation:
         assert obs.model_dump() == obs_dump
 
     def test_all_zero_at_max_energy(self):
-        obs = _make_obs(current=0.8, up=0.5, down=0.5, left=0.5, right=0.5)
+        obs = make_observation(current=0.8, up=0.5, down=0.5, left=0.5, right=0.5)
         result = compute_hunger_drive(
             energy=100.0, max_energy=100.0, observation=obs,
             consume_weight=1.5, stay_suppression=0.1,
@@ -253,8 +231,7 @@ class TestStructureAndSeparation:
 
 class TestWorkedExamples:
     def test_half_hunger_asymmetric(self):
-        """Energy=50, max=100 -> d_H=0.5. Asymmetric observation."""
-        obs = _make_obs(current=0.7, up=0.0, down=0.8, left=0.3, right=0.0)
+        obs = make_observation(current=0.7, up=0.0, down=0.8, left=0.3, right=0.0)
         result = compute_hunger_drive(
             energy=50.0, max_energy=100.0, observation=obs,
             consume_weight=1.5, stay_suppression=0.1,
@@ -274,8 +251,7 @@ class TestWorkedExamples:
         )
 
     def test_full_hunger(self):
-        """Energy=0 -> d_H=1.0. All resources at 0.5."""
-        obs = _make_obs(current=0.5, up=0.5, down=0.5, left=0.5, right=0.5)
+        obs = make_observation(current=0.5, up=0.5, down=0.5, left=0.5, right=0.5)
         result = compute_hunger_drive(
             energy=0.0, max_energy=100.0, observation=obs,
             consume_weight=2.0, stay_suppression=0.5,

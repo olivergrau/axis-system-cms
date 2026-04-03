@@ -17,6 +17,10 @@ from axis_system_a import (
     World,
     step,
 )
+from tests.builders.agent_state_builder import AgentStateBuilder
+from tests.builders.world_builder import WorldBuilder
+from tests.fixtures.scenario_fixtures import _DEFAULT_STEP_KWARGS
+from tests.fixtures.world_fixtures import empty_cell, obstacle_cell, resource_cell
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +44,7 @@ def _make_world(
 
 
 def _agent(energy: float = 50.0, capacity: int = 5) -> AgentState:
-    return AgentState(energy=energy, memory_state=MemoryState(capacity=capacity))
+    return AgentStateBuilder().with_energy(energy).with_memory_capacity(capacity).build()
 
 
 def _3x3_world() -> World:
@@ -52,23 +56,13 @@ def _3x3_world() -> World:
 
     Agent at (1, 1).
     """
-    grid = [
-        [_cell(), _cell("resource", 0.7), _cell()],
-        [_cell(), _cell(), _cell("obstacle")],
-        [_cell("resource", 0.3), _cell(), _cell()],
-    ]
-    return _make_world(grid)
-
-
-_DEFAULT_KWARGS = dict(
-    move_cost=1.0,
-    consume_cost=1.0,
-    stay_cost=0.5,
-    max_consume=1.0,
-    energy_gain_factor=10.0,
-    max_energy=100.0,
-    resource_regen_rate=0.0,
-)
+    return (
+        WorldBuilder()
+        .with_food(1, 0, 0.7)
+        .with_obstacle(2, 1)
+        .with_food(0, 2, 0.3)
+        .build()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -78,56 +72,54 @@ _DEFAULT_KWARGS = dict(
 
 class TestMovement:
     def test_move_up(self):
-        world = _3x3_world()  # agent at (1,1)
-        result = step(world, _agent(), Action.UP, 0, **_DEFAULT_KWARGS)
+        world = _3x3_world()
+        result = step(world, _agent(), Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert world.agent_position == Position(x=1, y=0)
         assert result.trace.moved is True
         assert result.trace.position_after == Position(x=1, y=0)
 
     def test_move_down(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.DOWN, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.DOWN, 0, **_DEFAULT_STEP_KWARGS)
         assert world.agent_position == Position(x=1, y=2)
         assert result.trace.moved is True
 
     def test_move_left(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.LEFT, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.LEFT, 0, **_DEFAULT_STEP_KWARGS)
         assert world.agent_position == Position(x=0, y=1)
         assert result.trace.moved is True
 
     def test_move_right_blocked_by_obstacle(self):
-        world = _3x3_world()  # (2,1) is OBSTACLE
-        result = step(world, _agent(), Action.RIGHT, 0, **_DEFAULT_KWARGS)
+        world = _3x3_world()
+        result = step(world, _agent(), Action.RIGHT, 0, **_DEFAULT_STEP_KWARGS)
         assert world.agent_position == Position(x=1, y=1)
         assert result.trace.moved is False
 
     def test_move_up_blocked_by_boundary(self):
         world = _3x3_world()
-        # First move up to (1,0)
-        step(world, _agent(), Action.UP, 0, **_DEFAULT_KWARGS)
-        # Now try to move up again (out of bounds)
-        result = step(world, _agent(), Action.UP, 1, **_DEFAULT_KWARGS)
+        step(world, _agent(), Action.UP, 0, **_DEFAULT_STEP_KWARGS)
+        result = step(world, _agent(), Action.UP, 1, **_DEFAULT_STEP_KWARGS)
         assert world.agent_position == Position(x=1, y=0)
         assert result.trace.moved is False
 
     def test_blocked_move_still_costs_energy(self):
-        world = _3x3_world()  # RIGHT is obstacle
+        world = _3x3_world()
         agent = _agent(energy=50.0)
-        result = step(world, agent, Action.RIGHT, 0, **_DEFAULT_KWARGS)
+        result = step(world, agent, Action.RIGHT, 0, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state.energy == pytest.approx(49.0)
         assert result.trace.moved is False
 
     def test_successful_move_costs_energy(self):
         world = _3x3_world()
         agent = _agent(energy=50.0)
-        result = step(world, agent, Action.UP, 0, **_DEFAULT_KWARGS)
+        result = step(world, agent, Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state.energy == pytest.approx(49.0)
 
     def test_movement_does_not_change_cells(self):
         world = _3x3_world()
         cell_before = world.get_cell(Position(x=1, y=0))
-        step(world, _agent(), Action.UP, 0, **_DEFAULT_KWARGS)
+        step(world, _agent(), Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         cell_after = world.get_cell(Position(x=1, y=0))
         assert cell_before.cell_type == cell_after.cell_type
         assert cell_before.resource_value == cell_after.resource_value
@@ -140,30 +132,27 @@ class TestMovement:
 
 class TestConsume:
     def test_consume_on_resource_cell(self):
-        """Move to resource cell, then consume."""
         grid = [
             [_cell("resource", 0.5), _cell()],
             [_cell(), _cell()],
         ]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.consumed is True
         assert result.trace.resource_consumed == pytest.approx(0.5)
 
     def test_consume_fully_depletes_cell(self):
-        """Cell resource <= max_consume → cell becomes EMPTY."""
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.cell_type is CellType.EMPTY
         assert cell.resource_value == 0.0
 
     def test_consume_partial_depletion(self):
-        """max_consume < cell resource → cell stays RESOURCE with reduced value."""
         grid = [[_cell("resource", 0.8)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "max_consume": 0.3}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "max_consume": 0.3}
         result = step(world, _agent(), Action.CONSUME, 0, **kwargs)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.cell_type is CellType.RESOURCE
@@ -173,7 +162,7 @@ class TestConsume:
     def test_consume_on_empty_cell(self):
         grid = [[_cell()]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.consumed is False
         assert result.trace.resource_consumed == 0.0
 
@@ -181,8 +170,7 @@ class TestConsume:
         grid = [[_cell()]]
         world = _make_world(grid, agent_pos=(0, 0))
         agent = _agent(energy=50.0)
-        result = step(world, agent, Action.CONSUME, 0, **_DEFAULT_KWARGS)
-        # consume_cost=1.0, no gain
+        result = step(world, agent, Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state.energy == pytest.approx(49.0)
 
     def test_consume_only_affects_current_cell(self):
@@ -190,23 +178,21 @@ class TestConsume:
             [_cell("resource", 0.5), _cell("resource", 0.9)],
         ]
         world = _make_world(grid, agent_pos=(0, 0))
-        step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         neighbor = world.get_cell(Position(x=1, y=0))
         assert neighbor.resource_value == pytest.approx(0.9)
 
     def test_consume_energy_gain(self):
-        """Energy gain = energy_gain_factor * resource_consumed."""
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
         agent = _agent(energy=50.0)
-        # gain = 10.0 * 0.5 = 5.0, cost = 1.0, net = +4.0
-        result = step(world, agent, Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        result = step(world, agent, Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state.energy == pytest.approx(54.0)
 
     def test_trace_resource_consumed_value(self):
         grid = [[_cell("resource", 0.4)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.resource_consumed == pytest.approx(0.4)
 
 
@@ -218,7 +204,7 @@ class TestConsume:
 class TestStay:
     def test_stay_position_unchanged(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.STAY, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert world.agent_position == Position(x=1, y=1)
         assert result.trace.moved is False
         assert result.trace.consumed is False
@@ -226,8 +212,8 @@ class TestStay:
     def test_stay_costs_stay_cost(self):
         world = _3x3_world()
         agent = _agent(energy=50.0)
-        result = step(world, agent, Action.STAY, 0, **_DEFAULT_KWARGS)
-        assert result.agent_state.energy == pytest.approx(49.5)  # 50 - 0.5
+        result = step(world, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
+        assert result.agent_state.energy == pytest.approx(49.5)
 
     def test_stay_does_not_change_cells(self):
         world = _3x3_world()
@@ -236,7 +222,7 @@ class TestStay:
             for y in range(3) for x in range(3)
             if world.get_cell(Position(x=x, y=y)).cell_type is not CellType.OBSTACLE
         ]
-        step(world, _agent(), Action.STAY, 0, **_DEFAULT_KWARGS)
+        step(world, _agent(), Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         for pos, cell in cells_before:
             after = world.get_cell(pos)
             assert after.resource_value == cell.resource_value
@@ -252,16 +238,16 @@ class TestEnergyUpdate:
         world = _3x3_world()
         result = step(
             world, _agent(energy=50.0), Action.UP, 0,
-            **{**_DEFAULT_KWARGS, "move_cost": 2.0},
+            **{**_DEFAULT_STEP_KWARGS, "move_cost": 2.0},
         )
         assert result.agent_state.energy == pytest.approx(48.0)
 
     def test_consume_costs_consume_cost(self):
-        grid = [[_cell()]]  # empty cell, no gain
+        grid = [[_cell()]]
         world = _make_world(grid, agent_pos=(0, 0))
         result = step(
             world, _agent(energy=50.0), Action.CONSUME, 0,
-            **{**_DEFAULT_KWARGS, "consume_cost": 3.0},
+            **{**_DEFAULT_STEP_KWARGS, "consume_cost": 3.0},
         )
         assert result.agent_state.energy == pytest.approx(47.0)
 
@@ -269,43 +255,38 @@ class TestEnergyUpdate:
         world = _3x3_world()
         result = step(
             world, _agent(energy=50.0), Action.STAY, 0,
-            **{**_DEFAULT_KWARGS, "stay_cost": 2.5},
+            **{**_DEFAULT_STEP_KWARGS, "stay_cost": 2.5},
         )
         assert result.agent_state.energy == pytest.approx(47.5)
 
     def test_energy_gain_from_consume(self):
-        """gain = energy_gain_factor * delta_R."""
         grid = [[_cell("resource", 0.6)]]
         world = _make_world(grid, agent_pos=(0, 0))
         result = step(
             world, _agent(energy=50.0), Action.CONSUME, 0,
-            **{**_DEFAULT_KWARGS, "energy_gain_factor": 5.0},
+            **{**_DEFAULT_STEP_KWARGS, "energy_gain_factor": 5.0},
         )
-        # cost=1.0, gain=5.0*0.6=3.0, net=50-1+3=52
         assert result.agent_state.energy == pytest.approx(52.0)
 
     def test_no_gain_from_movement(self):
         world = _3x3_world()
-        # Move UP to (1,0) which is RESOURCE(0.7), but movement doesn't consume
         result = step(world, _agent(energy=50.0),
-                      Action.UP, 0, **_DEFAULT_KWARGS)
-        assert result.agent_state.energy == pytest.approx(49.0)  # just cost
+                      Action.UP, 0, **_DEFAULT_STEP_KWARGS)
+        assert result.agent_state.energy == pytest.approx(49.0)
 
     def test_energy_clipped_to_max(self):
         grid = [[_cell("resource", 1.0)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        # start at 95, gain=10*1.0=10, cost=1, raw=104 → clipped to 100
         result = step(
-            world, _agent(energy=95.0), Action.CONSUME, 0, **_DEFAULT_KWARGS,
+            world, _agent(energy=95.0), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS,
         )
         assert result.agent_state.energy == pytest.approx(100.0)
 
     def test_energy_clipped_to_zero(self):
         world = _3x3_world()
         result = step(
-            world, _agent(energy=0.5), Action.UP, 0, **_DEFAULT_KWARGS,
+            world, _agent(energy=0.5), Action.UP, 0, **_DEFAULT_STEP_KWARGS,
         )
-        # 0.5 - 1.0 = -0.5 → clipped to 0
         assert result.agent_state.energy == pytest.approx(0.0)
 
 
@@ -316,27 +297,24 @@ class TestEnergyUpdate:
 
 class TestMemoryUpdate:
     def test_memory_updated_with_new_observation(self):
-        """Memory records the post-transition observation, not the pre-transition one."""
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
         agent = _agent(energy=50.0)
-        result = step(world, agent, Action.CONSUME, 0, **_DEFAULT_KWARGS)
-        # After consume, cell is depleted → observation.current.resource == 0.0
+        result = step(world, agent, Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         mem_obs = result.agent_state.memory_state.entries[-1].observation
         assert mem_obs.current.resource == pytest.approx(0.0)
 
     def test_memory_entry_has_correct_timestep(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.STAY, 42, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.STAY, 42, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state.memory_state.entries[-1].timestep == 42
 
     def test_memory_capacity_respected(self):
         world = _3x3_world()
         agent = _agent(energy=100.0, capacity=2)
-        # Fill memory with 2 steps, then a 3rd should drop oldest
-        r1 = step(world, agent, Action.STAY, 0, **_DEFAULT_KWARGS)
-        r2 = step(world, r1.agent_state, Action.STAY, 1, **_DEFAULT_KWARGS)
-        r3 = step(world, r2.agent_state, Action.STAY, 2, **_DEFAULT_KWARGS)
+        r1 = step(world, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
+        r2 = step(world, r1.agent_state, Action.STAY, 1, **_DEFAULT_STEP_KWARGS)
+        r3 = step(world, r2.agent_state, Action.STAY, 2, **_DEFAULT_STEP_KWARGS)
         mem = r3.agent_state.memory_state
         assert len(mem.entries) == 2
         assert mem.entries[0].timestep == 1
@@ -345,7 +323,7 @@ class TestMemoryUpdate:
     def test_trace_memory_counts(self):
         world = _3x3_world()
         agent = _agent()
-        result = step(world, agent, Action.STAY, 0, **_DEFAULT_KWARGS)
+        result = step(world, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.memory_entries_before == 0
         assert result.trace.memory_entries_after == 1
 
@@ -359,29 +337,27 @@ class TestTermination:
     def test_energy_above_zero_not_terminated(self):
         world = _3x3_world()
         result = step(world, _agent(energy=50.0),
-                      Action.STAY, 0, **_DEFAULT_KWARGS)
+                      Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert result.terminated is False
 
     def test_energy_depleted_to_zero(self):
         world = _3x3_world()
-        # stay_cost=0.5, start at 0.5 → 0.0
         result = step(world, _agent(energy=0.5),
-                      Action.STAY, 0, **_DEFAULT_KWARGS)
+                      Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert result.terminated is True
         assert result.agent_state.energy == pytest.approx(0.0)
 
     def test_cost_exceeds_energy(self):
         world = _3x3_world()
-        # move_cost=1.0, start at 0.3 → clipped to 0
         result = step(world, _agent(energy=0.3),
-                      Action.UP, 0, **_DEFAULT_KWARGS)
+                      Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert result.terminated is True
         assert result.agent_state.energy == pytest.approx(0.0)
 
     def test_step_result_terminated_matches_trace(self):
         world = _3x3_world()
         result = step(world, _agent(energy=0.5),
-                      Action.STAY, 0, **_DEFAULT_KWARGS)
+                      Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert result.terminated == result.trace.terminated
 
 
@@ -420,26 +396,26 @@ class TestTransitionTrace:
 
     def test_trace_is_frozen(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.STAY, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         with pytest.raises(ValidationError):
             result.trace.moved = True
 
     def test_action_matches_input(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.LEFT, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.LEFT, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.action is Action.LEFT
 
     def test_energy_delta_consistent(self):
         world = _3x3_world()
         result = step(world, _agent(energy=50.0),
-                      Action.UP, 0, **_DEFAULT_KWARGS)
+                      Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.energy_delta == pytest.approx(
             result.trace.energy_after - result.trace.energy_before,
         )
 
     def test_position_before_matches_input(self):
-        world = _3x3_world()  # agent at (1,1)
-        result = step(world, _agent(), Action.UP, 0, **_DEFAULT_KWARGS)
+        world = _3x3_world()
+        result = step(world, _agent(), Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.position_before == Position(x=1, y=1)
         assert result.trace.position_after == Position(x=1, y=0)
 
@@ -460,14 +436,14 @@ class TestTransitionStepResult:
 
     def test_step_result_is_frozen(self):
         world = _3x3_world()
-        result = step(world, _agent(), Action.STAY, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         with pytest.raises(ValidationError):
             result.terminated = True
 
     def test_agent_state_is_new_instance(self):
         world = _3x3_world()
         agent = _agent()
-        result = step(world, agent, Action.STAY, 0, **_DEFAULT_KWARGS)
+        result = step(world, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state is not agent
 
 
@@ -481,19 +457,18 @@ class TestDeterminism:
         world1 = _3x3_world()
         world2 = _3x3_world()
         agent = _agent(energy=50.0)
-        r1 = step(world1, agent, Action.UP, 0, **_DEFAULT_KWARGS)
-        r2 = step(world2, agent, Action.UP, 0, **_DEFAULT_KWARGS)
+        r1 = step(world1, agent, Action.UP, 0, **_DEFAULT_STEP_KWARGS)
+        r2 = step(world2, agent, Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert r1.agent_state.energy == r2.agent_state.energy
         assert r1.trace.moved == r2.trace.moved
         assert r1.terminated == r2.terminated
         assert world1.agent_position == world2.agent_position
 
     def test_repeated_setup_identical_results(self):
-        """Two independent runs with fresh identical state produce same output."""
         for _ in range(3):
             world = _3x3_world()
             agent = _agent(energy=30.0)
-            result = step(world, agent, Action.DOWN, 5, **_DEFAULT_KWARGS)
+            result = step(world, agent, Action.DOWN, 5, **_DEFAULT_STEP_KWARGS)
             assert result.agent_state.energy == pytest.approx(29.0)
             assert world.agent_position == Position(x=1, y=2)
 
@@ -505,36 +480,30 @@ class TestDeterminism:
 
 class TestPhaseOrdering:
     def test_observation_reflects_post_action_world(self):
-        """After consuming, observation shows depleted cell."""
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
-        # Observation built AFTER consume → current cell has resource=0.0
+        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         assert result.observation.current.resource == pytest.approx(0.0)
 
     def test_memory_contains_post_action_observation(self):
-        """Memory records the post-action observation, not pre-action."""
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_KWARGS)
+        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
         mem_entry = result.agent_state.memory_state.entries[-1]
         assert mem_entry.observation == result.observation
 
     def test_observation_reflects_post_movement(self):
-        """After moving, observation is from the new position."""
-        world = _3x3_world()  # (1,0) is RESOURCE(0.7)
-        result = step(world, _agent(), Action.UP, 0, **_DEFAULT_KWARGS)
-        # Now at (1,0), current cell is RESOURCE(0.7)
+        world = _3x3_world()
+        result = step(world, _agent(), Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert result.observation.current.resource == pytest.approx(0.7)
 
     def test_world_unchanged_when_regen_rate_zero(self):
-        """With regen_rate=0.0, world resources are unchanged before action."""
         world = _3x3_world()
-        resource_cell = world.get_cell(Position(x=1, y=0))
-        assert resource_cell.resource_value == pytest.approx(0.7)
-        step(world, _agent(), Action.STAY, 0, **_DEFAULT_KWARGS)
-        resource_cell_after = world.get_cell(Position(x=1, y=0))
-        assert resource_cell_after.resource_value == pytest.approx(0.7)
+        resource_c = world.get_cell(Position(x=1, y=0))
+        assert resource_c.resource_value == pytest.approx(0.7)
+        step(world, _agent(), Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
+        resource_c_after = world.get_cell(Position(x=1, y=0))
+        assert resource_c_after.resource_value == pytest.approx(0.7)
 
 
 # ---------------------------------------------------------------------------
@@ -570,39 +539,34 @@ class TestSeparation:
 
 class TestEdgeCases:
     def test_1x1_world_all_movement_blocked(self):
-        grid = [[_cell()]]
-        world = _make_world(grid, agent_pos=(0, 0))
         for action in [Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT]:
             w = _make_world([[_cell()]], agent_pos=(0, 0))
-            result = step(w, _agent(), action, 0, **_DEFAULT_KWARGS)
+            result = step(w, _agent(), action, 0, **_DEFAULT_STEP_KWARGS)
             assert result.trace.moved is False
             assert w.agent_position == Position(x=0, y=0)
 
     def test_max_consume_zero(self):
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "max_consume": 0.0}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "max_consume": 0.0}
         result = step(world, _agent(), Action.CONSUME, 0, **kwargs)
         assert result.trace.consumed is False
         assert result.trace.resource_consumed == 0.0
-        # Cell unchanged
         assert world.get_cell(
             Position(x=0, y=0)).resource_value == pytest.approx(0.5)
 
     def test_energy_exactly_equals_cost(self):
         world = _3x3_world()
-        # move_cost=1.0, energy=1.0 → 0.0 → terminated
         result = step(world, _agent(energy=1.0),
-                      Action.UP, 0, **_DEFAULT_KWARGS)
+                      Action.UP, 0, **_DEFAULT_STEP_KWARGS)
         assert result.agent_state.energy == pytest.approx(0.0)
         assert result.terminated is True
 
     def test_energy_gain_factor_zero(self):
         grid = [[_cell("resource", 0.8)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "energy_gain_factor": 0.0}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "energy_gain_factor": 0.0}
         result = step(world, _agent(energy=50.0), Action.CONSUME, 0, **kwargs)
-        # No gain, just cost: 50 - 1 = 49
         assert result.agent_state.energy == pytest.approx(49.0)
 
 
@@ -613,19 +577,17 @@ class TestEdgeCases:
 
 class TestRegeneration:
     def test_regen_increases_resource(self):
-        """EMPTY cell gains resource from regeneration."""
         grid = [[_cell()]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.resource_value == pytest.approx(0.1)
 
     def test_regen_clipped_at_one(self):
-        """Resource cannot exceed 1.0."""
         grid = [[_cell("resource", 0.9)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.2}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.2}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.resource_value == pytest.approx(1.0)
@@ -635,7 +597,7 @@ class TestRegeneration:
             [_cell(), _cell("obstacle")],
         ]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.5}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.5}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         obstacle = world.get_cell(Position(x=1, y=0))
         assert obstacle.cell_type is CellType.OBSTACLE
@@ -644,91 +606,80 @@ class TestRegeneration:
     def test_regen_zero_rate_is_noop(self):
         grid = [[_cell("resource", 0.3)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.0}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.0}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.resource_value == pytest.approx(0.3)
 
     def test_regen_all_cells_updated(self):
-        """All non-obstacle cells regenerate."""
         grid = [
             [_cell(), _cell("resource", 0.5)],
             [_cell("obstacle"), _cell()],
         ]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         assert world.get_cell(Position(x=0, y=0)).resource_value == pytest.approx(0.1)
         assert world.get_cell(Position(x=1, y=0)).resource_value == pytest.approx(0.6)
-        assert world.get_cell(Position(x=0, y=1)).resource_value == 0.0  # obstacle
+        assert world.get_cell(Position(x=0, y=1)).resource_value == 0.0
         assert world.get_cell(Position(x=1, y=1)).resource_value == pytest.approx(0.1)
 
     def test_regen_cell_type_empty_to_resource(self):
-        """EMPTY cell becomes RESOURCE after regeneration adds resource."""
         grid = [[_cell()]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.2}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.2}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.cell_type is CellType.RESOURCE
         assert cell.resource_value == pytest.approx(0.2)
 
     def test_regen_already_at_max(self):
-        """Cell at resource=1.0 stays at 1.0."""
         grid = [[_cell("resource", 1.0)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         cell = world.get_cell(Position(x=0, y=0))
         assert cell.resource_value == pytest.approx(1.0)
 
     def test_regen_before_action(self):
-        """Consume sees post-regeneration resource value."""
         grid = [[_cell("resource", 0.3)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        # regen adds 0.2 → 0.5, then consume takes min(0.5, 1.0) = 0.5
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.2}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.2}
         result = step(world, _agent(), Action.CONSUME, 0, **kwargs)
         assert result.trace.resource_consumed == pytest.approx(0.5)
 
     def test_regen_before_observation(self):
-        """Observation reflects both regen and action effects."""
         grid = [
             [_cell(), _cell("resource", 0.4)],
         ]
         world = _make_world(grid, agent_pos=(0, 0))
-        # regen adds 0.1 to both cells: (0,0)→0.1, (1,0)→0.5
-        # agent stays, no consume → observation sees post-regen values
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         result = step(world, _agent(), Action.STAY, 0, **kwargs)
         assert result.observation.current.resource == pytest.approx(0.1)
         assert result.observation.right.resource == pytest.approx(0.5)
 
     def test_regen_does_not_affect_position(self):
         world = _3x3_world()
-        kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         step(world, _agent(), Action.STAY, 0, **kwargs)
         assert world.agent_position == Position(x=1, y=1)
 
     def test_regen_does_not_affect_agent_state(self):
-        """Regen changes world only, not energy or memory."""
         world = _3x3_world()
         agent = _agent(energy=50.0)
-        kwargs_regen = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.1}
+        kwargs_regen = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         r_regen = step(world, agent, Action.STAY, 0, **kwargs_regen)
         world2 = _3x3_world()
-        r_no_regen = step(world2, agent, Action.STAY, 0, **_DEFAULT_KWARGS)
-        # Energy and memory should be identical
+        r_no_regen = step(world2, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
         assert r_regen.agent_state.energy == r_no_regen.agent_state.energy
         assert len(r_regen.agent_state.memory_state.entries) == len(
             r_no_regen.agent_state.memory_state.entries)
 
     def test_regen_deterministic(self):
-        """Same state + same rate → same result."""
         for _ in range(3):
             grid = [[_cell("resource", 0.5)]]
             world = _make_world(grid, agent_pos=(0, 0))
-            kwargs = {**_DEFAULT_KWARGS, "resource_regen_rate": 0.15}
+            kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.15}
             step(world, _agent(), Action.STAY, 0, **kwargs)
             assert world.get_cell(
                 Position(x=0, y=0)).resource_value == pytest.approx(0.65)

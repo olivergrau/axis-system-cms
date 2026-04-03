@@ -12,6 +12,7 @@ from axis_system_a import (
     Position,
     clip_energy,
 )
+from tests.utils.assertions import assert_model_frozen
 
 
 class TestPosition:
@@ -21,9 +22,7 @@ class TestPosition:
         assert p.y == 7
 
     def test_frozen(self):
-        p = Position(x=3, y=7)
-        with pytest.raises(ValidationError):
-            p.x = 5
+        assert_model_frozen(Position(x=3, y=7), "x", 5)
 
     def test_equality(self):
         assert Position(x=3, y=7) == Position(x=3, y=7)
@@ -53,9 +52,10 @@ class TestCellObservation:
         assert c.resource == 0.5
 
     def test_frozen(self):
-        c = CellObservation(traversability=1.0, resource=0.5)
-        with pytest.raises(ValidationError):
-            c.traversability = 0.0
+        assert_model_frozen(
+            CellObservation(traversability=1.0,
+                            resource=0.5), "traversability", 0.0
+        )
 
     def test_boundary_zero(self):
         c = CellObservation(traversability=0.0, resource=0.0)
@@ -86,10 +86,10 @@ class TestObservation:
         assert sample_observation.up is not None
 
     def test_frozen(self, sample_observation: Observation):
-        with pytest.raises(ValidationError):
-            sample_observation.current = CellObservation(
-                traversability=0.0, resource=0.0
-            )
+        assert_model_frozen(
+            sample_observation, "current",
+            CellObservation(traversability=0.0, resource=0.0),
+        )
 
     def test_has_all_directions(self):
         fields = set(Observation.model_fields.keys())
@@ -135,8 +135,7 @@ class TestMemoryEntry:
         assert entry.timestep == 5
 
     def test_frozen(self, sample_memory_entry: MemoryEntry):
-        with pytest.raises(ValidationError):
-            sample_memory_entry.timestep = 10
+        assert_model_frozen(sample_memory_entry, "timestep", 10)
 
     def test_negative_timestep_invalid(self, sample_observation: Observation):
         with pytest.raises(ValidationError):
@@ -180,8 +179,7 @@ class TestMemoryState:
             MemoryState(entries=entries, capacity=3)
 
     def test_frozen(self, empty_memory: MemoryState):
-        with pytest.raises(ValidationError):
-            empty_memory.capacity = 10
+        assert_model_frozen(empty_memory, "capacity", 10)
 
     def test_capacity_accessible(self, empty_memory: MemoryState):
         assert empty_memory.capacity == 5
@@ -207,8 +205,7 @@ class TestAgentState:
 
     def test_frozen(self, empty_memory: MemoryState):
         state = AgentState(energy=50.0, memory_state=empty_memory)
-        with pytest.raises(ValidationError):
-            state.energy = 30.0
+        assert_model_frozen(state, "energy", 30.0)
 
     def test_no_position_field(self):
         assert "position" not in AgentState.model_fields

@@ -29,11 +29,7 @@ from axis_system_a.results import (
     StepResult,
     compute_episode_summary,
 )
-
-
-def _make_observation() -> Observation:
-    cell = CellObservation(traversability=1.0, resource=0.5)
-    return Observation(current=cell, up=cell, down=cell, left=cell, right=cell)
+from tests.fixtures.observation_fixtures import make_observation
 
 
 def _make_drive_output() -> HungerDriveOutput:
@@ -93,8 +89,8 @@ def _make_transition_trace(*, terminated: bool = False) -> TransitionTrace:
         ),
         memory_state_before=ms,
         memory_state_after=MemoryState(entries=(), capacity=5),
-        observation_before=_make_observation(),
-        observation_after=_make_observation(),
+        observation_before=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
+        observation_after=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
         regen_summary=RegenSummary(cells_updated=0, regen_rate=0.0),
         termination_reason=(
             TerminationReason.ENERGY_DEPLETED if terminated else None
@@ -107,7 +103,7 @@ def _make_step_result(
 ) -> StepResult:
     return StepResult(
         timestep=timestep,
-        observation=_make_observation(),
+        observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
         selected_action=Action.CONSUME,
         drive_output=_make_drive_output(),
         decision_result=_make_decision_result(),
@@ -151,7 +147,7 @@ class TestStepResult:
         with pytest.raises(ValidationError):
             StepResult(
                 timestep=-1,
-                observation=_make_observation(),
+                observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
                 selected_action=Action.STAY,
                 drive_output=_make_drive_output(),
                 decision_result=_make_decision_result(),
@@ -165,7 +161,7 @@ class TestStepResult:
         with pytest.raises(ValidationError):
             StepResult(
                 timestep=0,
-                observation=_make_observation(),
+                observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
                 selected_action=Action.STAY,
                 drive_output=_make_drive_output(),
                 decision_result=_make_decision_result(),
@@ -235,7 +231,7 @@ class TestEpisodeResult:
                 energy=0.0, memory_state=MemoryState(capacity=5),
             ),
             final_position=Position(x=1, y=1),
-            final_observation=_make_observation(),
+            final_observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
             summary=_make_summary(steps),
         )
         assert result.total_steps == 1
@@ -252,7 +248,7 @@ class TestEpisodeResult:
                 energy=0.0, memory_state=MemoryState(capacity=5),
             ),
             final_position=Position(x=1, y=1),
-            final_observation=_make_observation(),
+            final_observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
             summary=_make_summary(steps),
         )
         with pytest.raises(ValidationError):
@@ -268,7 +264,7 @@ class TestEpisodeResult:
                     energy=50.0, memory_state=MemoryState(capacity=5),
                 ),
                 final_position=Position(x=0, y=0),
-                final_observation=_make_observation(),
+                final_observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
                 summary=compute_episode_summary(()),
             )
 
@@ -281,7 +277,7 @@ class TestEpisodeResult:
                 energy=50.0, memory_state=MemoryState(capacity=5),
             ),
             final_position=Position(x=0, y=0),
-            final_observation=_make_observation(),
+            final_observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
             summary=compute_episode_summary(()),
         )
         assert isinstance(result.steps, tuple)
@@ -297,7 +293,7 @@ class TestEpisodeResult:
                 energy=0.0, memory_state=MemoryState(capacity=5),
             ),
             final_position=Position(x=1, y=1),
-            final_observation=_make_observation(),
+            final_observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
             summary=_make_summary(steps),
         )
         d = result.to_dict()
@@ -315,7 +311,7 @@ class TestEpisodeResult:
                 energy=0.0, memory_state=MemoryState(capacity=5),
             ),
             final_position=Position(x=1, y=1),
-            final_observation=_make_observation(),
+            final_observation=make_observation(0.5, 0.5, 0.5, 0.5, 0.5),
             summary=_make_summary(steps),
         )
         assert result.summary.survival_length == result.total_steps

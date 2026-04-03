@@ -14,6 +14,7 @@ from axis_system_a import (
     TransitionConfig,
     WorldConfig,
 )
+from tests.utils.assertions import assert_model_frozen
 
 
 class TestValidConfig:
@@ -29,8 +30,7 @@ class TestValidConfig:
         assert isinstance(valid_config.execution, ExecutionConfig)
 
     def test_frozen(self, valid_config: SimulationConfig):
-        with pytest.raises(ValidationError):
-            valid_config.general = GeneralConfig(seed=99)
+        assert_model_frozen(valid_config, "general", GeneralConfig(seed=99))
 
     def test_model_dump_roundtrip(self, valid_config: SimulationConfig):
         dump = valid_config.model_dump()
@@ -88,11 +88,13 @@ class TestWorldConfigValidation:
             WorldConfig(grid_width=10, grid_height=0)
 
     def test_regen_rate_zero_valid(self):
-        config = WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=0.0)
+        config = WorldConfig(grid_width=10, grid_height=10,
+                             resource_regen_rate=0.0)
         assert config.resource_regen_rate == 0.0
 
     def test_regen_rate_one_valid(self):
-        config = WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=1.0)
+        config = WorldConfig(grid_width=10, grid_height=10,
+                             resource_regen_rate=1.0)
         assert config.resource_regen_rate == 1.0
 
     def test_regen_rate_default_zero(self):
@@ -101,7 +103,8 @@ class TestWorldConfigValidation:
 
     def test_regen_rate_negative_invalid(self):
         with pytest.raises(ValidationError):
-            WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=-0.1)
+            WorldConfig(grid_width=10, grid_height=10,
+                        resource_regen_rate=-0.1)
 
     def test_regen_rate_above_one_invalid(self):
         with pytest.raises(ValidationError):
@@ -143,55 +146,43 @@ class TestPolicyConfigValidation:
     def test_temperature_zero(self):
         with pytest.raises(ValidationError):
             PolicyConfig(
-                selection_mode="sample",
-                temperature=0.0,
-                stay_suppression=0.1,
-                consume_weight=1.5,
+                selection_mode="sample", temperature=0.0,
+                stay_suppression=0.1, consume_weight=1.5,
             )
 
     def test_temperature_negative(self):
         with pytest.raises(ValidationError):
             PolicyConfig(
-                selection_mode="sample",
-                temperature=-1.0,
-                stay_suppression=0.1,
-                consume_weight=1.5,
+                selection_mode="sample", temperature=-1.0,
+                stay_suppression=0.1, consume_weight=1.5,
             )
 
     def test_stay_suppression_negative(self):
         with pytest.raises(ValidationError):
             PolicyConfig(
-                selection_mode="sample",
-                temperature=1.0,
-                stay_suppression=-0.1,
-                consume_weight=1.5,
+                selection_mode="sample", temperature=1.0,
+                stay_suppression=-0.1, consume_weight=1.5,
             )
 
     def test_consume_weight_zero(self):
         with pytest.raises(ValidationError):
             PolicyConfig(
-                selection_mode="sample",
-                temperature=1.0,
-                stay_suppression=0.1,
-                consume_weight=0.0,
+                selection_mode="sample", temperature=1.0,
+                stay_suppression=0.1, consume_weight=0.0,
             )
 
     def test_consume_weight_negative(self):
         with pytest.raises(ValidationError):
             PolicyConfig(
-                selection_mode="sample",
-                temperature=1.0,
-                stay_suppression=0.1,
-                consume_weight=-1.0,
+                selection_mode="sample", temperature=1.0,
+                stay_suppression=0.1, consume_weight=-1.0,
             )
 
     def test_invalid_selection_mode(self):
         with pytest.raises(ValidationError):
             PolicyConfig(
-                selection_mode="greedy",
-                temperature=1.0,
-                stay_suppression=0.1,
-                consume_weight=1.5,
+                selection_mode="greedy", temperature=1.0,
+                stay_suppression=0.1, consume_weight=1.5,
             )
 
 
@@ -222,8 +213,7 @@ class TestTransitionConfigValidation:
             move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
             max_consume=1.0, energy_gain_factor=10.0,
         )
-        with pytest.raises(ValidationError):
-            tc.move_cost = 2.0
+        assert_model_frozen(tc, "move_cost", 2.0)
 
     def test_move_cost_zero_invalid(self):
         with pytest.raises(ValidationError):

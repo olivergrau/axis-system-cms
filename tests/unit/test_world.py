@@ -11,23 +11,27 @@ from axis_system_a import (
     WorldConfig,
     create_world,
 )
+from tests.fixtures.world_fixtures import empty_cell, obstacle_cell, resource_cell
 
 
 # --- Cell Tests ---
 
 
 class TestCellCreation:
-    def test_empty_cell(self, empty_cell: Cell):
-        assert empty_cell.cell_type == CellType.EMPTY
-        assert empty_cell.resource_value == 0.0
+    def test_empty_cell(self):
+        cell = empty_cell()
+        assert cell.cell_type == CellType.EMPTY
+        assert cell.resource_value == 0.0
 
-    def test_resource_cell(self, resource_cell: Cell):
-        assert resource_cell.cell_type == CellType.RESOURCE
-        assert resource_cell.resource_value == 0.7
+    def test_resource_cell(self):
+        cell = resource_cell()
+        assert cell.cell_type == CellType.RESOURCE
+        assert cell.resource_value == 0.7
 
-    def test_obstacle_cell(self, obstacle_cell: Cell):
-        assert obstacle_cell.cell_type == CellType.OBSTACLE
-        assert obstacle_cell.resource_value == 0.0
+    def test_obstacle_cell(self):
+        cell = obstacle_cell()
+        assert cell.cell_type == CellType.OBSTACLE
+        assert cell.resource_value == 0.0
 
     def test_resource_cell_max_value(self):
         cell = Cell(cell_type=CellType.RESOURCE, resource_value=1.0)
@@ -61,24 +65,26 @@ class TestCellInvariants:
 
 
 class TestCellProperties:
-    def test_frozen(self, empty_cell: Cell):
+    def test_frozen(self):
+        cell = empty_cell()
         with pytest.raises(ValidationError):
-            empty_cell.resource_value = 0.5
+            cell.resource_value = 0.5
 
-    def test_is_traversable_empty(self, empty_cell: Cell):
-        assert empty_cell.is_traversable is True
+    def test_is_traversable_empty(self):
+        assert empty_cell().is_traversable is True
 
-    def test_is_traversable_resource(self, resource_cell: Cell):
-        assert resource_cell.is_traversable is True
+    def test_is_traversable_resource(self):
+        assert resource_cell().is_traversable is True
 
-    def test_is_traversable_obstacle(self, obstacle_cell: Cell):
-        assert obstacle_cell.is_traversable is False
+    def test_is_traversable_obstacle(self):
+        assert obstacle_cell().is_traversable is False
 
-    def test_serialization(self, resource_cell: Cell):
-        dump = resource_cell.model_dump()
+    def test_serialization(self):
+        cell = resource_cell()
+        dump = cell.model_dump()
         assert dump == {"cell_type": "resource", "resource_value": 0.7}
         reconstructed = Cell(**dump)
-        assert reconstructed == resource_cell
+        assert reconstructed == cell
 
 
 # --- World Tests ---
@@ -97,13 +103,11 @@ class TestWorldCreation:
 
 
 class TestWorldAccess:
-    def test_get_cell(self, small_world: World, resource_cell: Cell):
-        # Row 0, col 1 is RESOURCE
+    def test_get_cell(self, small_world: World):
         cell = small_world.get_cell(Position(x=1, y=0))
-        assert cell == resource_cell
+        assert cell == resource_cell()
 
     def test_get_cell_all_corners(self, small_world: World):
-        # (0,0) = EMPTY, (2,0) = EMPTY, (0,2) = RESOURCE, (2,2) = EMPTY
         assert small_world.get_cell(
             Position(x=0, y=0)).cell_type == CellType.EMPTY
         assert small_world.get_cell(
@@ -150,7 +154,6 @@ class TestWorldTraversability:
         assert small_world.is_traversable(Position(x=1, y=0)) is True
 
     def test_not_traversable_obstacle(self, small_world: World):
-        # (2, 1) is OBSTACLE
         assert small_world.is_traversable(Position(x=2, y=1)) is False
 
     def test_not_traversable_out_of_bounds(self, small_world: World):
@@ -158,13 +161,16 @@ class TestWorldTraversability:
 
 
 class TestWorldConstructorValidation:
-    def test_agent_out_of_bounds(self, empty_cell: Cell):
-        grid = [[empty_cell, empty_cell], [empty_cell, empty_cell]]
+    def test_agent_out_of_bounds(self):
+        e = empty_cell()
+        grid = [[e, e], [e, e]]
         with pytest.raises(ValueError, match="out of bounds"):
             World(grid=grid, agent_position=Position(x=5, y=0))
 
-    def test_agent_on_obstacle(self, empty_cell: Cell, obstacle_cell: Cell):
-        grid = [[obstacle_cell, empty_cell], [empty_cell, empty_cell]]
+    def test_agent_on_obstacle(self):
+        e = empty_cell()
+        o = obstacle_cell()
+        grid = [[o, e], [e, e]]
         with pytest.raises(ValueError, match="non-traversable"):
             World(grid=grid, agent_position=Position(x=0, y=0))
 
@@ -172,10 +178,11 @@ class TestWorldConstructorValidation:
         with pytest.raises(ValueError):
             World(grid=[], agent_position=Position(x=0, y=0))
 
-    def test_ragged_grid(self, empty_cell: Cell):
+    def test_ragged_grid(self):
+        e = empty_cell()
         grid = [
-            [empty_cell, empty_cell, empty_cell],
-            [empty_cell, empty_cell],
+            [e, e, e],
+            [e, e],
         ]
         with pytest.raises(ValueError, match="width"):
             World(grid=grid, agent_position=Position(x=0, y=0))
@@ -191,7 +198,6 @@ class TestWorldAgentPositionSetter:
             small_world.agent_position = Position(x=10, y=10)
 
     def test_on_obstacle(self, small_world: World):
-        # (2, 1) is OBSTACLE
         with pytest.raises(ValueError, match="non-traversable"):
             small_world.agent_position = Position(x=2, y=1)
 
@@ -212,16 +218,13 @@ class TestCreateWorld:
                 assert cell.cell_type == CellType.EMPTY
                 assert cell.resource_value == 0.0
 
-    def test_with_explicit_grid(
-        self,
-        small_world_config: WorldConfig,
-        empty_cell: Cell,
-        resource_cell: Cell,
-    ):
+    def test_with_explicit_grid(self, small_world_config: WorldConfig):
+        e = empty_cell()
+        r = resource_cell()
         grid = [
-            [empty_cell, resource_cell, empty_cell],
-            [empty_cell, empty_cell, empty_cell],
-            [empty_cell, empty_cell, empty_cell],
+            [e, r, e],
+            [e, e, e],
+            [e, e, e],
         ]
         world = create_world(
             small_world_config,
@@ -231,14 +234,16 @@ class TestCreateWorld:
         assert world.get_cell(
             Position(x=1, y=0)).cell_type == CellType.RESOURCE
 
-    def test_dimension_mismatch_height(self, empty_cell: Cell):
+    def test_dimension_mismatch_height(self):
+        e = empty_cell()
         config = WorldConfig(grid_width=2, grid_height=3)
-        grid = [[empty_cell, empty_cell], [empty_cell, empty_cell]]
+        grid = [[e, e], [e, e]]
         with pytest.raises(ValueError, match="height"):
             create_world(config, Position(x=0, y=0), grid=grid)
 
-    def test_dimension_mismatch_width(self, empty_cell: Cell):
+    def test_dimension_mismatch_width(self):
+        e = empty_cell()
         config = WorldConfig(grid_width=3, grid_height=2)
-        grid = [[empty_cell, empty_cell], [empty_cell, empty_cell]]
+        grid = [[e, e], [e, e]]
         with pytest.raises(ValueError, match="width"):
             create_world(config, Position(x=0, y=0), grid=grid)
