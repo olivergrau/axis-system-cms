@@ -13,6 +13,7 @@ from axis_system_a.enums import Action, CellType, SelectionMode
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
 from axis_system_a.policy import DecisionResult, select_action
+from axis_system_a.transition import StepResult, TransitionTrace, step
 from axis_system_a.types import (
     AgentState,
     CellObservation,
@@ -42,6 +43,8 @@ __all__ = [
     "Position",
     "SelectionMode",
     "SimulationConfig",
+    "StepResult",
+    "TransitionTrace",
     "World",
     "WorldConfig",
     "build_observation",
@@ -49,5 +52,6 @@ __all__ = [
     "compute_hunger_drive",
     "create_world",
     "select_action",
+    "step",
     "update_memory",
 ]

@@ -1,8 +1,9 @@
-"""Shared test fixtures for WP1 and WP2."""
+"""Shared test fixtures for WP1–WP6."""
 
 import pytest
 
 from axis_system_a import (
+    AgentState,
     Cell,
     CellObservation,
     CellType,
@@ -144,4 +145,29 @@ def all_blocked_movement_observation() -> Observation:
         down=CellObservation(traversability=0.0, resource=0.0),
         left=CellObservation(traversability=0.0, resource=0.0),
         right=CellObservation(traversability=0.0, resource=0.0),
+    )
+
+
+# --- WP6 Fixtures ---
+
+
+@pytest.fixture
+def default_step_kwargs() -> dict:
+    """Standard cost parameters for transition tests."""
+    return dict(
+        move_cost=1.0,
+        consume_cost=1.0,
+        stay_cost=0.5,
+        max_consume=1.0,
+        energy_gain_factor=10.0,
+        max_energy=100.0,
+    )
+
+
+@pytest.fixture
+def default_agent_state() -> AgentState:
+    """Agent with energy=50.0 and empty memory (capacity=5)."""
+    return AgentState(
+        energy=50.0,
+        memory_state=MemoryState(capacity=5),
     )
