@@ -23,6 +23,16 @@ from axis_system_a.results import (
     StepResult,
     compute_episode_summary,
 )
+from axis_system_a.run import (
+    RunConfig,
+    RunContext,
+    RunExecutor,
+    RunResult,
+    RunSummary,
+    compute_run_summary,
+    execute_run,
+    resolve_episode_seeds,
+)
 from axis_system_a.runner import episode_step, run_episode
 from axis_system_a.snapshots import (
     AgentSnapshot,
@@ -66,6 +76,11 @@ __all__ = [
     "PolicyConfig",
     "Position",
     "RegenSummary",
+    "RunConfig",
+    "RunContext",
+    "RunExecutor",
+    "RunResult",
+    "RunSummary",
     "SelectionMode",
     "SimulationConfig",
     "StepResult",
@@ -80,8 +95,11 @@ __all__ = [
     "clip_energy",
     "compute_episode_summary",
     "compute_hunger_drive",
+    "compute_run_summary",
     "create_world",
     "episode_step",
+    "execute_run",
+    "resolve_episode_seeds",
     "run_episode",
     "select_action",
     "snapshot_agent",
