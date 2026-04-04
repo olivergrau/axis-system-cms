@@ -27,6 +27,8 @@ from axis_system_a.experiment import (
 from axis_system_a.experiment_executor import (
     ExperimentExecutor,
     execute_experiment,
+    is_run_complete,
+    resume_experiment,
 )
 from axis_system_a.logging import AxisLogger
 from axis_system_a.memory import update_memory
@@ -140,8 +142,10 @@ __all__ = [
     "execute_experiment",
     "execute_run",
     "get_config_value",
+    "is_run_complete",
     "resolve_episode_seeds",
     "resolve_run_configs",
+    "resume_experiment",
     "run_episode",
     "select_action",
     "set_config_value",
