@@ -1,4 +1,5 @@
-"""Minimal CLI for the AXIS Experimentation Framework.
+"""
+Minimal CLI for the AXIS Experimentation Framework.
 
 Provides a thin, stateless command-line interface over the execution
 and repository layers.  Every command reconstructs state from persisted
@@ -35,6 +36,20 @@ from axis_system_a.repository import ExperimentRepository
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser."""
+    # Shared flags available on every leaf sub-command so that
+    # ``--root`` / ``--output`` can appear *anywhere* on the command line.
+    # Uses SUPPRESS so leaf defaults don't overwrite a value already parsed
+    # by the top-level parser when the flag appears before the sub-command.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
+        "--root", default=argparse.SUPPRESS,
+        help="Path to experiment repository root (default: ./experiments/results)",
+    )
+    common.add_argument(
+        "--output", choices=["text", "json"], default=argparse.SUPPRESS,
+        help="Output format (default: text)",
+    )
+
     parser = argparse.ArgumentParser(
         prog="axis",
         description="AXIS Experimentation Framework CLI",
@@ -54,25 +69,31 @@ def build_parser() -> argparse.ArgumentParser:
     exp_parser = entity_sub.add_parser("experiments")
     exp_action = exp_parser.add_subparsers(dest="action")
 
-    exp_action.add_parser("list", help="List all experiments")
+    exp_action.add_parser(
+        "list", parents=[common], help="List all experiments")
 
-    run_p = exp_action.add_parser("run", help="Execute a new experiment")
+    run_p = exp_action.add_parser(
+        "run", parents=[common], help="Execute a new experiment")
     run_p.add_argument("config_path", help="Path to experiment config file")
 
-    resume_p = exp_action.add_parser("resume", help="Resume an experiment")
+    resume_p = exp_action.add_parser(
+        "resume", parents=[common], help="Resume an experiment")
     resume_p.add_argument("experiment_id")
 
-    show_p = exp_action.add_parser("show", help="Show experiment details")
+    show_p = exp_action.add_parser(
+        "show", parents=[common], help="Show experiment details")
     show_p.add_argument("experiment_id")
 
     # -- runs ----------------------------------------------------------------
     runs_parser = entity_sub.add_parser("runs")
     runs_action = runs_parser.add_subparsers(dest="action")
 
-    list_runs_p = runs_action.add_parser("list", help="List runs")
+    list_runs_p = runs_action.add_parser(
+        "list", parents=[common], help="List runs")
     list_runs_p.add_argument("--experiment", required=True)
 
-    show_run_p = runs_action.add_parser("show", help="Show run details")
+    show_run_p = runs_action.add_parser(
+        "show", parents=[common], help="Show run details")
     show_run_p.add_argument("run_id")
     show_run_p.add_argument("--experiment", required=True)
 
