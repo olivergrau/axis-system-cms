@@ -115,9 +115,66 @@ All sections except `logging` are required.
 | `policy`     | `selection_mode` (`"sample"` or `"argmax"`), `temperature`, `stay_suppression`, `consume_weight` |
 | `transition` | `move_cost`, `consume_cost`, `stay_cost`, `max_consume`, `energy_gain_factor` |
 | `execution`  | `max_steps` |
-| `logging`    | Optional. Set `{"enabled": false}` to suppress per-episode console output. |
+| `logging`    | Optional. Controls console output, verbosity, and JSONL file logging. See section 2.4 below. |
 
-### 2.4 OFAT (One-Factor-At-a-Time) experiment
+### 2.4 Logging configuration
+
+The `logging` section inside `baseline` controls runtime observability.
+All fields are optional — the defaults produce compact console output
+with no file logging.
+
+```json
+"logging": {
+  "enabled": true,
+  "console_enabled": true,
+  "verbosity": "verbose",
+  "jsonl_enabled": true,
+  "jsonl_path": "./experiment_log.jsonl",
+  "include_decision_trace": true,
+  "include_transition_trace": true
+}
+```
+
+| Field                      | Default    | Description |
+|----------------------------|------------|-------------|
+| `enabled`                  | `true`     | Master switch. Set to `false` to suppress all logging. |
+| `console_enabled`          | `true`     | Print human-readable step/episode output to the console. |
+| `verbosity`                | `"compact"`| `"compact"` — one-line summaries per step. `"verbose"` — includes full decision and transition traces. |
+| `jsonl_enabled`            | `false`    | Write machine-readable JSONL output to a file. |
+| `jsonl_path`               | `null`     | File path for JSONL output. **Required** when `jsonl_enabled` is `true`. |
+| `include_decision_trace`   | `true`     | Include the full decision trace (probabilities, contributions) in JSONL output. |
+| `include_transition_trace` | `true`     | Include the full transition trace (position, energy deltas) in JSONL output. |
+
+**Minimal (silent):**
+
+```json
+"logging": { "enabled": false }
+```
+
+**Compact console output (default):**
+
+```json
+"logging": { "enabled": true }
+```
+
+**Verbose console output:**
+
+```json
+"logging": { "enabled": true, "verbosity": "verbose" }
+```
+
+**Verbose console + JSONL file:**
+
+```json
+"logging": {
+  "enabled": true,
+  "verbosity": "verbose",
+  "jsonl_enabled": true,
+  "jsonl_path": "./my_experiment.jsonl"
+}
+```
+
+### 2.5 OFAT (One-Factor-At-a-Time) experiment
 
 An OFAT experiment varies one parameter across multiple values while keeping
 everything else at baseline. Each value produces one separate run.
@@ -143,7 +200,7 @@ Example -- sweep `energy_gain_factor` across three values
 This produces three runs: `run-0000` (factor=5.0), `run-0001` (factor=10.0),
 `run-0002` (factor=20.0).
 
-### 2.5 YAML format
+### 2.6 YAML format
 
 YAML configs are also supported. The CLI detects format by file extension
 (`.yaml` / `.yml`). The structure is identical to the JSON form.
@@ -178,8 +235,27 @@ Running the same experiment twice will fail -- the name must be unique:
 
 ```
 $ python -m axis_system_a.cli experiments run experiments/configs/baseline.json
-Error: Experiment already exists: baseline-10x10
+Error: Experiment already exists: baseline-10x10. Use --redo to overwrite.
 ```
+
+### 3.1 Re-running an experiment with `--redo`
+
+Use `--redo` to delete existing results and re-run an experiment from
+scratch. This removes the entire experiment directory (including all
+runs and episodes) before executing:
+
+```
+$ python -m axis_system_a.cli experiments run experiments/configs/baseline.json --redo
+Experiment 'baseline-10x10' completed.
+  Runs: 1
+```
+
+This is useful when you have changed the config file and want fresh
+results without manually deleting the output directory.
+
+> **Warning:** `--redo` permanently deletes all previous results for that
+> experiment name. If you want to keep the old results, rename the
+> experiment in the config file instead.
 
 ---
 
@@ -578,6 +654,9 @@ python -m axis_system_a.cli experiments run experiments/configs/baseline.json
 
 # Run the OFAT sweep
 python -m axis_system_a.cli experiments run experiments/configs/energy-gain-sweep.json
+
+# Re-run an experiment (deletes previous results)
+python -m axis_system_a.cli experiments run experiments/configs/baseline.json --redo
 
 # List all experiments
 python -m axis_system_a.cli experiments list

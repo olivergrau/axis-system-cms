@@ -193,16 +193,10 @@ class RunExecutor:
     def _make_episode_config(
         simulation: SimulationConfig, seed: int,
     ) -> SimulationConfig:
-        """Create a per-episode SimulationConfig with the episode seed.
-
-        Also suppresses console logging to avoid spam during multi-episode runs.
-        """
+        """Create a per-episode SimulationConfig with the episode seed."""
         new_general = simulation.general.model_copy(update={"seed": seed})
-        new_logging = simulation.logging.model_copy(
-            update={"console_enabled": False},
-        )
         return simulation.model_copy(
-            update={"general": new_general, "logging": new_logging},
+            update={"general": new_general},
         )
 
 

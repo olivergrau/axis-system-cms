@@ -154,6 +154,15 @@ class AxisLogger:
     def __init__(self, config: LoggingConfig) -> None:
         self._config = config
         self._jsonl_file: IO[str] | None = None
+        self._console_handler: logging.Handler | None = None
+
+        if config.enabled and config.console_enabled:
+            if not _logger.handlers:
+                handler = logging.StreamHandler()
+                handler.setFormatter(logging.Formatter("%(message)s"))
+                _logger.addHandler(handler)
+                self._console_handler = handler
+            _logger.setLevel(logging.INFO)
 
         if config.enabled and config.jsonl_enabled and config.jsonl_path:
             try:
@@ -180,13 +189,19 @@ class AxisLogger:
             pass  # logging must never crash execution
 
     def close(self) -> None:
-        """Close any open file handles. Idempotent."""
+        """Close any open file handles and remove handlers. Idempotent."""
         try:
             if self._jsonl_file is not None:
                 self._jsonl_file.close()
                 self._jsonl_file = None
         except Exception:
             self._jsonl_file = None
+        try:
+            if self._console_handler is not None:
+                _logger.removeHandler(self._console_handler)
+                self._console_handler = None
+        except Exception:
+            self._console_handler = None
 
     @staticmethod
     def noop() -> AxisLogger:

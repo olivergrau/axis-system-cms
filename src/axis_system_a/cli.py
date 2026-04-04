@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -75,6 +76,10 @@ def build_parser() -> argparse.ArgumentParser:
     run_p = exp_action.add_parser(
         "run", parents=[common], help="Execute a new experiment")
     run_p.add_argument("config_path", help="Path to experiment config file")
+    run_p.add_argument(
+        "--redo", action="store_true", default=False,
+        help="Delete existing experiment results and re-run from scratch",
+    )
 
     resume_p = exp_action.add_parser(
         "resume", parents=[common], help="Resume an experiment")
@@ -170,6 +175,7 @@ def _cmd_experiments_list(
 
 def _cmd_experiments_run(
     repo: ExperimentRepository, config_path: str, output: str,
+    *, redo: bool = False,
 ) -> None:
     path = Path(config_path)
     if not path.exists():
@@ -180,12 +186,19 @@ def _cmd_experiments_run(
     except Exception as exc:
         print(f"Error: Invalid config file: {exc}", file=sys.stderr)
         sys.exit(1)
+
+    experiment_id = config.name or "<generated>"
+    if redo:
+        exp_dir = repo.experiment_dir(experiment_id)
+        if exp_dir.exists():
+            shutil.rmtree(exp_dir)
+
     try:
         result = ExperimentExecutor(repo).execute(config)
     except FileExistsError:
-        experiment_id = config.name or "<generated>"
         print(
-            f"Error: Experiment already exists: {experiment_id}",
+            f"Error: Experiment already exists: {experiment_id}. "
+            f"Use --redo to overwrite.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -420,7 +433,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.action == "list":
                 _cmd_experiments_list(repo, output)
             elif args.action == "run":
-                _cmd_experiments_run(repo, args.config_path, output)
+                _cmd_experiments_run(
+                    repo, args.config_path, output,
+                    redo=getattr(args, "redo", False),
+                )
             elif args.action == "resume":
                 _cmd_experiments_resume(repo, args.experiment_id, output)
             elif args.action == "show":
