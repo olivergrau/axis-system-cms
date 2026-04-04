@@ -253,7 +253,7 @@ def compute_experiment_summary(
     entries: list[RunSummaryEntry] = []
 
     for i, rr in enumerate(run_results):
-        desc = _variation_description(config, i)
+        desc = variation_description(config, i)
         delta_steps: float | None = None
         delta_energy: float | None = None
         delta_death: float | None = None
@@ -280,7 +280,7 @@ def compute_experiment_summary(
     )
 
 
-def _variation_description(config: ExperimentConfig, run_index: int) -> str:
+def variation_description(config: ExperimentConfig, run_index: int) -> str:
     """Generate a human-readable variation descriptor for a run."""
     if config.experiment_type == ExperimentType.SINGLE_RUN:
         return "baseline"

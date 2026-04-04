@@ -22,6 +22,11 @@ from axis_system_a.experiment import (
     get_config_value,
     resolve_run_configs,
     set_config_value,
+    variation_description,
+)
+from axis_system_a.experiment_executor import (
+    ExperimentExecutor,
+    execute_experiment,
 )
 from axis_system_a.logging import AxisLogger
 from axis_system_a.memory import update_memory
@@ -88,6 +93,7 @@ __all__ = [
     "EpisodeSummary",
     "ExecutionConfig",
     "ExperimentConfig",
+    "ExperimentExecutor",
     "ExperimentMetadata",
     "ExperimentRepository",
     "ExperimentResult",
@@ -131,6 +137,7 @@ __all__ = [
     "compute_run_summary",
     "create_world",
     "episode_step",
+    "execute_experiment",
     "execute_run",
     "get_config_value",
     "resolve_episode_seeds",
@@ -142,4 +149,5 @@ __all__ = [
     "snapshot_world",
     "step",
     "update_memory",
+    "variation_description",
 ]
