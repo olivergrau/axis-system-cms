@@ -27,6 +27,15 @@ from axis_system_a.logging import AxisLogger
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
 from axis_system_a.policy import DecisionTrace, select_action
+from axis_system_a.repository import (
+    ExperimentMetadata,
+    ExperimentRepository,
+    ExperimentStatus,
+    ExperimentStatusRecord,
+    RunMetadata,
+    RunStatus,
+    RunStatusRecord,
+)
 from axis_system_a.results import (
     EpisodeResult,
     EpisodeStepRecord,
@@ -79,7 +88,11 @@ __all__ = [
     "EpisodeSummary",
     "ExecutionConfig",
     "ExperimentConfig",
+    "ExperimentMetadata",
+    "ExperimentRepository",
     "ExperimentResult",
+    "ExperimentStatus",
+    "ExperimentStatusRecord",
     "ExperimentSummary",
     "ExperimentType",
     "GeneralConfig",
@@ -94,7 +107,10 @@ __all__ = [
     "RunConfig",
     "RunContext",
     "RunExecutor",
+    "RunMetadata",
     "RunResult",
+    "RunStatus",
+    "RunStatusRecord",
     "RunSummary",
     "RunSummaryEntry",
     "SelectionMode",
