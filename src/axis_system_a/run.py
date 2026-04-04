@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import uuid
 
+import math
+
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -81,17 +83,18 @@ def resolve_episode_seeds(
 
 
 class RunSummary(BaseModel):
-    """Minimal aggregated statistics for a run.
-
-    WP12 may extend this with std_steps, std_final_energy, etc.
-    """
+    """Aggregated statistics for a run."""
 
     model_config = ConfigDict(frozen=True)
 
     num_episodes: int = Field(..., ge=0)
     mean_steps: float
+    std_steps: float = Field(..., ge=0.0)
     mean_final_energy: float
+    std_final_energy: float = Field(..., ge=0.0)
     death_rate: float = Field(..., ge=0.0, le=1.0)
+    mean_consumption_count: float
+    std_consumption_count: float = Field(..., ge=0.0)
 
 
 class RunResult(BaseModel):
@@ -110,27 +113,45 @@ class RunResult(BaseModel):
 def compute_run_summary(
     episode_results: tuple[EpisodeResult, ...],
 ) -> RunSummary:
-    """Compute minimal run-level summary from episode results."""
+    """Compute run-level summary from episode results.
+
+    Uses population standard deviation (all episodes are present, not a sample).
+    """
     n = len(episode_results)
     if n == 0:
         return RunSummary(
-            num_episodes=0, mean_steps=0.0,
-            mean_final_energy=0.0, death_rate=0.0,
+            num_episodes=0, mean_steps=0.0, std_steps=0.0,
+            mean_final_energy=0.0, std_final_energy=0.0,
+            death_rate=0.0, mean_consumption_count=0.0,
+            std_consumption_count=0.0,
         )
-    total_steps = sum(er.total_steps for er in episode_results)
-    total_final_energy = sum(
-        er.final_agent_state.energy for er in episode_results
-    )
+
+    steps = [er.total_steps for er in episode_results]
+    energies = [er.final_agent_state.energy for er in episode_results]
+    consumes = [er.summary.total_consume_events for er in episode_results]
     deaths = sum(
         1
         for er in episode_results
         if er.termination_reason == TerminationReason.ENERGY_DEPLETED
     )
+
+    mean_s = sum(steps) / n
+    mean_e = sum(energies) / n
+    mean_c = sum(consumes) / n
+
+    std_s = math.sqrt(sum((x - mean_s) ** 2 for x in steps) / n)
+    std_e = math.sqrt(sum((x - mean_e) ** 2 for x in energies) / n)
+    std_c = math.sqrt(sum((x - mean_c) ** 2 for x in consumes) / n)
+
     return RunSummary(
         num_episodes=n,
-        mean_steps=total_steps / n,
-        mean_final_energy=total_final_energy / n,
+        mean_steps=mean_s,
+        std_steps=std_s,
+        mean_final_energy=mean_e,
+        std_final_energy=std_e,
         death_rate=deaths / n,
+        mean_consumption_count=mean_c,
+        std_consumption_count=std_c,
     )
 
 

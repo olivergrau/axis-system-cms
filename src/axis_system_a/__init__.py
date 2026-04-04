@@ -12,6 +12,17 @@ from axis_system_a.config import (
 )
 from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
 from axis_system_a.enums import Action, CellType, SelectionMode, TerminationReason
+from axis_system_a.experiment import (
+    ExperimentConfig,
+    ExperimentResult,
+    ExperimentSummary,
+    ExperimentType,
+    RunSummaryEntry,
+    compute_experiment_summary,
+    get_config_value,
+    resolve_run_configs,
+    set_config_value,
+)
 from axis_system_a.logging import AxisLogger
 from axis_system_a.memory import update_memory
 from axis_system_a.observation import build_observation
@@ -67,6 +78,10 @@ __all__ = [
     "EpisodeStepRecord",
     "EpisodeSummary",
     "ExecutionConfig",
+    "ExperimentConfig",
+    "ExperimentResult",
+    "ExperimentSummary",
+    "ExperimentType",
     "GeneralConfig",
     "HungerDriveOutput",
     "LoggingConfig",
@@ -81,6 +96,7 @@ __all__ = [
     "RunExecutor",
     "RunResult",
     "RunSummary",
+    "RunSummaryEntry",
     "SelectionMode",
     "SimulationConfig",
     "StepResult",
@@ -94,14 +110,18 @@ __all__ = [
     "build_observation",
     "clip_energy",
     "compute_episode_summary",
+    "compute_experiment_summary",
     "compute_hunger_drive",
     "compute_run_summary",
     "create_world",
     "episode_step",
     "execute_run",
+    "get_config_value",
     "resolve_episode_seeds",
+    "resolve_run_configs",
     "run_episode",
     "select_action",
+    "set_config_value",
     "snapshot_agent",
     "snapshot_world",
     "step",

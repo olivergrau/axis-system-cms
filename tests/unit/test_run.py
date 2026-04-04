@@ -1,5 +1,7 @@
 """Tests for run-level orchestration models and functions."""
 
+import math
+
 import pytest
 from pydantic import ValidationError
 
@@ -128,32 +130,52 @@ class TestRunContext:
 class TestRunSummary:
     def test_valid_construction(self):
         s = RunSummary(
-            num_episodes=10, mean_steps=5.0,
-            mean_final_energy=30.0, death_rate=0.3,
+            num_episodes=10, mean_steps=5.0, std_steps=1.0,
+            mean_final_energy=30.0, std_final_energy=2.0,
+            death_rate=0.3, mean_consumption_count=1.5,
+            std_consumption_count=0.5,
         )
         assert s.num_episodes == 10
         assert s.death_rate == 0.3
 
     def test_frozen(self):
         s = RunSummary(
-            num_episodes=1, mean_steps=1.0,
-            mean_final_energy=0.0, death_rate=0.0,
+            num_episodes=1, mean_steps=1.0, std_steps=0.0,
+            mean_final_energy=0.0, std_final_energy=0.0,
+            death_rate=0.0, mean_consumption_count=0.0,
+            std_consumption_count=0.0,
         )
         assert_model_frozen(s, "mean_steps", 99.0)
 
     def test_death_rate_above_one_invalid(self):
         with pytest.raises(ValidationError):
             RunSummary(
-                num_episodes=1, mean_steps=1.0,
-                mean_final_energy=0.0, death_rate=1.1,
+                num_episodes=1, mean_steps=1.0, std_steps=0.0,
+                mean_final_energy=0.0, std_final_energy=0.0,
+                death_rate=1.1, mean_consumption_count=0.0,
+                std_consumption_count=0.0,
             )
 
     def test_death_rate_negative_invalid(self):
         with pytest.raises(ValidationError):
             RunSummary(
-                num_episodes=1, mean_steps=1.0,
-                mean_final_energy=0.0, death_rate=-0.1,
+                num_episodes=1, mean_steps=1.0, std_steps=0.0,
+                mean_final_energy=0.0, std_final_energy=0.0,
+                death_rate=-0.1, mean_consumption_count=0.0,
+                std_consumption_count=0.0,
             )
+
+    def test_architecture_fields_present(self):
+        s = RunSummary(
+            num_episodes=1, mean_steps=5.0, std_steps=1.2,
+            mean_final_energy=30.0, std_final_energy=3.5,
+            death_rate=0.2, mean_consumption_count=2.0,
+            std_consumption_count=0.8,
+        )
+        assert s.std_steps == 1.2
+        assert s.std_final_energy == 3.5
+        assert s.mean_consumption_count == 2.0
+        assert s.std_consumption_count == 0.8
 
 
 # ---------------------------------------------------------------------------
@@ -265,3 +287,53 @@ class TestComputeRunSummary:
         ep3 = _run_short_episode(seed=44)
         summary = compute_run_summary((ep1, ep2, ep3))
         assert summary.num_episodes == 3
+
+    def test_std_steps(self):
+        ep1 = _run_short_episode(seed=42, max_steps=2)
+        ep2 = _run_short_episode(seed=43, max_steps=5)
+        steps = [ep1.total_steps, ep2.total_steps]
+        mean = sum(steps) / len(steps)
+        expected_std = math.sqrt(sum((x - mean) ** 2 for x in steps) / len(steps))
+        summary = compute_run_summary((ep1, ep2))
+        assert summary.std_steps == pytest.approx(expected_std)
+
+    def test_std_final_energy(self):
+        ep1 = _run_short_episode(seed=42, max_steps=3)
+        ep2 = _run_short_episode(seed=43, max_steps=3)
+        energies = [ep1.final_agent_state.energy, ep2.final_agent_state.energy]
+        mean = sum(energies) / len(energies)
+        expected_std = math.sqrt(
+            sum((x - mean) ** 2 for x in energies) / len(energies)
+        )
+        summary = compute_run_summary((ep1, ep2))
+        assert summary.std_final_energy == pytest.approx(expected_std)
+
+    def test_mean_consumption_count(self):
+        ep1 = _run_short_episode(seed=42, max_steps=3)
+        ep2 = _run_short_episode(seed=43, max_steps=3)
+        expected = (
+            ep1.summary.total_consume_events + ep2.summary.total_consume_events
+        ) / 2
+        summary = compute_run_summary((ep1, ep2))
+        assert summary.mean_consumption_count == pytest.approx(expected)
+
+    def test_std_consumption_count(self):
+        ep1 = _run_short_episode(seed=42, max_steps=3)
+        ep2 = _run_short_episode(seed=43, max_steps=3)
+        consumes = [
+            ep1.summary.total_consume_events,
+            ep2.summary.total_consume_events,
+        ]
+        mean = sum(consumes) / len(consumes)
+        expected_std = math.sqrt(
+            sum((x - mean) ** 2 for x in consumes) / len(consumes)
+        )
+        summary = compute_run_summary((ep1, ep2))
+        assert summary.std_consumption_count == pytest.approx(expected_std)
+
+    def test_empty_episodes_extended_fields(self):
+        summary = compute_run_summary(())
+        assert summary.std_steps == 0.0
+        assert summary.std_final_energy == 0.0
+        assert summary.mean_consumption_count == 0.0
+        assert summary.std_consumption_count == 0.0
