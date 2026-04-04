@@ -11,7 +11,7 @@ from axis_system_a.config import (
     WorldConfig,
 )
 from axis_system_a.drives import HungerDriveOutput, compute_hunger_drive
-from axis_system_a.enums import Action, CellType, SelectionMode, TerminationReason
+from axis_system_a.enums import Action, CellType, RegenerationMode, SelectionMode, TerminationReason
 from axis_system_a.experiment import (
     ExperimentConfig,
     ExperimentResult,
@@ -112,6 +112,7 @@ __all__ = [
     "PolicyConfig",
     "Position",
     "RegenSummary",
+    "RegenerationMode",
     "RunConfig",
     "RunContext",
     "RunExecutor",

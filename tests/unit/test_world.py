@@ -7,6 +7,7 @@ from axis_system_a import (
     Cell,
     CellType,
     Position,
+    RegenerationMode,
     World,
     WorldConfig,
     create_world,
@@ -82,7 +83,10 @@ class TestCellProperties:
     def test_serialization(self):
         cell = resource_cell()
         dump = cell.model_dump()
-        assert dump == {"cell_type": "resource", "resource_value": 0.7}
+        assert dump == {
+            "cell_type": "resource", "resource_value": 0.7,
+            "regen_eligible": True,
+        }
         reconstructed = Cell(**dump)
         assert reconstructed == cell
 
@@ -247,3 +251,135 @@ class TestCreateWorld:
         grid = [[e, e], [e, e]]
         with pytest.raises(ValueError, match="width"):
             create_world(config, Position(x=0, y=0), grid=grid)
+
+
+# --- WP17: Cell Eligibility Tests ---
+
+
+class TestCellRegenEligibility:
+    def test_default_eligible(self):
+        cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+        assert cell.regen_eligible is True
+
+    def test_explicit_eligible_false(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=False)
+        assert cell.regen_eligible is False
+
+    def test_resource_cell_default_eligible(self):
+        cell = Cell(cell_type=CellType.RESOURCE, resource_value=0.5)
+        assert cell.regen_eligible is True
+
+    def test_resource_cell_ineligible(self):
+        cell = Cell(cell_type=CellType.RESOURCE,
+                    resource_value=0.5, regen_eligible=False)
+        assert cell.regen_eligible is False
+
+    def test_obstacle_auto_corrected_to_ineligible(self):
+        cell = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
+        assert cell.regen_eligible is False
+
+    def test_obstacle_explicit_false(self):
+        cell = Cell(cell_type=CellType.OBSTACLE,
+                    resource_value=0.0, regen_eligible=False)
+        assert cell.regen_eligible is False
+
+    def test_serialization_preserves_eligibility(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=False)
+        dump = cell.model_dump()
+        assert dump["regen_eligible"] is False
+        reconstructed = Cell(**dump)
+        assert reconstructed == cell
+
+
+# --- WP17: World is_regen_eligible Tests ---
+
+
+class TestWorldRegenEligibility:
+    def test_eligible_cell(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=True)
+        world = World(grid=[[cell]], agent_position=Position(x=0, y=0))
+        assert world.is_regen_eligible(Position(x=0, y=0)) is True
+
+    def test_ineligible_cell(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=False)
+        world = World(grid=[[cell]], agent_position=Position(x=0, y=0))
+        assert world.is_regen_eligible(Position(x=0, y=0)) is False
+
+
+# --- WP17: Sparse World Initialization Tests ---
+
+
+class TestSparseWorldInit:
+    def _sparse_config(self, width: int = 5, height: int = 5, ratio: float = 0.17):
+        return WorldConfig(
+            grid_width=width, grid_height=height,
+            regeneration_mode="sparse_fixed_ratio",
+            regen_eligible_ratio=ratio,
+        )
+
+    def test_correct_eligible_count(self):
+        config = self._sparse_config(10, 10, 0.17)
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        eligible = sum(
+            1
+            for y in range(world.height)
+            for x in range(world.width)
+            if world.is_regen_eligible(Position(x=x, y=y))
+        )
+        expected = round(0.17 * 100)  # 17
+        assert eligible == expected
+
+    def test_obstacle_cells_never_eligible(self):
+        config = self._sparse_config(5, 5, 0.5)
+        obstacle = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
+        empty = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+        grid = [[empty] * 5 for _ in range(5)]
+        grid[0][0] = obstacle
+        grid[2][2] = obstacle
+        world = create_world(config, Position(x=1, y=0), grid=grid, seed=42)
+        assert world.is_regen_eligible(Position(x=0, y=0)) is False
+        assert world.is_regen_eligible(Position(x=2, y=2)) is False
+
+    def test_same_seed_same_layout(self):
+        config = self._sparse_config(10, 10, 0.17)
+        world1 = create_world(config, Position(x=0, y=0), seed=42)
+        world2 = create_world(config, Position(x=0, y=0), seed=42)
+        for y in range(10):
+            for x in range(10):
+                pos = Position(x=x, y=y)
+                assert world1.is_regen_eligible(
+                    pos) == world2.is_regen_eligible(pos)
+
+    def test_different_seed_may_differ(self):
+        config = self._sparse_config(10, 10, 0.17)
+        world1 = create_world(config, Position(x=0, y=0), seed=1)
+        world2 = create_world(config, Position(x=0, y=0), seed=999)
+        layouts = []
+        for w in [world1, world2]:
+            layout = tuple(
+                w.is_regen_eligible(Position(x=x, y=y))
+                for y in range(10) for x in range(10)
+            )
+            layouts.append(layout)
+        assert layouts[0] != layouts[1]
+
+    def test_all_traversable_mode_all_eligible(self):
+        config = WorldConfig(grid_width=5, grid_height=5)
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        for y in range(5):
+            for x in range(5):
+                assert world.is_regen_eligible(Position(x=x, y=y)) is True
+
+    def test_ratio_one_means_all_eligible(self):
+        config = self._sparse_config(5, 5, 1.0)
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        eligible = sum(
+            1
+            for y in range(5) for x in range(5)
+            if world.is_regen_eligible(Position(x=x, y=y))
+        )
+        assert eligible == 25

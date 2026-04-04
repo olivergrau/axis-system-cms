@@ -211,3 +211,31 @@ class TestObservationSeparation:
         assert "x" not in field_names
         assert "y" not in field_names
         assert "position" not in field_names
+
+
+# --- WP17: Observation purity — regen_eligible is not projected ---
+
+
+class TestObservationRegenEligibilityPurity:
+    """regen_eligible must not leak into the observation vector."""
+
+    def test_identical_observation_regardless_of_eligibility(self):
+        """Two cells differing only in regen_eligible produce the same obs."""
+        eligible_cell = Cell(cell_type=CellType.RESOURCE,
+                             resource_value=0.7, regen_eligible=True)
+        ineligible_cell = Cell(cell_type=CellType.RESOURCE,
+                               resource_value=0.7, regen_eligible=False)
+
+        grid_a = [[eligible_cell]]
+        grid_b = [[ineligible_cell]]
+
+        world_a = World(grid=grid_a,
+                        agent_position=Position(x=0, y=0))
+        world_b = World(grid=grid_b,
+                        agent_position=Position(x=0, y=0))
+
+        obs_a = build_observation(world_a, Position(x=0, y=0))
+        obs_b = build_observation(world_b, Position(x=0, y=0))
+
+        assert obs_a == obs_b
+        assert obs_a.to_vector() == obs_b.to_vector()

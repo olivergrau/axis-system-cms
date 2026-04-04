@@ -242,3 +242,37 @@ class TestWP8ResultStructures:
         d = result.steps[0].to_dict()
         assert isinstance(d, dict)
         json.dumps(d, default=str)
+
+
+# ---------------------------------------------------------------------------
+# WP17: Sparse regeneration integration tests
+# ---------------------------------------------------------------------------
+
+
+class TestSparseRegenerationEpisode:
+    """Full episode with sparse_fixed_ratio regeneration mode."""
+
+    def test_sparse_episode_completes(self):
+        config = make_config(overrides={
+            "world": {
+                "grid_width": 5,
+                "grid_height": 5,
+                "regeneration_mode": "sparse_fixed_ratio",
+                "regen_eligible_ratio": 0.3,
+            },
+            "execution": {"max_steps": 10},
+        })
+        world = _resource_world()
+        result = run_episode(config, world)
+        assert result.total_steps > 0
+        assert result.termination_reason is not None
+
+    def test_all_traversable_default_unchanged(self):
+        """Default config (no regeneration_mode) runs identically to pre-WP17."""
+        config = make_config(overrides={
+            "world": {"grid_width": 3, "grid_height": 3},
+            "execution": {"max_steps": 5},
+        })
+        world = _resource_world()
+        result = run_episode(config, world)
+        assert result.total_steps == 5

@@ -137,7 +137,8 @@ class TestConsume:
             [_cell(), _cell()],
         ]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        result = step(world, _agent(), Action.CONSUME,
+                      0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.consumed is True
         assert result.trace.resource_consumed == pytest.approx(0.5)
 
@@ -162,7 +163,8 @@ class TestConsume:
     def test_consume_on_empty_cell(self):
         grid = [[_cell()]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        result = step(world, _agent(), Action.CONSUME,
+                      0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.consumed is False
         assert result.trace.resource_consumed == 0.0
 
@@ -192,7 +194,8 @@ class TestConsume:
     def test_trace_resource_consumed_value(self):
         grid = [[_cell("resource", 0.4)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        result = step(world, _agent(), Action.CONSUME,
+                      0, **_DEFAULT_STEP_KWARGS)
         assert result.trace.resource_consumed == pytest.approx(0.4)
 
 
@@ -313,8 +316,10 @@ class TestMemoryUpdate:
         world = _3x3_world()
         agent = _agent(energy=100.0, capacity=2)
         r1 = step(world, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
-        r2 = step(world, r1.agent_state, Action.STAY, 1, **_DEFAULT_STEP_KWARGS)
-        r3 = step(world, r2.agent_state, Action.STAY, 2, **_DEFAULT_STEP_KWARGS)
+        r2 = step(world, r1.agent_state, Action.STAY,
+                  1, **_DEFAULT_STEP_KWARGS)
+        r3 = step(world, r2.agent_state, Action.STAY,
+                  2, **_DEFAULT_STEP_KWARGS)
         mem = r3.agent_state.memory_state
         assert len(mem.entries) == 2
         assert mem.entries[0].timestep == 1
@@ -482,13 +487,15 @@ class TestPhaseOrdering:
     def test_observation_reflects_post_action_world(self):
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        result = step(world, _agent(), Action.CONSUME,
+                      0, **_DEFAULT_STEP_KWARGS)
         assert result.observation.current.resource == pytest.approx(0.0)
 
     def test_memory_contains_post_action_observation(self):
         grid = [[_cell("resource", 0.5)]]
         world = _make_world(grid, agent_pos=(0, 0))
-        result = step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        result = step(world, _agent(), Action.CONSUME,
+                      0, **_DEFAULT_STEP_KWARGS)
         mem_entry = result.agent_state.memory_state.entries[-1]
         assert mem_entry.observation == result.observation
 
@@ -619,10 +626,13 @@ class TestRegeneration:
         world = _make_world(grid, agent_pos=(0, 0))
         kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         step(world, _agent(), Action.STAY, 0, **kwargs)
-        assert world.get_cell(Position(x=0, y=0)).resource_value == pytest.approx(0.1)
-        assert world.get_cell(Position(x=1, y=0)).resource_value == pytest.approx(0.6)
+        assert world.get_cell(
+            Position(x=0, y=0)).resource_value == pytest.approx(0.1)
+        assert world.get_cell(
+            Position(x=1, y=0)).resource_value == pytest.approx(0.6)
         assert world.get_cell(Position(x=0, y=1)).resource_value == 0.0
-        assert world.get_cell(Position(x=1, y=1)).resource_value == pytest.approx(0.1)
+        assert world.get_cell(
+            Position(x=1, y=1)).resource_value == pytest.approx(0.1)
 
     def test_regen_cell_type_empty_to_resource(self):
         grid = [[_cell()]]
@@ -670,7 +680,8 @@ class TestRegeneration:
         kwargs_regen = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
         r_regen = step(world, agent, Action.STAY, 0, **kwargs_regen)
         world2 = _3x3_world()
-        r_no_regen = step(world2, agent, Action.STAY, 0, **_DEFAULT_STEP_KWARGS)
+        r_no_regen = step(world2, agent, Action.STAY,
+                          0, **_DEFAULT_STEP_KWARGS)
         assert r_regen.agent_state.energy == r_no_regen.agent_state.energy
         assert len(r_regen.agent_state.memory_state.entries) == len(
             r_no_regen.agent_state.memory_state.entries)
@@ -683,3 +694,92 @@ class TestRegeneration:
             step(world, _agent(), Action.STAY, 0, **kwargs)
             assert world.get_cell(
                 Position(x=0, y=0)).resource_value == pytest.approx(0.65)
+
+
+# --- WP17: Regeneration Eligibility Tests ---
+
+
+class TestRegenerationEligibility:
+    """Verify that regeneration respects the regen_eligible flag."""
+
+    def test_eligible_cell_regenerates(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=True)
+        grid = [[cell]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.get_cell(
+            Position(x=0, y=0)).resource_value == pytest.approx(0.1)
+
+    def test_ineligible_cell_does_not_regenerate(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=False)
+        grid = [[cell]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.get_cell(Position(x=0, y=0)).resource_value == 0.0
+
+    def test_mixed_eligibility(self):
+        """Only eligible cells regenerate in a 1x3 grid."""
+        eligible = Cell(cell_type=CellType.EMPTY,
+                        resource_value=0.0, regen_eligible=True)
+        ineligible = Cell(cell_type=CellType.EMPTY,
+                          resource_value=0.0, regen_eligible=False)
+        grid = [[eligible, ineligible, eligible]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.2}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.get_cell(
+            Position(x=0, y=0)).resource_value == pytest.approx(0.2)
+        assert world.get_cell(Position(x=1, y=0)).resource_value == 0.0
+        assert world.get_cell(
+            Position(x=2, y=0)).resource_value == pytest.approx(0.2)
+
+    def test_clipping_still_holds_for_eligible(self):
+        cell = Cell(cell_type=CellType.RESOURCE,
+                    resource_value=0.95, regen_eligible=True)
+        grid = [[cell]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.2}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.get_cell(
+            Position(x=0, y=0)).resource_value == pytest.approx(1.0)
+
+    def test_eligibility_preserved_after_regen(self):
+        cell = Cell(cell_type=CellType.EMPTY,
+                    resource_value=0.0, regen_eligible=True)
+        grid = [[cell]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.3}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        updated = world.get_cell(Position(x=0, y=0))
+        assert updated.regen_eligible is True
+
+    def test_eligibility_preserved_after_consume(self):
+        cell = Cell(cell_type=CellType.RESOURCE,
+                    resource_value=0.5, regen_eligible=True)
+        grid = [[cell]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        updated = world.get_cell(Position(x=0, y=0))
+        assert updated.regen_eligible is True
+
+    def test_ineligible_preserved_after_consume(self):
+        cell = Cell(cell_type=CellType.RESOURCE,
+                    resource_value=0.5, regen_eligible=False)
+        grid = [[cell]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        step(world, _agent(), Action.CONSUME, 0, **_DEFAULT_STEP_KWARGS)
+        updated = world.get_cell(Position(x=0, y=0))
+        assert updated.regen_eligible is False
+
+    def test_all_traversable_regression(self):
+        """Default cells (regen_eligible=True) behave like pre-WP17 baseline."""
+        grid = [[_cell("resource", 0.5)]]
+        world = _make_world(grid, agent_pos=(0, 0))
+        kwargs = {**_DEFAULT_STEP_KWARGS, "resource_regen_rate": 0.1}
+        step(world, _agent(), Action.STAY, 0, **kwargs)
+        assert world.get_cell(
+            Position(x=0, y=0)).resource_value == pytest.approx(0.6)

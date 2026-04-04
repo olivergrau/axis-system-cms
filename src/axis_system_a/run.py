@@ -173,6 +173,7 @@ class RunExecutor:
             episode_config = self._make_episode_config(config.simulation, seed)
             world = create_world(
                 config.simulation.world, config.agent_start_position,
+                seed=seed,
             )
             result = run_episode(episode_config, world)
             episode_results.append(result)

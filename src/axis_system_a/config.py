@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from axis_system_a.enums import SelectionMode
+from axis_system_a.enums import RegenerationMode, SelectionMode
 
 
 class GeneralConfig(BaseModel):
@@ -23,6 +23,20 @@ class WorldConfig(BaseModel):
     grid_width: int = Field(..., gt=0)
     grid_height: int = Field(..., gt=0)
     resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
+    regeneration_mode: RegenerationMode = RegenerationMode.ALL_TRAVERSABLE
+    regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)
+
+    @model_validator(mode="after")
+    def check_sparse_ratio_required(self) -> WorldConfig:
+        if (
+            self.regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO
+            and self.regen_eligible_ratio is None
+        ):
+            raise ValueError(
+                "regen_eligible_ratio is required when "
+                "regeneration_mode is 'sparse_fixed_ratio'"
+            )
+        return self
 
 
 class AgentConfig(BaseModel):

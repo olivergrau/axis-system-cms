@@ -33,6 +33,7 @@ experiments/
     configs/                  # your experiment config files (input)
         baseline.json
         energy-gain-sweep.json
+        sparsity-sweep.json
     results/                  # repository root: all output data (auto-created)
         baseline-10x10/
             experiment_config.json
@@ -110,14 +111,67 @@ All sections except `logging` are required.
 | Section      | Key fields |
 |--------------|------------|
 | `general`    | `seed` (int) |
-| `world`      | `grid_width`, `grid_height`, `resource_regen_rate` (0.0--1.0) |
+| `world`      | `grid_width`, `grid_height`, `resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio`. See section 2.4 below. |
 | `agent`      | `initial_energy`, `max_energy`, `memory_capacity` |
 | `policy`     | `selection_mode` (`"sample"` or `"argmax"`), `temperature`, `stay_suppression`, `consume_weight` |
 | `transition` | `move_cost`, `consume_cost`, `stay_cost`, `max_consume`, `energy_gain_factor` |
 | `execution`  | `max_steps` |
 | `logging`    | Optional. Controls console output, verbosity, and JSONL file logging. See section 2.4 below. |
 
-### 2.4 Logging configuration
+### 2.4 World regeneration modes
+
+The `world` section controls how resource cells recover over time.
+Two modes are available:
+
+**`all_traversable` (default)** -- every non-obstacle cell regenerates
+each step. This is the original baseline behavior. You do not need to
+specify `regeneration_mode` to get this -- it is the default when the
+field is omitted.
+
+```json
+"world": {
+  "grid_width": 10,
+  "grid_height": 10,
+  "resource_regen_rate": 0.05
+}
+```
+
+**`sparse_fixed_ratio`** -- only a fixed subset of cells can regenerate.
+The subset is chosen deterministically at world initialization (based on
+the seed) and remains constant for the entire run. Non-eligible cells
+never recover resource, even if depleted. The agent cannot observe
+which cells are eligible -- it only sees current resource levels.
+
+```json
+"world": {
+  "grid_width": 10,
+  "grid_height": 10,
+  "resource_regen_rate": 0.05,
+  "regeneration_mode": "sparse_fixed_ratio",
+  "regen_eligible_ratio": 0.17
+}
+```
+
+| Field                   | Default              | Description |
+|-------------------------|----------------------|-------------|
+| `grid_width`            | required             | Width of the world grid (> 0) |
+| `grid_height`           | required             | Height of the world grid (> 0) |
+| `resource_regen_rate`   | `0.0`                | Per-step regeneration amount added to each eligible cell (0.0--1.0) |
+| `regeneration_mode`     | `"all_traversable"`  | `"all_traversable"` or `"sparse_fixed_ratio"` |
+| `regen_eligible_ratio`  | not set              | Fraction of traversable cells that can regenerate (0.0--1.0). **Required** when `regeneration_mode` is `"sparse_fixed_ratio"`. |
+
+With `regen_eligible_ratio = 0.17`, roughly 17% of traversable cells
+are regeneration-capable. This creates a spatially sparse resource
+landscape where the agent must navigate to find cells that actually
+recover energy.
+
+Both modes use the same per-step regeneration rule:
+`resource_next = min(1.0, resource_current + resource_regen_rate)`.
+
+The new world parameters are fully OFAT-compatible. Example sweep config
+is shipped at `experiments/configs/sparsity-sweep.json` (see section 2.5).
+
+### 2.5 Logging configuration
 
 The `logging` section inside `baseline` controls runtime observability.
 All fields are optional — the defaults produce compact console output
@@ -174,7 +228,7 @@ with no file logging.
 }
 ```
 
-### 2.5 OFAT (One-Factor-At-a-Time) experiment
+### 2.6 OFAT (One-Factor-At-a-Time) experiment
 
 An OFAT experiment varies one parameter across multiple values while keeping
 everything else at baseline. Each value produces one separate run.
@@ -200,7 +254,34 @@ Example -- sweep `energy_gain_factor` across three values
 This produces three runs: `run-0000` (factor=5.0), `run-0001` (factor=10.0),
 `run-0002` (factor=20.0).
 
-### 2.6 YAML format
+A second shipped OFAT config sweeps the sparse regeneration ratio
+(`experiments/configs/sparsity-sweep.json`):
+
+```json
+{
+  "experiment_type": "ofat",
+  "name": "sparsity-sweep",
+  "base_seed": 42,
+  "num_episodes_per_run": 10,
+  "parameter_path": "world.regen_eligible_ratio",
+  "parameter_values": [0.05, 0.10, 0.17, 0.30, 0.50],
+  "baseline": {
+    "...": "same baseline as above, but with:",
+    "world": {
+      "grid_width": 10, "grid_height": 10,
+      "resource_regen_rate": 0.05,
+      "regeneration_mode": "sparse_fixed_ratio",
+      "regen_eligible_ratio": 0.17
+    }
+  }
+}
+```
+
+This produces five runs, each with a different fraction of
+regeneration-eligible cells. The experiment summary will show how
+agent survival and energy change as the world becomes more or less sparse.
+
+### 2.7 YAML format
 
 YAML configs are also supported. The CLI detects format by file extension
 (`.yaml` / `.yml`). The structure is identical to the JSON form.
@@ -654,6 +735,9 @@ python -m axis_system_a.cli experiments run experiments/configs/baseline.json
 
 # Run the OFAT sweep
 python -m axis_system_a.cli experiments run experiments/configs/energy-gain-sweep.json
+
+# Run the sparsity sweep (sparse regeneration mode)
+python -m axis_system_a.cli experiments run experiments/configs/sparsity-sweep.json
 
 # Re-run an experiment (deletes previous results)
 python -m axis_system_a.cli experiments run experiments/configs/baseline.json --redo

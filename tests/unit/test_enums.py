@@ -1,6 +1,8 @@
 """Tests for Action, SelectionMode, and CellType enums."""
 
-from axis_system_a import Action, CellType, SelectionMode
+import pytest
+
+from axis_system_a import Action, CellType, RegenerationMode, SelectionMode
 
 
 class TestAction:
@@ -78,3 +80,22 @@ class TestCellType:
         assert CellType("empty") == CellType.EMPTY
         assert CellType("resource") == CellType.RESOURCE
         assert CellType("obstacle") == CellType.OBSTACLE
+
+
+class TestRegenerationMode:
+    def test_has_exactly_two_members(self):
+        assert len(RegenerationMode) == 2
+
+    def test_values(self):
+        assert RegenerationMode.ALL_TRAVERSABLE.value == "all_traversable"
+        assert RegenerationMode.SPARSE_FIXED_RATIO.value == "sparse_fixed_ratio"
+
+    def test_from_string(self):
+        assert RegenerationMode(
+            "all_traversable") == RegenerationMode.ALL_TRAVERSABLE
+        assert RegenerationMode(
+            "sparse_fixed_ratio") == RegenerationMode.SPARSE_FIXED_RATIO
+
+    def test_invalid_value_raises(self):
+        with pytest.raises(ValueError):
+            RegenerationMode("invalid")

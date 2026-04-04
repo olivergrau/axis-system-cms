@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from axis_system_a.config import WorldConfig
-from axis_system_a.enums import CellType
+from axis_system_a.enums import CellType, RegenerationMode
 from axis_system_a.types import Position
 
 
@@ -13,7 +14,7 @@ class Cell(BaseModel):
     """A single cell in the grid world.
 
     Invariants:
-    - OBSTACLE: resource_value == 0, not traversable
+    - OBSTACLE: resource_value == 0, not traversable, regen_eligible == False
     - RESOURCE: resource_value > 0, traversable
     - EMPTY: resource_value == 0, traversable
     """
@@ -22,6 +23,7 @@ class Cell(BaseModel):
 
     cell_type: CellType
     resource_value: float = Field(..., ge=0, le=1)
+    regen_eligible: bool = True
 
     @model_validator(mode="after")
     def check_cell_invariants(self) -> Cell:
@@ -31,6 +33,8 @@ class Cell(BaseModel):
             raise ValueError("RESOURCE cells must have resource_value > 0")
         if self.cell_type == CellType.EMPTY and self.resource_value != 0.0:
             raise ValueError("EMPTY cells must have resource_value == 0")
+        if self.cell_type == CellType.OBSTACLE and self.regen_eligible:
+            object.__setattr__(self, "regen_eligible", False)
         return self
 
     @property
@@ -126,16 +130,26 @@ class World:
             return False
         return self._grid[position.y][position.x].is_traversable
 
+    def is_regen_eligible(self, position: Position) -> bool:
+        """Return whether the cell at *position* is regeneration-eligible."""
+        return self.get_cell(position).regen_eligible
+
 
 def create_world(
     config: WorldConfig,
     agent_position: Position,
     grid: list[list[Cell]] | None = None,
+    *,
+    seed: int | None = None,
 ) -> World:
     """Create a World from configuration.
 
     If grid is None, creates a grid of EMPTY cells.
     If grid is provided, validates dimensions against config.
+
+    When ``config.regeneration_mode`` is ``sparse_fixed_ratio``,
+    a deterministic subset of traversable cells is marked as
+    regeneration-eligible using the supplied *seed*.
     """
     if grid is None:
         empty_cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
@@ -156,4 +170,42 @@ def create_world(
                     f"config grid_width {config.grid_width}"
                 )
 
+    if config.regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO:
+        _apply_sparse_eligibility(grid, config, seed)
+
     return World(grid=grid, agent_position=agent_position)
+
+
+def _apply_sparse_eligibility(
+    grid: list[list[Cell]],
+    config: WorldConfig,
+    seed: int | None,
+) -> None:
+    """Mark a deterministic subset of traversable cells as regen-eligible.
+
+    All other traversable cells are marked ineligible.
+    Obstacle cells are always ineligible (enforced by Cell invariant).
+    """
+    assert config.regen_eligible_ratio is not None
+
+    # Collect all traversable cell positions
+    traversable: list[tuple[int, int]] = []
+    for y, row in enumerate(grid):
+        for x, cell in enumerate(row):
+            if cell.is_traversable:
+                traversable.append((x, y))
+
+    n_eligible = round(config.regen_eligible_ratio * len(traversable))
+
+    # Deterministic shuffle
+    rng = np.random.default_rng(seed)
+    indices = rng.permutation(len(traversable))
+    eligible_set = set(traversable[i] for i in indices[:n_eligible])
+
+    # Re-assign eligibility on all traversable cells
+    for x, y in traversable:
+        cell = grid[y][x]
+        is_eligible = (x, y) in eligible_set
+        if cell.regen_eligible != is_eligible:
+            grid[y][x] = cell.model_copy(
+                update={"regen_eligible": is_eligible})

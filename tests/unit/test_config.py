@@ -11,6 +11,7 @@ from axis_system_a import (
     GeneralConfig,
     LoggingConfig,
     PolicyConfig,
+    RegenerationMode,
     SimulationConfig,
     TransitionConfig,
     WorldConfig,
@@ -305,3 +306,81 @@ class TestLoggingConfig:
         d = {**valid_config_dict, "logging": {"enabled": False}}
         config = SimulationConfig(**d)
         assert config.logging.enabled is False
+
+
+class TestWorldConfigRegeneration:
+    """Tests for WP17 regeneration mode configuration."""
+
+    def test_default_mode_is_all_traversable(self):
+        config = WorldConfig(grid_width=5, grid_height=5)
+        assert config.regeneration_mode == RegenerationMode.ALL_TRAVERSABLE
+        assert config.regen_eligible_ratio is None
+
+    def test_all_traversable_without_ratio(self):
+        config = WorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="all_traversable",
+        )
+        assert config.regeneration_mode == RegenerationMode.ALL_TRAVERSABLE
+
+    def test_sparse_fixed_ratio_with_ratio(self):
+        config = WorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="sparse_fixed_ratio",
+            regen_eligible_ratio=0.17,
+        )
+        assert config.regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO
+        assert config.regen_eligible_ratio == 0.17
+
+    def test_sparse_fixed_ratio_requires_ratio(self):
+        with pytest.raises(ValidationError, match="regen_eligible_ratio"):
+            WorldConfig(
+                grid_width=5, grid_height=5,
+                regeneration_mode="sparse_fixed_ratio",
+            )
+
+    def test_ratio_must_be_positive(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(
+                grid_width=5, grid_height=5,
+                regeneration_mode="sparse_fixed_ratio",
+                regen_eligible_ratio=0.0,
+            )
+
+    def test_ratio_must_be_at_most_one(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(
+                grid_width=5, grid_height=5,
+                regeneration_mode="sparse_fixed_ratio",
+                regen_eligible_ratio=1.5,
+            )
+
+    def test_ratio_one_is_valid(self):
+        config = WorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="sparse_fixed_ratio",
+            regen_eligible_ratio=1.0,
+        )
+        assert config.regen_eligible_ratio == 1.0
+
+    def test_invalid_mode_raises(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(
+                grid_width=5, grid_height=5,
+                regeneration_mode="invalid_mode",
+            )
+
+    def test_backward_compat_existing_config(self, valid_config_dict: dict):
+        """Existing config dicts without regeneration_mode still work."""
+        config = SimulationConfig(**valid_config_dict)
+        assert config.world.regeneration_mode == RegenerationMode.ALL_TRAVERSABLE
+
+    def test_serialization_roundtrip(self):
+        config = WorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="sparse_fixed_ratio",
+            regen_eligible_ratio=0.17,
+        )
+        dump = config.model_dump()
+        reconstructed = WorldConfig(**dump)
+        assert reconstructed == config

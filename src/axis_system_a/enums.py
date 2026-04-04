@@ -37,3 +37,10 @@ class TerminationReason(str, enum.Enum):
 
     ENERGY_DEPLETED = "energy_depleted"
     MAX_STEPS_REACHED = "max_steps_reached"
+
+
+class RegenerationMode(str, enum.Enum):
+    """World regeneration mode."""
+
+    ALL_TRAVERSABLE = "all_traversable"
+    SPARSE_FIXED_RATIO = "sparse_fixed_ratio"

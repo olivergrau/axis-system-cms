@@ -121,6 +121,9 @@ def _apply_regeneration(world: World, *, regen_rate: float) -> int:
             if cell.cell_type is CellType.OBSTACLE:
                 continue
 
+            if not cell.regen_eligible:
+                continue
+
             new_resource = min(1.0, cell.resource_value + regen_rate)
             if new_resource == cell.resource_value:
                 continue
@@ -129,9 +132,13 @@ def _apply_regeneration(world: World, *, regen_rate: float) -> int:
             if new_resource > 0:
                 new_cell = Cell(
                     cell_type=CellType.RESOURCE, resource_value=new_resource,
+                    regen_eligible=cell.regen_eligible,
                 )
             else:
-                new_cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+                new_cell = Cell(
+                    cell_type=CellType.EMPTY, resource_value=0.0,
+                    regen_eligible=cell.regen_eligible,
+                )
             world.set_cell(pos, new_cell)
 
     return count
@@ -173,9 +180,15 @@ def _apply_consume(
 
     remainder = cell.resource_value - delta_r
     if remainder <= 0:
-        new_cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+        new_cell = Cell(
+            cell_type=CellType.EMPTY, resource_value=0.0,
+            regen_eligible=cell.regen_eligible,
+        )
     else:
-        new_cell = Cell(cell_type=CellType.RESOURCE, resource_value=remainder)
+        new_cell = Cell(
+            cell_type=CellType.RESOURCE, resource_value=remainder,
+            regen_eligible=cell.regen_eligible,
+        )
     world.set_cell(pos, new_cell)
     return True, delta_r
 
