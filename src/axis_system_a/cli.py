@@ -102,6 +102,28 @@ def build_parser() -> argparse.ArgumentParser:
     show_run_p.add_argument("run_id")
     show_run_p.add_argument("--experiment", required=True)
 
+    # -- visualize -----------------------------------------------------------
+    viz_parser = entity_sub.add_parser(
+        "visualize", parents=[common],
+        help="Launch interactive visualization for an episode",
+    )
+    viz_parser.add_argument("--experiment", required=True, help="Experiment ID")
+    viz_parser.add_argument("--run", required=True, help="Run ID")
+    viz_parser.add_argument(
+        "--episode", type=int, required=True,
+        help="Episode index (1-based)",
+    )
+    viz_parser.add_argument(
+        "--start-step", type=int, default=None,
+        help="Starting step index (default: 0)",
+    )
+    viz_parser.add_argument(
+        "--start-phase",
+        choices=["BEFORE", "AFTER_REGEN", "AFTER_ACTION"],
+        default=None,
+        help="Starting phase (default: BEFORE)",
+    )
+
     return parser
 
 
@@ -407,6 +429,25 @@ def _cmd_runs_show(
             )
 
 
+def _cmd_visualize(
+    repo: ExperimentRepository, args: argparse.Namespace,
+) -> int:
+    """Launch the interactive visualization session."""
+    from axis_system_a.visualization.launch import launch_visualization_from_cli
+    from axis_system_a.visualization.snapshot_models import ReplayPhase
+
+    start_phase = ReplayPhase[args.start_phase] if args.start_phase else None
+
+    return launch_visualization_from_cli(
+        repository=repo,
+        experiment_id=args.experiment,
+        run_id=args.run,
+        episode_index=args.episode,
+        start_step=args.start_step,
+        start_phase=start_phase,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Main dispatch
 # ---------------------------------------------------------------------------
@@ -421,14 +462,18 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 1
 
-    if not args.action:
-        parser.print_help()
-        return 1
-
     repo = ExperimentRepository(Path(args.root))
-    output = args.output
 
     try:
+        if args.entity == "visualize":
+            return _cmd_visualize(repo, args)
+
+        if not getattr(args, "action", None):
+            parser.print_help()
+            return 1
+
+        output = args.output
+
         if args.entity == "experiments":
             if args.action == "list":
                 _cmd_experiments_list(repo, output)

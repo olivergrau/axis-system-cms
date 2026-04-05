@@ -1,9 +1,9 @@
 """Visualization Layer – public API.
 
-Re-exports the primary types and entry points for VWP1–VWP7:
+Re-exports the primary types and entry points for VWP1–VWP8:
 artifact access, validation, replay models, snapshot resolution,
 viewer state, transitions, playback controller, view models, UI,
-interactive session controller, and errors.
+interactive session controller, CLI launch orchestration, and errors.
 """
 
 from axis_system_a.visualization.errors import (
@@ -79,6 +79,10 @@ from axis_system_a.visualization.ui.replay_controls_panel import ReplayControlsP
 from axis_system_a.visualization.ui.session_controller import (
     VisualizationSessionController,
 )
+from axis_system_a.visualization.launch import (
+    launch_visualization_from_cli,
+    prepare_visualization_session,
+)
 
 __all__ = [
     # Access service
@@ -137,6 +141,9 @@ __all__ = [
     "DetailPanel",
     "ReplayControlsPanel",
     "VisualizationSessionController",
+    # VWP8 CLI launch
+    "launch_visualization_from_cli",
+    "prepare_visualization_session",
     # Errors
     "CellOutOfBoundsError",
     "EpisodeNotFoundError",

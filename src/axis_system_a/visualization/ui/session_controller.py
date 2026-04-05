@@ -15,7 +15,7 @@ from axis_system_a.visualization.playback_controller import (
     get_initial_coordinate,
 )
 from axis_system_a.visualization.replay_models import ReplayEpisodeHandle
-from axis_system_a.visualization.snapshot_models import ReplayPhase
+from axis_system_a.visualization.snapshot_models import ReplayCoordinate, ReplayPhase
 from axis_system_a.visualization.snapshot_resolver import SnapshotResolver
 from axis_system_a.visualization.view_model_builder import ViewModelBuilder
 from axis_system_a.visualization.view_models import ViewerFrameViewModel
@@ -122,3 +122,9 @@ class VisualizationSessionController(QObject):
 
     def clear_selection(self) -> None:
         self._apply(clear_selection(self._state))
+
+    # -- Seek (VWP8 startup) -----------------------------------------------
+
+    def seek_to_coordinate(self, coordinate: ReplayCoordinate) -> None:
+        """Seek to an arbitrary replay coordinate (used by CLI startup)."""
+        self._apply(self._playback.seek_to_coordinate(self._state, coordinate))
