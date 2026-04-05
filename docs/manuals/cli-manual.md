@@ -14,6 +14,7 @@ python -m axis_system_a.cli <global-flags> <entity> <action> [arguments]
 |---------------|-------------------------------|
 | `experiments` | `list`, `run`, `resume`, `show` |
 | `runs`        | `list`, `show`                |
+| `visualize`   | *(direct command, no action)*  |
 
 ### Global flags
 
@@ -727,7 +728,88 @@ and resume again.
 
 ---
 
-## 7. Quick reference
+## 7. Visualizing an episode
+
+The `visualize` command launches an interactive desktop viewer for a
+single persisted episode. The CLI selects the target episode and
+optional startup position; the visualization system handles all
+rendering and interaction.
+
+### 7.1 Basic usage
+
+```
+python -m axis_system_a.cli visualize --experiment <experiment_id> --run <run_id> --episode <episode_index>
+```
+
+All three selection arguments are required. The episode index is
+1-based (matching the `episode_NNNN.json` filenames in the repository).
+
+```
+$ python -m axis_system_a.cli visualize --experiment baseline-10x10 --run run-0000 --episode 1
+```
+
+This opens the interactive visualization window at step 0, phase
+BEFORE.
+
+### 7.2 Arguments
+
+#### Required selection arguments
+
+| Argument         | Description |
+|------------------|-------------|
+| `--experiment`   | Experiment ID (directory name under the repository root) |
+| `--run`          | Run ID (e.g. `run-0000`) |
+| `--episode`      | Episode index, 1-based integer |
+
+#### Optional startup arguments
+
+| Argument         | Default   | Description |
+|------------------|-----------|-------------|
+| `--start-step`   | `0`       | Step index to start at (0-based) |
+| `--start-phase`  | `BEFORE`  | Phase to start at: `BEFORE`, `AFTER_REGEN`, or `AFTER_ACTION` |
+
+### 7.3 Startup coordinate defaults
+
+If no startup position is given, the viewer opens at step 0, phase
+BEFORE -- the very beginning of the episode.
+
+If only `--start-step` is given, the phase defaults to BEFORE.
+If only `--start-phase` is given, the step defaults to 0.
+
+### 7.4 Error handling
+
+The command fails explicitly and returns exit code 1 for:
+
+* experiment not found
+* run not found
+* episode not found
+* replay contract violation (malformed episode data)
+* start step out of bounds (including negative values)
+* invalid start phase name
+
+Invalid arguments are never silently clamped or guessed. Error
+messages are printed to stderr.
+
+### 7.5 Examples
+
+```bash
+# Open episode 1 at the default position (step 0, phase BEFORE)
+python -m axis_system_a.cli visualize --experiment baseline-10x10 --run run-0000 --episode 1
+
+# Open at a specific step
+python -m axis_system_a.cli visualize --experiment baseline-10x10 --run run-0000 --episode 1 --start-step 50
+
+# Open at a specific step and phase
+python -m axis_system_a.cli visualize --experiment energy-gain-sweep --run run-0001 --episode 3 \
+  --start-step 10 --start-phase AFTER_ACTION
+
+# Use a custom repository root
+python -m axis_system_a.cli --root /data/results visualize --experiment my-exp --run run-0000 --episode 1
+```
+
+---
+
+## 8. Quick reference
 
 ```bash
 # Run the shipped baseline experiment
@@ -762,6 +844,13 @@ python -m axis_system_a.cli --output json experiments show baseline-10x10
 
 # Use a custom repository directory
 python -m axis_system_a.cli --root /data/results experiments list
+
+# Visualize episode 1 of a run
+python -m axis_system_a.cli visualize --experiment baseline-10x10 --run run-0000 --episode 1
+
+# Visualize at a specific step and phase
+python -m axis_system_a.cli visualize --experiment baseline-10x10 --run run-0000 --episode 1 \
+  --start-step 50 --start-phase AFTER_ACTION
 
 # Read raw summary file directly
 cat experiments/results/baseline-10x10/runs/run-0000/run_summary.json | python -m json.tool

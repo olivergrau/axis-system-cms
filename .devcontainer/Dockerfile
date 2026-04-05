@@ -10,6 +10,16 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     build-essential \
+    libgl1 \
+    libegl1 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libxkbcommon-x11-0 \
+    libxcb-cursor0 \
+    libxcb-icccm4 \
+    libxcb-keysyms1 \
+    libxcb-shape0 \
+    libwayland-cursor0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (important for caching)
