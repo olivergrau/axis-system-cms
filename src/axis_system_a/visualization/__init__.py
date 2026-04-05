@@ -1,8 +1,8 @@
 """Visualization Layer – public API.
 
-Re-exports the primary types and entry points for VWP1, VWP2, and VWP3:
+Re-exports the primary types and entry points for VWP1–VWP4:
 artifact access, validation, replay models, snapshot resolution,
-viewer state, transitions, and errors.
+viewer state, transitions, playback controller, and errors.
 """
 
 from axis_system_a.visualization.errors import (
@@ -38,6 +38,13 @@ from axis_system_a.visualization.viewer_state import (
     PlaybackMode,
     ViewerState,
     create_initial_state,
+)
+from axis_system_a.visualization.playback_controller import (
+    PlaybackController,
+    get_final_coordinate,
+    get_initial_coordinate,
+    is_at_final,
+    is_at_initial,
 )
 from axis_system_a.visualization.viewer_state_transitions import (
     clear_selection,
@@ -81,6 +88,12 @@ __all__ = [
     "select_cell",
     "set_phase",
     "set_playback_mode",
+    # VWP4 Playback controller
+    "PlaybackController",
+    "get_final_coordinate",
+    "get_initial_coordinate",
+    "is_at_final",
+    "is_at_initial",
     # Errors
     "CellOutOfBoundsError",
     "EpisodeNotFoundError",
