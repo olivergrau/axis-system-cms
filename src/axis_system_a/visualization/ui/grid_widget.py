@@ -1,13 +1,14 @@
-"""Grid rendering widget (VWP6).
+"""Grid rendering widget (VWP6/VWP7).
 
 Custom ``QWidget`` with ``paintEvent`` that renders the world grid,
 agent position, and selection highlight from VWP5 view models.
+VWP7 adds mouse interaction signals.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPaintEvent, QPen
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QMouseEvent, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QWidget
 
 from axis_system_a.enums import CellType
@@ -46,6 +47,9 @@ def _resource_color(value: float) -> QColor:
 
 class GridWidget(QWidget):
     """Renders the world grid from view model data."""
+
+    cell_clicked = Signal(int, int)
+    agent_clicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -164,3 +168,22 @@ class GridWidget(QWidget):
             int(cx - radius), int(cy - radius),
             int(2 * radius), int(2 * radius),
         )
+
+    # -- Mouse interaction (VWP7) ------------------------------------------
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if self._grid is None:
+            return
+        if self.width() == 0 or self.height() == 0:
+            return
+        cell_w = self.width() / self._grid.width
+        cell_h = self.height() / self._grid.height
+        col = int(event.position().x() / cell_w)
+        row = int(event.position().y() / cell_h)
+        if not (0 <= row < self._grid.height and 0 <= col < self._grid.width):
+            return
+        # Agent click priority (arch spec §12.5.3)
+        if self._agent and row == self._agent.row and col == self._agent.col:
+            self.agent_clicked.emit()
+        else:
+            self.cell_clicked.emit(row, col)

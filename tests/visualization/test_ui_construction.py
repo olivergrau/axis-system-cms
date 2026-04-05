@@ -1,4 +1,4 @@
-"""Tests for VWP6 UI construction, frame propagation, and architectural boundaries."""
+"""Tests for VWP6/VWP7 UI construction, frame propagation, and architectural boundaries."""
 
 from __future__ import annotations
 
@@ -34,12 +34,13 @@ from axis_system_a.visualization.viewer_state import PlaybackMode  # noqa: E402
 from axis_system_a.visualization.ui.app import (  # noqa: E402
     launch_visualization_app,
 )
-from axis_system_a.visualization.ui.detail_placeholder_panel import (  # noqa: E402
-    DetailPlaceholderPanel,
-)
+from axis_system_a.visualization.ui.detail_panel import DetailPanel  # noqa: E402
 from axis_system_a.visualization.ui.grid_widget import GridWidget  # noqa: E402
 from axis_system_a.visualization.ui.main_window import (  # noqa: E402
     VisualizationMainWindow,
+)
+from axis_system_a.visualization.ui.replay_controls_panel import (  # noqa: E402
+    ReplayControlsPanel,
 )
 from axis_system_a.visualization.ui.status_panel import StatusPanel  # noqa: E402
 
@@ -180,13 +181,24 @@ class TestMainWindowConstruction:
     def test_contains_status_panel(self, window):
         assert window.findChild(StatusPanel) is not None
 
-    def test_contains_detail_placeholder(self, window):
-        assert window.findChild(DetailPlaceholderPanel) is not None
+    def test_contains_detail_panel(self, window):
+        assert window.findChild(DetailPanel) is not None
+
+    def test_contains_replay_controls(self, window):
+        assert window.findChild(ReplayControlsPanel) is not None
 
     def test_window_has_title(self, window):
         title = window.windowTitle()
         assert "AXIS" in title
         assert "Visualization" in title
+
+    def test_grid_widget_property(self, window):
+        assert window.grid_widget is not None
+        assert isinstance(window.grid_widget, GridWidget)
+
+    def test_replay_controls_property(self, window):
+        assert window.replay_controls is not None
+        assert isinstance(window.replay_controls, ReplayControlsPanel)
 
 
 # ---------------------------------------------------------------------------
@@ -208,8 +220,13 @@ class TestFramePropagation:
 
     def test_set_frame_updates_detail_panel(self, window, sample_frame):
         window.set_frame(sample_frame)
-        detail = window.findChild(DetailPlaceholderPanel)
-        assert "No selection" in detail._selection_label.text()
+        detail = window.findChild(DetailPanel)
+        assert "No entity selected" in detail._content_label.text()
+
+    def test_set_frame_updates_replay_controls(self, window, sample_frame):
+        window.set_frame(sample_frame)
+        controls = window.findChild(ReplayControlsPanel)
+        assert controls._phase_combo.currentIndex() == ReplayPhase.AFTER_ACTION.value
 
     def test_set_frame_stores_agent_in_grid(self, window, sample_frame):
         window.set_frame(sample_frame)
@@ -299,33 +316,19 @@ class TestStatusPanel:
 
 
 # ---------------------------------------------------------------------------
-# Static behavior
-# ---------------------------------------------------------------------------
-
-
-class TestStaticBehavior:
-    def test_no_push_buttons(self, window, sample_frame):
-        window.set_frame(sample_frame)
-        assert len(window.findChildren(QPushButton)) == 0
-
-    def test_no_timers(self, window, sample_frame):
-        window.set_frame(sample_frame)
-        assert len(window.findChildren(QTimer)) == 0
-
-
-# ---------------------------------------------------------------------------
 # Architectural boundary
 # ---------------------------------------------------------------------------
 
 
 class TestArchitecturalBoundary:
-    def test_ui_modules_do_not_import_replay_internals(self):
-        """UI modules must not import ViewerState, SnapshotResolver, etc."""
+    def test_widget_modules_do_not_import_replay_internals(self):
+        """Widget modules must not import ViewerState, SnapshotResolver, etc."""
         import axis_system_a.visualization.ui.grid_widget as m1
         import axis_system_a.visualization.ui.status_panel as m2
         import axis_system_a.visualization.ui.detail_placeholder_panel as m3
         import axis_system_a.visualization.ui.main_window as m4
-        import axis_system_a.visualization.ui.app as m5
+        import axis_system_a.visualization.ui.detail_panel as m5
+        import axis_system_a.visualization.ui.replay_controls_panel as m6
 
         forbidden = [
             "viewer_state",
@@ -333,12 +336,24 @@ class TestArchitecturalBoundary:
             "replay_access",
             "playback_controller",
         ]
-        for mod in [m1, m2, m3, m4, m5]:
+        for mod in [m1, m2, m3, m4, m5, m6]:
             src = inspect.getsource(mod)
             for name in forbidden:
                 assert f"from axis_system_a.visualization.{name}" not in src, (
                     f"{mod.__name__} imports {name}"
                 )
+
+    def test_bridge_modules_may_import_domain(self):
+        """Bridge modules (session_controller, app) legitimately import domain types."""
+        import axis_system_a.visualization.ui.session_controller as sc
+        import axis_system_a.visualization.ui.app as app_mod
+
+        sc_src = inspect.getsource(sc)
+        assert "playback_controller" in sc_src
+        assert "viewer_state" in sc_src
+
+        app_src = inspect.getsource(app_mod)
+        assert "session_controller" in app_src
 
     def test_non_ui_layers_do_not_import_pyside(self):
         """Non-UI visualization modules must not contain PySide imports."""
