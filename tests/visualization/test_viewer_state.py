@@ -167,6 +167,7 @@ class TestViewerStateFields:
             "playback_mode",
             "selected_cell",
             "selected_agent",
+            "debug_overlay_config",
         }
         assert set(ViewerState.model_fields.keys()) == expected
 

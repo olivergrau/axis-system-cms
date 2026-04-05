@@ -51,7 +51,8 @@ def launch_interactive_session(
     """
     app = QApplication.instance() or QApplication(sys.argv)
     window = VisualizationMainWindow()
-    controller = VisualizationSessionController(episode_handle, snapshot_resolver)
+    controller = VisualizationSessionController(
+        episode_handle, snapshot_resolver)
 
     # Controller → window
     controller.frame_changed.connect(window.set_frame)
@@ -71,6 +72,22 @@ def launch_interactive_session(
     grid = window.grid_widget
     grid.cell_clicked.connect(controller.select_cell)
     grid.agent_clicked.connect(controller.select_agent)
+
+    # Debug overlay panel → controller (VWP9)
+    overlay_panel = window.debug_overlay_panel
+    overlay_panel.master_toggled.connect(controller.set_debug_overlay_master)
+    overlay_panel.action_preference_toggled.connect(
+        lambda v: controller.set_overlay_enabled(
+            "action_preference_enabled", v),
+    )
+    overlay_panel.drive_contribution_toggled.connect(
+        lambda v: controller.set_overlay_enabled(
+            "drive_contribution_enabled", v),
+    )
+    overlay_panel.consumption_opportunity_toggled.connect(
+        lambda v: controller.set_overlay_enabled(
+            "consumption_opportunity_enabled", v),
+    )
 
     # Initial frame
     window.set_frame(controller.current_frame)

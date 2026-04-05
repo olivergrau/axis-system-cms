@@ -11,6 +11,7 @@ import enum
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from axis_system_a.visualization.debug_overlay_models import DebugOverlayConfig
 from axis_system_a.visualization.replay_models import ReplayEpisodeHandle
 from axis_system_a.visualization.snapshot_models import (
     ReplayCoordinate,
@@ -45,6 +46,7 @@ class ViewerState(BaseModel):
     playback_mode: PlaybackMode
     selected_cell: tuple[int, int] | None = None
     selected_agent: bool = False
+    debug_overlay_config: DebugOverlayConfig = DebugOverlayConfig()
 
     @model_validator(mode="after")
     def _validate_invariants(self) -> ViewerState:

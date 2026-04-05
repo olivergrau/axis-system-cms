@@ -225,6 +225,6 @@ class TestViewerFrameViewModel:
     def test_all_sub_models_present(self):
         expected = {
             "coordinate", "grid", "agent", "status",
-            "selection", "action_context",
+            "selection", "action_context", "debug_overlay",
         }
         assert set(ViewerFrameViewModel.model_fields.keys()) == expected

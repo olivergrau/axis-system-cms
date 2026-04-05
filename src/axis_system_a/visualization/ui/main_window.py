@@ -12,6 +12,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMainWindow, QSplitter, QVBoxLayout, QWidget
 
+from axis_system_a.visualization.ui.debug_overlay_panel import DebugOverlayPanel
 from axis_system_a.visualization.ui.detail_panel import DetailPanel
 from axis_system_a.visualization.ui.grid_widget import GridWidget
 from axis_system_a.visualization.ui.replay_controls_panel import ReplayControlsPanel
@@ -29,6 +30,7 @@ class VisualizationMainWindow(QMainWindow):
 
         # Child widgets
         self._replay_controls = ReplayControlsPanel()
+        self._debug_overlay_panel = DebugOverlayPanel()
         self._status_panel = StatusPanel()
         self._grid_widget = GridWidget()
         self._detail_panel = DetailPanel()
@@ -37,6 +39,7 @@ class VisualizationMainWindow(QMainWindow):
         central = QWidget()
         main_layout = QVBoxLayout(central)
         main_layout.addWidget(self._replay_controls)
+        main_layout.addWidget(self._debug_overlay_panel)
         main_layout.addWidget(self._status_panel)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -55,9 +58,15 @@ class VisualizationMainWindow(QMainWindow):
     def replay_controls(self) -> ReplayControlsPanel:
         return self._replay_controls
 
+    @property
+    def debug_overlay_panel(self) -> DebugOverlayPanel:
+        return self._debug_overlay_panel
+
     def set_frame(self, frame: ViewerFrameViewModel) -> None:
         """Route frame sub-models to all child widgets."""
-        self._grid_widget.set_frame(frame.grid, frame.agent, frame.selection)
+        self._grid_widget.set_frame(
+            frame.grid, frame.agent, frame.selection, frame.debug_overlay,
+        )
         self._status_panel.set_frame(frame.status)
         self._detail_panel.set_frame(frame)
         self._replay_controls.set_frame(frame.status)

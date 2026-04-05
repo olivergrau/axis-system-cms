@@ -35,6 +35,7 @@ from axis_system_a.visualization.ui.app import (  # noqa: E402
     launch_visualization_app,
 )
 from axis_system_a.visualization.ui.detail_panel import DetailPanel  # noqa: E402
+from axis_system_a.visualization.ui.debug_overlay_panel import DebugOverlayPanel  # noqa: E402
 from axis_system_a.visualization.ui.grid_widget import GridWidget  # noqa: E402
 from axis_system_a.visualization.ui.main_window import (  # noqa: E402
     VisualizationMainWindow,
@@ -186,6 +187,13 @@ class TestMainWindowConstruction:
 
     def test_contains_replay_controls(self, window):
         assert window.findChild(ReplayControlsPanel) is not None
+
+    def test_contains_debug_overlay_panel(self, window):
+        assert window.findChild(DebugOverlayPanel) is not None
+
+    def test_debug_overlay_panel_property(self, window):
+        assert window.debug_overlay_panel is not None
+        assert isinstance(window.debug_overlay_panel, DebugOverlayPanel)
 
     def test_window_has_title(self, window):
         title = window.windowTitle()

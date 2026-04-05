@@ -12,6 +12,7 @@ import enum
 from pydantic import BaseModel, ConfigDict
 
 from axis_system_a.enums import Action, CellType, TerminationReason
+from axis_system_a.visualization.debug_overlay_models import DebugOverlayViewModel
 from axis_system_a.visualization.snapshot_models import (
     ReplayCoordinate,
     ReplayPhase,
@@ -112,3 +113,4 @@ class ViewerFrameViewModel(BaseModel):
     status: StatusBarViewModel
     selection: SelectionViewModel
     action_context: ActionContextViewModel
+    debug_overlay: DebugOverlayViewModel | None = None

@@ -129,3 +129,38 @@ def set_playback_mode(
 ) -> ViewerState:
     """Change the playback mode."""
     return state.model_copy(update={"playback_mode": mode})
+
+
+# ---------------------------------------------------------------------------
+# Debug overlay
+# ---------------------------------------------------------------------------
+
+
+def toggle_debug_overlay(state: ViewerState) -> ViewerState:
+    """Flip the master debug overlay flag."""
+    cfg = state.debug_overlay_config
+    return state.model_copy(
+        update={
+            "debug_overlay_config": cfg.model_copy(
+                update={"master_enabled": not cfg.master_enabled},
+            ),
+        },
+    )
+
+
+def set_overlay_type_enabled(
+    state: ViewerState, field_name: str, enabled: bool,
+) -> ViewerState:
+    """Enable or disable a specific overlay type by config field name.
+
+    *field_name* must be one of the boolean per-type fields on
+    DebugOverlayConfig (e.g. ``"action_preference_enabled"``).
+    """
+    cfg = state.debug_overlay_config
+    return state.model_copy(
+        update={
+            "debug_overlay_config": cfg.model_copy(
+                update={field_name: enabled},
+            ),
+        },
+    )

@@ -19,6 +19,12 @@ This builder is the **single translation point**:
 from __future__ import annotations
 
 from axis_system_a.enums import CellType
+from axis_system_a.visualization.debug_overlay_models import (
+    ActionPreferenceOverlay,
+    ConsumptionOpportunityOverlay,
+    DebugOverlayViewModel,
+    DriveContributionOverlay,
+)
 from axis_system_a.visualization.playback_controller import (
     is_at_final,
     is_at_initial,
@@ -137,4 +143,69 @@ class ViewModelBuilder:
             status=status_vm,
             selection=selection_vm,
             action_context=action_ctx_vm,
+            debug_overlay=self._build_debug_overlay(state, agent_row, agent_col),
+        )
+
+    # -- Debug overlay projection ------------------------------------------
+
+    def _build_debug_overlay(
+        self,
+        state: ViewerState,
+        agent_row: int,
+        agent_col: int,
+    ) -> DebugOverlayViewModel | None:
+        """Build the debug overlay view model if the master flag is on."""
+        cfg = state.debug_overlay_config
+        if not cfg.master_enabled:
+            return None
+
+        step = state.episode_handle.episode_result.steps[
+            state.coordinate.step_index
+        ]
+
+        action_pref = None
+        if cfg.action_preference_enabled:
+            action_pref = ActionPreferenceOverlay(
+                agent_row=agent_row,
+                agent_col=agent_col,
+                probabilities=step.decision_result.probabilities,
+                admissibility_mask=step.decision_result.admissibility_mask,
+                selected_action_index=step.decision_result.selected_action.value,
+            )
+
+        drive_contrib = None
+        if cfg.drive_contribution_enabled:
+            drive_contrib = DriveContributionOverlay(
+                agent_row=agent_row,
+                agent_col=agent_col,
+                activation=step.drive_output.activation,
+                action_contributions=step.drive_output.action_contributions,
+            )
+
+        consumption = None
+        if cfg.consumption_opportunity_enabled:
+            obs = step.observation
+            consumption = ConsumptionOpportunityOverlay(
+                agent_row=agent_row,
+                agent_col=agent_col,
+                current_resource=obs.current.resource,
+                neighbor_resources=(
+                    obs.up.resource,
+                    obs.down.resource,
+                    obs.left.resource,
+                    obs.right.resource,
+                ),
+                neighbor_traversable=(
+                    obs.up.traversability > 0,
+                    obs.down.traversability > 0,
+                    obs.left.traversability > 0,
+                    obs.right.traversability > 0,
+                ),
+            )
+
+        return DebugOverlayViewModel(
+            config=cfg,
+            action_preference=action_pref,
+            drive_contribution=drive_contrib,
+            consumption_opportunity=consumption,
         )

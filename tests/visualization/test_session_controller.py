@@ -208,3 +208,38 @@ class TestRefreshPipeline:
         frames = _collect_frames(controller)
         controller.step_backward()
         assert len(frames) == 0
+
+
+class TestDebugOverlay:
+    def test_set_master_on(self, controller):
+        controller.set_debug_overlay_master(True)
+        assert controller.current_state.debug_overlay_config.master_enabled is True
+
+    def test_set_master_off(self, controller):
+        controller.set_debug_overlay_master(True)
+        controller.set_debug_overlay_master(False)
+        assert controller.current_state.debug_overlay_config.master_enabled is False
+
+    def test_set_master_same_value_noop(self, controller):
+        frames = _collect_frames(controller)
+        controller.set_debug_overlay_master(False)  # already False
+        assert len(frames) == 0
+
+    def test_set_overlay_enabled(self, controller):
+        controller.set_overlay_enabled("action_preference_enabled", True)
+        cfg = controller.current_state.debug_overlay_config
+        assert cfg.action_preference_enabled is True
+
+    def test_set_overlay_emits_frame_changed(self, controller):
+        frames = _collect_frames(controller)
+        controller.set_debug_overlay_master(True)
+        assert len(frames) == 1
+
+    def test_overlay_in_frame_when_master_enabled(self, controller):
+        controller.set_debug_overlay_master(True)
+        assert controller.current_frame.debug_overlay is not None
+
+    def test_overlay_none_when_master_disabled(self, controller):
+        controller.set_debug_overlay_master(True)
+        controller.set_debug_overlay_master(False)
+        assert controller.current_frame.debug_overlay is None

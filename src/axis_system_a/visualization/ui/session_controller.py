@@ -28,7 +28,9 @@ from axis_system_a.visualization.viewer_state_transitions import (
     clear_selection,
     select_agent,
     select_cell,
+    set_overlay_type_enabled,
     set_playback_mode,
+    toggle_debug_overlay,
 )
 
 _PLAYBACK_INTERVAL_MS = 500
@@ -128,3 +130,15 @@ class VisualizationSessionController(QObject):
     def seek_to_coordinate(self, coordinate: ReplayCoordinate) -> None:
         """Seek to an arbitrary replay coordinate (used by CLI startup)."""
         self._apply(self._playback.seek_to_coordinate(self._state, coordinate))
+
+    # -- Debug overlay (VWP9) ----------------------------------------------
+
+    def set_debug_overlay_master(self, enabled: bool) -> None:
+        """Toggle the master debug overlay flag."""
+        # toggle_debug_overlay flips the current value; only apply if mismatch
+        if self._state.debug_overlay_config.master_enabled != enabled:
+            self._apply(toggle_debug_overlay(self._state))
+
+    def set_overlay_enabled(self, field_name: str, enabled: bool) -> None:
+        """Enable or disable a specific overlay type by config field name."""
+        self._apply(set_overlay_type_enabled(self._state, field_name, enabled))
