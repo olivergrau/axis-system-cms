@@ -54,6 +54,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="axis",
         description="AXIS Experimentation Framework CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+examples:
+  axis experiments list                         List all experiments
+  axis experiments run config.yaml              Run experiment from config
+  axis experiments run config.yaml --redo       Re-run, replacing old results
+  axis experiments show <experiment_id>         Inspect experiment details
+  axis experiments resume <experiment_id>       Resume incomplete experiment
+
+  axis runs list --experiment <experiment_id>   List runs in an experiment
+  axis runs show <run_id> --experiment <eid>    Inspect a specific run
+
+  axis visualize --experiment <eid> --run <rid> --episode 1
+                                                Open episode viewer
+  axis visualize --experiment <eid> --run <rid> --episode 1 \\
+       --start-step 10 --start-phase AFTER_ACTION
+                                                Start at a specific step/phase
+
+  Use --output json on any command for machine-readable output.
+  Use --root <path> to point to a non-default repository location.
+""",
     )
     parser.add_argument(
         "--root", default="./experiments/results",
@@ -64,64 +85,113 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format (default: text)",
     )
 
-    entity_sub = parser.add_subparsers(dest="entity")
+    entity_sub = parser.add_subparsers(dest="entity", title="commands")
 
     # -- experiments ---------------------------------------------------------
-    exp_parser = entity_sub.add_parser("experiments")
-    exp_action = exp_parser.add_subparsers(dest="action")
+    exp_parser = entity_sub.add_parser(
+        "experiments",
+        help="Manage experiments (list, run, resume, show)",
+        description="Create, inspect, and manage experiments.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+examples:
+  axis experiments list
+  axis experiments run experiments/configs/my_config.yaml
+  axis experiments run experiments/configs/my_config.yaml --redo
+  axis experiments show my-experiment
+  axis experiments resume my-experiment
+""",
+    )
+    exp_action = exp_parser.add_subparsers(dest="action", title="actions")
 
     exp_action.add_parser(
         "list", parents=[common], help="List all experiments")
 
     run_p = exp_action.add_parser(
-        "run", parents=[common], help="Execute a new experiment")
-    run_p.add_argument("config_path", help="Path to experiment config file")
+        "run", parents=[common],
+        help="Execute a new experiment from a YAML/JSON config file",
+    )
+    run_p.add_argument(
+        "config_path", help="Path to experiment config (YAML or JSON)")
     run_p.add_argument(
         "--redo", action="store_true", default=False,
         help="Delete existing experiment results and re-run from scratch",
     )
 
     resume_p = exp_action.add_parser(
-        "resume", parents=[common], help="Resume an experiment")
-    resume_p.add_argument("experiment_id")
+        "resume", parents=[common], help="Resume an incomplete experiment")
+    resume_p.add_argument(
+        "experiment_id", help="ID of the experiment to resume")
 
     show_p = exp_action.add_parser(
-        "show", parents=[common], help="Show experiment details")
-    show_p.add_argument("experiment_id")
+        "show", parents=[common], help="Show experiment details (config, runs, summary)")
+    show_p.add_argument(
+        "experiment_id", help="ID of the experiment to inspect")
 
     # -- runs ----------------------------------------------------------------
-    runs_parser = entity_sub.add_parser("runs")
-    runs_action = runs_parser.add_subparsers(dest="action")
+    runs_parser = entity_sub.add_parser(
+        "runs",
+        help="Inspect runs within an experiment (list, show)",
+        description="List and inspect individual runs inside an experiment.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+examples:
+  axis runs list --experiment my-experiment
+  axis runs show run-001 --experiment my-experiment
+""",
+    )
+    runs_action = runs_parser.add_subparsers(dest="action", title="actions")
 
     list_runs_p = runs_action.add_parser(
-        "list", parents=[common], help="List runs")
-    list_runs_p.add_argument("--experiment", required=True)
+        "list", parents=[common], help="List all runs in an experiment")
+    list_runs_p.add_argument(
+        "--experiment", required=True, help="Experiment ID to list runs for",
+    )
 
     show_run_p = runs_action.add_parser(
-        "show", parents=[common], help="Show run details")
-    show_run_p.add_argument("run_id")
-    show_run_p.add_argument("--experiment", required=True)
+        "show", parents=[common],
+        help="Show run details (config, episodes, summary statistics)",
+    )
+    show_run_p.add_argument("run_id", help="ID of the run to inspect")
+    show_run_p.add_argument(
+        "--experiment", required=True, help="Experiment ID the run belongs to",
+    )
 
     # -- visualize -----------------------------------------------------------
     viz_parser = entity_sub.add_parser(
         "visualize", parents=[common],
-        help="Launch interactive visualization for an episode",
+        help="Launch interactive episode viewer (grid, overlays, step analysis)",
+        description=(
+            "Open the PySide6 visualization window for a specific episode. "
+            "Shows the world grid, agent movement, debug overlays, and a "
+            "step-by-step decision analysis panel."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+examples:
+  axis visualize --experiment my-exp --run run-001 --episode 1
+  axis visualize --experiment my-exp --run run-001 --episode 1 --start-step 10
+  axis visualize --experiment my-exp --run run-001 --episode 1 \\
+       --start-step 5 --start-phase AFTER_ACTION
+""",
     )
-    viz_parser.add_argument("--experiment", required=True, help="Experiment ID")
-    viz_parser.add_argument("--run", required=True, help="Run ID")
+    viz_parser.add_argument(
+        "--experiment", required=True, help="Experiment ID")
+    viz_parser.add_argument(
+        "--run", required=True, help="Run ID within the experiment")
     viz_parser.add_argument(
         "--episode", type=int, required=True,
         help="Episode index (1-based)",
     )
     viz_parser.add_argument(
         "--start-step", type=int, default=None,
-        help="Starting step index (default: 0)",
+        help="Step index to start at (0-based, default: 0)",
     )
     viz_parser.add_argument(
         "--start-phase",
         choices=["BEFORE", "AFTER_REGEN", "AFTER_ACTION"],
         default=None,
-        help="Starting phase (default: BEFORE)",
+        help="Phase within the step to start at (default: BEFORE)",
     )
 
     return parser
