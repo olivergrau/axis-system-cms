@@ -60,3 +60,19 @@ class PhaseNotAvailableError(ReplayError):
         super().__init__(
             f"Phase {phase} not available at step index {step_index}"
         )
+
+
+class CellOutOfBoundsError(ReplayError):
+    """Raised when cell coordinates are outside the valid grid bounds."""
+
+    def __init__(
+        self, row: int, col: int, grid_width: int, grid_height: int,
+    ) -> None:
+        self.row = row
+        self.col = col
+        self.grid_width = grid_width
+        self.grid_height = grid_height
+        super().__init__(
+            f"Cell ({row}, {col}) out of bounds "
+            f"(grid: {grid_height} rows x {grid_width} cols)"
+        )

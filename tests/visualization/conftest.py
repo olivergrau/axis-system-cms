@@ -24,6 +24,10 @@ from axis_system_a.types import Position
 from axis_system_a.visualization.replay_access import ReplayAccessService
 from axis_system_a.visualization.replay_models import ReplayEpisodeHandle
 from axis_system_a.visualization.snapshot_resolver import SnapshotResolver
+from axis_system_a.visualization.viewer_state import (
+    ViewerState,
+    create_initial_state,
+)
 from axis_system_a.world import create_world
 from tests.fixtures.scenario_fixtures import make_config
 
@@ -124,3 +128,11 @@ def replay_episode_handle(
 def snapshot_resolver() -> SnapshotResolver:
     """A fresh SnapshotResolver instance."""
     return SnapshotResolver()
+
+
+@pytest.fixture
+def initial_viewer_state(
+    replay_episode_handle: ReplayEpisodeHandle,
+) -> ViewerState:
+    """A ViewerState at (0, BEFORE), STOPPED, no selection."""
+    return create_initial_state(replay_episode_handle)

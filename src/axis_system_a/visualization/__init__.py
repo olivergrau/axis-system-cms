@@ -1,10 +1,12 @@
 """Visualization Layer – public API.
 
-Re-exports the primary types and entry points for VWP1 and VWP2:
-artifact access, validation, replay models, snapshot resolution, and errors.
+Re-exports the primary types and entry points for VWP1, VWP2, and VWP3:
+artifact access, validation, replay models, snapshot resolution,
+viewer state, transitions, and errors.
 """
 
 from axis_system_a.visualization.errors import (
+    CellOutOfBoundsError,
     EpisodeNotFoundError,
     ExperimentNotFoundError,
     MalformedArtifactError,
@@ -32,6 +34,21 @@ from axis_system_a.visualization.snapshot_models import (
     ReplaySnapshot,
 )
 from axis_system_a.visualization.snapshot_resolver import SnapshotResolver
+from axis_system_a.visualization.viewer_state import (
+    PlaybackMode,
+    ViewerState,
+    create_initial_state,
+)
+from axis_system_a.visualization.viewer_state_transitions import (
+    clear_selection,
+    next_step,
+    previous_step,
+    seek,
+    select_agent,
+    select_cell,
+    set_phase,
+    set_playback_mode,
+)
 
 __all__ = [
     # Access service
@@ -51,7 +68,21 @@ __all__ = [
     "ReplaySnapshot",
     # VWP2 Resolver
     "SnapshotResolver",
+    # VWP3 Viewer state
+    "PlaybackMode",
+    "ViewerState",
+    "create_initial_state",
+    # VWP3 Transitions
+    "clear_selection",
+    "next_step",
+    "previous_step",
+    "seek",
+    "select_agent",
+    "select_cell",
+    "set_phase",
+    "set_playback_mode",
     # Errors
+    "CellOutOfBoundsError",
     "EpisodeNotFoundError",
     "ExperimentNotFoundError",
     "MalformedArtifactError",
