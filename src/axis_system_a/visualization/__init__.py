@@ -1,8 +1,8 @@
 """Visualization Layer – public API.
 
-Re-exports the primary types and entry points for VWP1–VWP5:
+Re-exports the primary types and entry points for VWP1–VWP6:
 artifact access, validation, replay models, snapshot resolution,
-viewer state, transitions, playback controller, view models, and errors.
+viewer state, transitions, playback controller, view models, UI, and errors.
 """
 
 from axis_system_a.visualization.errors import (
@@ -57,6 +57,8 @@ from axis_system_a.visualization.view_models import (
     StatusBarViewModel,
     ViewerFrameViewModel,
 )
+from axis_system_a.visualization.ui.app import launch_visualization_app
+from axis_system_a.visualization.ui.main_window import VisualizationMainWindow
 from axis_system_a.visualization.viewer_state_transitions import (
     clear_selection,
     next_step,
@@ -116,6 +118,9 @@ __all__ = [
     "ViewerFrameViewModel",
     # VWP5 Builder
     "ViewModelBuilder",
+    # VWP6 UI
+    "launch_visualization_app",
+    "VisualizationMainWindow",
     # Errors
     "CellOutOfBoundsError",
     "EpisodeNotFoundError",

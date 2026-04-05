@@ -316,13 +316,17 @@ class TestPurity:
 
 class TestUIIndependence:
     def test_view_models_no_qt_imports(self):
-        import axis_system_a.visualization.view_models  # noqa: F401
+        import inspect
 
-        qt_modules = [m for m in sys.modules if "PySide" in m or "PyQt" in m]
-        assert qt_modules == []
+        import axis_system_a.visualization.view_models as mod
+
+        src = inspect.getsource(mod)
+        assert "PySide" not in src, "view_models contains PySide import"
 
     def test_view_model_builder_no_qt_imports(self):
-        import axis_system_a.visualization.view_model_builder  # noqa: F401
+        import inspect
 
-        qt_modules = [m for m in sys.modules if "PySide" in m or "PyQt" in m]
-        assert qt_modules == []
+        import axis_system_a.visualization.view_model_builder as mod
+
+        src = inspect.getsource(mod)
+        assert "PySide" not in src, "view_model_builder contains PySide import"

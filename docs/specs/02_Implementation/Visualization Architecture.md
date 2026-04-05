@@ -2305,7 +2305,7 @@ Without breaking:
 
 ---
 
-## 10. Dashboard Information Model**
+## 10. Dashboard Information Model
 
 ### 10.1 Purpose
 The Dashboard Information Model defines the set of information that must be displayed in the **always-visible dashboard region** of the Visualization System.

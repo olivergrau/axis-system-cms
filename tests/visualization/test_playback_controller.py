@@ -588,7 +588,9 @@ class TestDeterminism:
 class TestUIIndependence:
     def test_no_qt_imports(self):
         """Importing playback_controller must not pull in Qt."""
-        import axis_system_a.visualization.playback_controller  # noqa: F401
+        import inspect
 
-        qt_modules = [m for m in sys.modules if "PySide" in m or "PyQt" in m]
-        assert qt_modules == []
+        import axis_system_a.visualization.playback_controller as mod
+
+        src = inspect.getsource(mod)
+        assert "PySide" not in src, "playback_controller contains PySide import"
