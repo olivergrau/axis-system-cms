@@ -310,6 +310,86 @@ class TestWorldRegenEligibility:
         assert world.is_regen_eligible(Position(x=0, y=0)) is False
 
 
+# --- Obstacle Placement Tests ---
+
+
+class TestObstaclePlacement:
+    def _obstacle_config(
+        self, width: int = 10, height: int = 10, density: float = 0.2,
+    ):
+        return WorldConfig(
+            grid_width=width, grid_height=height,
+            obstacle_density=density,
+        )
+
+    def test_correct_obstacle_count(self):
+        config = self._obstacle_config(width=10, height=10, density=0.2)
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        obstacle_count = sum(
+            1 for y in range(10) for x in range(10)
+            if not world.get_cell(Position(x=x, y=y)).is_traversable
+        )
+        # 99 candidates (100 - agent), 0.2 * 99 = round(19.8) = 20
+        assert obstacle_count == round(0.2 * 99)
+
+    def test_agent_position_never_obstacle(self):
+        config = self._obstacle_config(density=0.5)
+        for seed in range(10):
+            world = create_world(config, Position(x=0, y=0), seed=seed)
+            assert world.get_cell(Position(x=0, y=0)).is_traversable
+
+    def test_zero_density_no_obstacles(self):
+        config = self._obstacle_config(density=0.0)
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        for y in range(10):
+            for x in range(10):
+                assert world.get_cell(Position(x=x, y=y)).is_traversable
+
+    def test_same_seed_same_layout(self):
+        config = self._obstacle_config(density=0.3)
+        w1 = create_world(config, Position(x=0, y=0), seed=42)
+        w2 = create_world(config, Position(x=0, y=0), seed=42)
+        for y in range(10):
+            for x in range(10):
+                pos = Position(x=x, y=y)
+                assert w1.get_cell(pos).cell_type == w2.get_cell(pos).cell_type
+
+    def test_different_seed_may_differ(self):
+        config = self._obstacle_config(density=0.3)
+        w1 = create_world(config, Position(x=0, y=0), seed=1)
+        w2 = create_world(config, Position(x=0, y=0), seed=2)
+        any_different = any(
+            w1.get_cell(Position(x=x, y=y)).cell_type
+            != w2.get_cell(Position(x=x, y=y)).cell_type
+            for y in range(10)
+            for x in range(10)
+        )
+        assert any_different
+
+    def test_obstacles_are_not_traversable(self):
+        config = self._obstacle_config(density=0.3)
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        for y in range(10):
+            for x in range(10):
+                cell = world.get_cell(Position(x=x, y=y))
+                if cell.cell_type == CellType.OBSTACLE:
+                    assert not cell.is_traversable
+
+    def test_obstacles_placed_before_sparse_eligibility(self):
+        config = WorldConfig(
+            grid_width=10, grid_height=10,
+            obstacle_density=0.2,
+            regeneration_mode="sparse_fixed_ratio",
+            regen_eligible_ratio=0.5,
+        )
+        world = create_world(config, Position(x=0, y=0), seed=42)
+        for y in range(10):
+            for x in range(10):
+                cell = world.get_cell(Position(x=x, y=y))
+                if cell.cell_type == CellType.OBSTACLE:
+                    assert not cell.regen_eligible
+
+
 # --- WP17: Sparse World Initialization Tests ---
 
 

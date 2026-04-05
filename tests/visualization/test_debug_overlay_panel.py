@@ -43,7 +43,7 @@ class TestPanelConstruction:
         assert not panel._consumption_cb.isEnabled()
 
     def test_max_height(self, panel: DebugOverlayPanel):
-        assert panel.maximumHeight() == 35
+        assert panel.maximumHeight() == 70
 
 
 class TestMasterToggle:
@@ -96,3 +96,35 @@ class TestSubCheckboxSignals:
             lambda v: received.append(v))
         panel._consumption_cb.setChecked(True)
         assert received == [True]
+
+
+class TestLegend:
+    def test_legend_labels_hidden_by_default(self, panel: DebugOverlayPanel):
+        assert panel._action_pref_legend.isHidden()
+        assert panel._drive_contrib_legend.isHidden()
+        assert panel._consumption_legend.isHidden()
+
+    def test_action_pref_legend_visible_when_checked(self, panel: DebugOverlayPanel):
+        panel._master_cb.setChecked(True)
+        panel._action_pref_cb.setChecked(True)
+        assert not panel._action_pref_legend.isHidden()
+
+    def test_drive_contrib_legend_visible_when_checked(self, panel: DebugOverlayPanel):
+        panel._master_cb.setChecked(True)
+        panel._drive_contrib_cb.setChecked(True)
+        assert not panel._drive_contrib_legend.isHidden()
+
+    def test_consumption_legend_visible_when_checked(self, panel: DebugOverlayPanel):
+        panel._master_cb.setChecked(True)
+        panel._consumption_cb.setChecked(True)
+        assert not panel._consumption_legend.isHidden()
+
+    def test_all_legends_hide_when_master_off(self, panel: DebugOverlayPanel):
+        panel._master_cb.setChecked(True)
+        panel._action_pref_cb.setChecked(True)
+        panel._drive_contrib_cb.setChecked(True)
+        panel._consumption_cb.setChecked(True)
+        panel._master_cb.setChecked(False)
+        assert panel._action_pref_legend.isHidden()
+        assert panel._drive_contrib_legend.isHidden()
+        assert panel._consumption_legend.isHidden()

@@ -226,5 +226,6 @@ class TestViewerFrameViewModel:
         expected = {
             "coordinate", "grid", "agent", "status",
             "selection", "action_context", "debug_overlay",
+            "step_analysis",
         }
         assert set(ViewerFrameViewModel.model_fields.keys()) == expected

@@ -113,6 +113,34 @@ class TestWorldConfigValidation:
             WorldConfig(grid_width=10, grid_height=10, resource_regen_rate=1.1)
 
 
+class TestObstacleDensityValidation:
+    def test_default_zero(self):
+        config = WorldConfig(grid_width=10, grid_height=10)
+        assert config.obstacle_density == 0.0
+
+    def test_valid_density(self):
+        config = WorldConfig(grid_width=10, grid_height=10,
+                             obstacle_density=0.2)
+        assert config.obstacle_density == 0.2
+
+    def test_zero_valid(self):
+        config = WorldConfig(grid_width=10, grid_height=10,
+                             obstacle_density=0.0)
+        assert config.obstacle_density == 0.0
+
+    def test_negative_invalid(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(grid_width=10, grid_height=10, obstacle_density=-0.1)
+
+    def test_one_invalid(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(grid_width=10, grid_height=10, obstacle_density=1.0)
+
+    def test_above_one_invalid(self):
+        with pytest.raises(ValidationError):
+            WorldConfig(grid_width=10, grid_height=10, obstacle_density=1.5)
+
+
 class TestAgentConfigValidation:
     def test_initial_energy_zero(self):
         with pytest.raises(ValidationError):

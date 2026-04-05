@@ -8,7 +8,7 @@ VWP7 adds mouse interaction signals.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QMouseEvent, QPainter, QPaintEvent, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QMouseEvent, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QWidget
 
 from axis_system_a.enums import CellType
@@ -30,7 +30,7 @@ from axis_system_a.visualization.view_models import (
 # ---------------------------------------------------------------------------
 
 COLOR_EMPTY = QColor(0xE0, 0xE0, 0xE0)
-COLOR_OBSTACLE = QColor(0x40, 0x40, 0x40)
+COLOR_OBSTACLE = QColor(0x00, 0x00, 0x00)
 COLOR_RESOURCE_MIN = QColor(0xE8, 0xF5, 0xE9)
 COLOR_RESOURCE_MAX = QColor(0x2E, 0x7D, 0x32)
 COLOR_AGENT = QColor(0x21, 0x96, 0xF3)
@@ -102,9 +102,9 @@ class GridWidget(QWidget):
 
         self._draw_cells(painter, cell_w, cell_h)
         self._draw_grid_lines(painter, cell_w, cell_h)
-        self._draw_overlays(painter, cell_w, cell_h)
         self._draw_selection(painter, cell_w, cell_h)
         self._draw_agent(painter, cell_w, cell_h)
+        self._draw_overlays(painter, cell_w, cell_h)
 
         painter.end()
 
@@ -115,7 +115,7 @@ class GridWidget(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         for cell in self._grid.cells:
             x, y, w, h = self._cell_rect(cell.row, cell.col, cell_w, cell_h)
-            if cell.is_obstacle:
+            if not cell.is_traversable:
                 color = COLOR_OBSTACLE
             elif cell.cell_type == CellType.RESOURCE:
                 color = _resource_color(cell.resource_value)
@@ -267,6 +267,8 @@ class GridWidget(QWidget):
                 int(2 * radius), int(2 * radius),
             )
 
+    _DRIVE_LABELS = ("U", "D", "L", "R", "C", "S")
+
     def _draw_overlay_drive_contribution(
         self,
         painter: QPainter,
@@ -282,18 +284,43 @@ class GridWidget(QWidget):
         painter.setBrush(QBrush(QColor(0, 0, 0, 100)))
         painter.drawRect(int(x) + 1, int(y) + 1, int(w) - 2, int(h) - 2)
 
+        show_labels = cell_h >= 40
         contribs = dc.action_contributions
         max_abs = max(abs(v) for v in contribs) if any(contribs) else 1.0
         if max_abs == 0:
             max_abs = 1.0
 
-        bar_h = (h - 4) / 6
-        mid_x = x + w / 2
+        # Activation text at top of cell
+        header_h = 0.0
+        if show_labels:
+            font_size = max(7, int(h * 0.08))
+            font = QFont("monospace", font_size)
+            painter.setFont(font)
+            painter.setPen(QColor(255, 255, 255, 220))
+            act_text = f"act:{dc.activation:.2f}"
+            header_h = font_size + 4
+            painter.drawText(int(x + 3), int(y + header_h), act_text)
+
+        # Label margin
+        label_margin = w * 0.14 if show_labels else 0
+        bar_region_y = y + 2 + header_h
+        bar_h = (h - 4 - header_h) / 6
+        mid_x = x + label_margin + (w - label_margin) / 2
 
         for i, val in enumerate(contribs):
-            bar_y = y + 2 + i * bar_h
+            bar_y = bar_region_y + i * bar_h
+
+            # Action label
+            if show_labels:
+                label_font_size = max(7, int(bar_h * 0.6))
+                painter.setFont(QFont("monospace", label_font_size))
+                painter.setPen(QColor(255, 255, 255, 220))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawText(int(x + 2), int(bar_y + bar_h - 2), self._DRIVE_LABELS[i])
+
+            # Bar
             norm = val / max_abs
-            bar_w = (w / 2 - 4) * abs(norm)
+            bar_w = ((w - label_margin) / 2 - 4) * abs(norm)
 
             if val >= 0:
                 color = QColor(0, 200, 0, 180)
@@ -302,6 +329,7 @@ class GridWidget(QWidget):
                 color = QColor(200, 0, 0, 180)
                 bx = mid_x - bar_w
 
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(color))
             painter.drawRect(int(bx), int(bar_y), int(bar_w), int(bar_h - 1))
 

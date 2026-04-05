@@ -35,6 +35,7 @@ from axis_system_a.visualization.ui.app import (  # noqa: E402
     launch_visualization_app,
 )
 from axis_system_a.visualization.ui.detail_panel import DetailPanel  # noqa: E402
+from axis_system_a.visualization.ui.step_analysis_panel import StepAnalysisPanel  # noqa: E402
 from axis_system_a.visualization.ui.debug_overlay_panel import DebugOverlayPanel  # noqa: E402
 from axis_system_a.visualization.ui.grid_widget import GridWidget  # noqa: E402
 from axis_system_a.visualization.ui.main_window import (  # noqa: E402
@@ -208,6 +209,13 @@ class TestMainWindowConstruction:
         assert window.replay_controls is not None
         assert isinstance(window.replay_controls, ReplayControlsPanel)
 
+    def test_contains_step_analysis_panel(self, window):
+        assert window.findChild(StepAnalysisPanel) is not None
+
+    def test_step_analysis_panel_property(self, window):
+        assert window.step_analysis_panel is not None
+        assert isinstance(window.step_analysis_panel, StepAnalysisPanel)
+
 
 # ---------------------------------------------------------------------------
 # Frame propagation
@@ -337,6 +345,7 @@ class TestArchitecturalBoundary:
         import axis_system_a.visualization.ui.main_window as m4
         import axis_system_a.visualization.ui.detail_panel as m5
         import axis_system_a.visualization.ui.replay_controls_panel as m6
+        import axis_system_a.visualization.ui.step_analysis_panel as m7
 
         forbidden = [
             "viewer_state",
@@ -344,7 +353,7 @@ class TestArchitecturalBoundary:
             "replay_access",
             "playback_controller",
         ]
-        for mod in [m1, m2, m3, m4, m5, m6]:
+        for mod in [m1, m2, m3, m4, m5, m6, m7]:
             src = inspect.getsource(mod)
             for name in forbidden:
                 assert f"from axis_system_a.visualization.{name}" not in src, (

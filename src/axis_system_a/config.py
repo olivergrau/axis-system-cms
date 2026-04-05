@@ -23,6 +23,7 @@ class WorldConfig(BaseModel):
     grid_width: int = Field(..., gt=0)
     grid_height: int = Field(..., gt=0)
     resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
+    obstacle_density: float = Field(default=0.0, ge=0, lt=1)
     regeneration_mode: RegenerationMode = RegenerationMode.ALL_TRAVERSABLE
     regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)
 

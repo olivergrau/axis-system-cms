@@ -35,9 +35,11 @@ from axis_system_a.visualization.view_models import (
     AgentViewModel,
     GridCellViewModel,
     GridViewModel,
+    NeighborObservationViewModel,
     SelectionType,
     SelectionViewModel,
     StatusBarViewModel,
+    StepAnalysisViewModel,
     ViewerFrameViewModel,
 )
 from axis_system_a.visualization.viewer_state import ViewerState
@@ -144,6 +146,7 @@ class ViewModelBuilder:
             selection=selection_vm,
             action_context=action_ctx_vm,
             debug_overlay=self._build_debug_overlay(state, agent_row, agent_col),
+            step_analysis=self._build_step_analysis(state, agent_row, agent_col),
         )
 
     # -- Debug overlay projection ------------------------------------------
@@ -208,4 +211,64 @@ class ViewModelBuilder:
             action_preference=action_pref,
             drive_contribution=drive_contrib,
             consumption_opportunity=consumption,
+        )
+
+    # -- Step analysis projection ------------------------------------------
+
+    def _build_step_analysis(
+        self,
+        state: ViewerState,
+        agent_row: int,
+        agent_col: int,
+    ) -> StepAnalysisViewModel | None:
+        """Build comprehensive step analysis — always, not gated by overlays."""
+        step = state.episode_handle.episode_result.steps[
+            state.coordinate.step_index
+        ]
+        obs = step.observation
+        dr = step.decision_result
+        tt = step.transition_trace
+
+        return StepAnalysisViewModel(
+            timestep=step.timestep,
+            energy_before=step.energy_before,
+            energy_after=step.energy_after,
+            energy_delta=tt.energy_delta,
+            current_resource=obs.current.resource,
+            neighbor_observations=(
+                NeighborObservationViewModel(
+                    resource=obs.up.resource,
+                    traversable=obs.up.traversability > 0,
+                ),
+                NeighborObservationViewModel(
+                    resource=obs.down.resource,
+                    traversable=obs.down.traversability > 0,
+                ),
+                NeighborObservationViewModel(
+                    resource=obs.left.resource,
+                    traversable=obs.left.traversability > 0,
+                ),
+                NeighborObservationViewModel(
+                    resource=obs.right.resource,
+                    traversable=obs.right.traversability > 0,
+                ),
+            ),
+            drive_activation=step.drive_output.activation,
+            drive_contributions=step.drive_output.action_contributions,
+            raw_contributions=dr.raw_contributions,
+            admissibility_mask=dr.admissibility_mask,
+            masked_contributions=dr.masked_contributions,
+            probabilities=dr.probabilities,
+            temperature=dr.temperature,
+            selection_mode=dr.selection_mode.value,
+            selected_action=dr.selected_action.name,
+            moved=tt.moved,
+            consumed=tt.consumed,
+            resource_consumed=tt.resource_consumed,
+            position_before=(tt.position_before.y, tt.position_before.x),
+            position_after=(tt.position_after.y, tt.position_after.x),
+            terminated=tt.terminated,
+            termination_reason=(
+                tt.termination_reason.value if tt.termination_reason else None
+            ),
         )

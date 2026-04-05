@@ -102,6 +102,61 @@ class ActionContextViewModel(BaseModel):
     termination_reason: TerminationReason | None
 
 
+class NeighborObservationViewModel(BaseModel):
+    """Observation data for one cardinal neighbor cell."""
+
+    model_config = ConfigDict(frozen=True)
+
+    resource: float
+    traversable: bool
+
+
+class StepAnalysisViewModel(BaseModel):
+    """Comprehensive decision-analysis data for one step.
+
+    Always built when step data is available — not gated by overlay config.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    # Step overview
+    timestep: int
+    energy_before: float
+    energy_after: float
+    energy_delta: float
+
+    # Observation
+    current_resource: float
+    neighbor_observations: tuple[
+        NeighborObservationViewModel,
+        NeighborObservationViewModel,
+        NeighborObservationViewModel,
+        NeighborObservationViewModel,
+    ]
+
+    # Drive output
+    drive_activation: float
+    drive_contributions: tuple[float, float, float, float, float, float]
+
+    # Decision pipeline
+    raw_contributions: tuple[float, float, float, float, float, float]
+    admissibility_mask: tuple[bool, bool, bool, bool, bool, bool]
+    masked_contributions: tuple[float, float, float, float, float, float]
+    probabilities: tuple[float, float, float, float, float, float]
+    temperature: float
+    selection_mode: str
+    selected_action: str
+
+    # Transition outcome
+    moved: bool
+    consumed: bool
+    resource_consumed: float
+    position_before: tuple[int, int]
+    position_after: tuple[int, int]
+    terminated: bool
+    termination_reason: str | None
+
+
 class ViewerFrameViewModel(BaseModel):
     """Top-level composite view model for one renderable frame."""
 
@@ -114,3 +169,4 @@ class ViewerFrameViewModel(BaseModel):
     selection: SelectionViewModel
     action_context: ActionContextViewModel
     debug_overlay: DebugOverlayViewModel | None = None
+    step_analysis: StepAnalysisViewModel | None = None

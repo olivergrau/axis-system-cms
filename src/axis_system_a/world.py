@@ -170,6 +170,9 @@ def create_world(
                     f"config grid_width {config.grid_width}"
                 )
 
+    if config.obstacle_density > 0:
+        _apply_obstacles(grid, config, agent_position, seed)
+
     if config.regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO:
         _apply_sparse_eligibility(grid, config, seed)
 
@@ -209,3 +212,37 @@ def _apply_sparse_eligibility(
         if cell.regen_eligible != is_eligible:
             grid[y][x] = cell.model_copy(
                 update={"regen_eligible": is_eligible})
+
+
+def _apply_obstacles(
+    grid: list[list[Cell]],
+    config: WorldConfig,
+    agent_position: Position,
+    seed: int | None,
+) -> None:
+    """Place obstacles on a deterministic subset of empty cells.
+
+    The agent's starting position is always excluded from obstacle
+    placement.  Runs before sparse eligibility so that obstacle cells
+    are correctly excluded from regen-eligible selection.
+    """
+    obstacle_cell = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
+
+    # Collect candidate positions (traversable, not the agent start)
+    candidates: list[tuple[int, int]] = []
+    for y, row in enumerate(grid):
+        for x, cell in enumerate(row):
+            if cell.is_traversable and (x, y) != (
+                agent_position.x, agent_position.y,
+            ):
+                candidates.append((x, y))
+
+    n_obstacles = round(config.obstacle_density * len(candidates))
+    if n_obstacles == 0:
+        return
+
+    rng = np.random.default_rng(seed)
+    indices = rng.permutation(len(candidates))
+    for idx in indices[:n_obstacles]:
+        x, y = candidates[idx]
+        grid[y][x] = obstacle_cell
