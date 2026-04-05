@@ -37,3 +37,26 @@ class ReplayContractViolation(ReplayError):
 
 class MalformedArtifactError(ReplayError):
     """Raised when a persisted artifact cannot be deserialized or reconstructed."""
+
+
+class StepOutOfBoundsError(ReplayError):
+    """Raised when step_index is outside the valid range [0, total_steps-1]."""
+
+    def __init__(self, step_index: int, total_steps: int) -> None:
+        self.step_index = step_index
+        self.total_steps = total_steps
+        super().__init__(
+            f"Step index {step_index} out of bounds "
+            f"(valid range: 0..{total_steps - 1})"
+        )
+
+
+class PhaseNotAvailableError(ReplayError):
+    """Raised when the requested phase has no valid snapshot at the given step."""
+
+    def __init__(self, step_index: int, phase: object) -> None:
+        self.step_index = step_index
+        self.phase = phase
+        super().__init__(
+            f"Phase {phase} not available at step index {step_index}"
+        )

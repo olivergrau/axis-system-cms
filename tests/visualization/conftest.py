@@ -22,6 +22,8 @@ from axis_system_a.run import RunConfig, RunResult, compute_run_summary
 from axis_system_a.runner import run_episode
 from axis_system_a.types import Position
 from axis_system_a.visualization.replay_access import ReplayAccessService
+from axis_system_a.visualization.replay_models import ReplayEpisodeHandle
+from axis_system_a.visualization.snapshot_resolver import SnapshotResolver
 from axis_system_a.world import create_world
 from tests.fixtures.scenario_fixtures import make_config
 
@@ -108,3 +110,17 @@ def populated_repo(tmp_path: Path) -> ExperimentRepository:
 def access_service(populated_repo: ExperimentRepository) -> ReplayAccessService:
     """ReplayAccessService over the populated repo."""
     return ReplayAccessService(populated_repo)
+
+
+@pytest.fixture
+def replay_episode_handle(
+    access_service: ReplayAccessService,
+) -> ReplayEpisodeHandle:
+    """A validated ReplayEpisodeHandle from the populated repo."""
+    return access_service.load_replay_episode("test-exp", "run-0000", 1)
+
+
+@pytest.fixture
+def snapshot_resolver() -> SnapshotResolver:
+    """A fresh SnapshotResolver instance."""
+    return SnapshotResolver()
