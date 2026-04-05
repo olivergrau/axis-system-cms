@@ -15,3 +15,5 @@ pyyaml>=6.0,<7.0
 
 # Optional: better typing support at runtime (only if needed later)
 typing-extensions>=4.8,<5.0
+
+PySide6>=6.6,<7
