@@ -168,8 +168,8 @@ Design documents live in `docs/specs/`:
 
 - `System A Baseline.md` — formal system specification
 - `System A Baseline Worked Examples.md` — step-by-step validation scenarios
-- `01_The_World/` — world model specification
-- `02_Implementation/` — implementation architecture
+- world model specification
+- implementation architecture
 - `work-packages/` — incremental implementation plan
 
 ## License

@@ -1,7 +1,6 @@
-# **WP2 Implementation Brief – World Model and Observation Construction**
+# **WP1 Implementation Brief – Core Configuration and Fundamental Runtime Types**
 
 ## **Context**
-
 We are implementing **System A (Baseline)** of the AXIS project.
 
 This system is a **deterministic, mechanistic agent-environment simulation framework** with:
@@ -14,319 +13,242 @@ This system is a **deterministic, mechanistic agent-environment simulation frame
 * deterministic transition execution under fixed seeds
 
 The implementation follows a **specification-first architecture**.
-This work package is **WP2** and builds directly on WP1.
+This work package is the **first MVP package** and must establish the foundational runtime structures on which all later packages depend.
 
-WP1 already established:
-
-* configuration structures
-* core runtime enums
-* foundational runtime types
-* minimal validation
-
-WP2 must now implement the **external environment representation** and the **local observation construction** used by all later runtime components. It must remain strictly aligned with the baseline architecture and must not jump ahead into drive, policy, or transition behavior. The world and sensor are already defined as part of the Core Runtime Architecture, and the sensor must remain the only permitted information channel from world to agent.
+This is **not** a prototype for quick experimentation.
+It is the first implementation slice of the actual architecture.
 
 ---
 
 ## **Objective**
+Implement **WP1 – Core Configuration and Fundamental Runtime Types**.
 
-Implement **WP2 – World Model and Observation Construction**.
+The goal of this package is to create the minimal but stable foundation required for all later work packages.
 
-The goal of this package is to create a correct, explicit, and testable representation of:
+This includes:
 
-1. the **world state**
-2. the **cell structure**
-3. the **agent position as part of world state**
-4. the **observation builder / sensor projection**
-
-This package must provide the minimal but architecturally correct foundation required for later implementation of:
-
-* hunger drive computation
-* admissibility masking in policy
-* state transition logic
-* episode execution
+* configuration structures
+* shared runtime enums
+* core immutable or near-immutable value types
+* minimal validation rules
+* serialization-friendly data structures
 
 The package must be implemented in a way that supports:
 
-* deterministic behavior
+* deterministic execution
 * explicit state handling
 * later testing
-* strict separation between world, observation, and agent internals
+* later extension without premature abstraction
 
 ---
 
 ## **Scope**
+Implement only the following:
 
-Implement only the following.
+### **1. Configuration Model**
+Create a minimal structured runtime configuration model for the MVP with these sections:
 
-### **1. Cell Representation**
+* `general`
+* `world`
+* `agent`
+* `policy`
+* `execution`
 
-Create an explicit `Cell` model for the grid world.
+Each section should contain only the parameters required for early MVP runtime initialization.
 
-The world representation in the architecture uses explicit cells with:
+You may use **Pydantic models** for validation and explicit typing.
 
-* traversability / obstacle semantics
-* resource value
-* clear invariants
+At minimum, support fields such as:
 
-A reasonable implementation may use either:
+#### `general`
 
-* a `CellType` enum plus `resource_value`
-* or an explicit obstacle flag plus `resource_value`
+* `seed: int`
 
-but the resulting semantics must remain fully aligned with the baseline documents.
+#### `world`
 
-At minimum, each cell must support:
+* `grid_width: int`
+* `grid_height: int`
 
-* whether it is traversable
-* whether it is blocked / obstacle
-* current resource intensity or value
+#### `agent`
 
-The representation must remain **clear and inspectable**, not compressed or tensor-like.
+* `initial_energy: float`
+* `max_energy: float`
+* `memory_capacity: int`
 
----
+#### `policy`
 
-### **2. World Representation**
+* `selection_mode`
+* `temperature: float`
+* `stay_suppression: float`
+* `consume_weight: float`
 
-Create a `World` model representing the external environment as a **finite two-dimensional grid**.
+#### `execution`
 
-The world must include:
+* `max_steps: int`
 
-* `width`
-* `height`
-* grid storage of cells
-* agent position stored in world state, not in agent state
-
-Implement minimal, side-effect-free access operations such as:
-
-* get cell by position
-* bounds checking
-* traversability checks
-
-The world must remain a **passive state container**.
-Do not place behavior, policy knowledge, or transition logic into the world object.
+Do **not** add experiment/sweep configuration.
 
 ---
 
-### **3. Position Use Within World State**
+### **2. Action Enum**
+Create a stable action enum containing exactly:
 
-Use the `Position` type already created in WP1.
+* `UP`
+* `DOWN`
+* `LEFT`
+* `RIGHT`
+* `CONSUME`
+* `STAY`
 
-The agent position must be represented as part of world state.
-
-Important constraint:
-
-* `AgentState` must **not** contain absolute position
-* observation must derive local information from world state + position
-* no hidden coordinate leakage to the agent
-
-This separation is a hard architectural rule.
+The ordering must be stable and reusable across later policy and drive modules.
 
 ---
 
-### **4. Observation / Sensor Construction**
+### **3. Fundamental Runtime Types**
+Create typed foundational runtime structures for later packages.
 
-Implement the baseline observation builder.
+At minimum define:
 
-The observation must be derived from the **von Neumann neighborhood** around the current agent position:
+* `Position`
+* `Observation`
+* `MemoryState`
+* `AgentState`
 
-* center
-* up
-* down
-* left
-* right
+These should be explicit and serialization-friendly.
 
-For each observed cell, construct the local tuple:
+#### `Position`
 
-* `b_j`: traversability signal
-* `r_j`: resource intensity signal
+* `x: int`
+* `y: int`
 
-The full observation must follow the fixed order:
+#### `Observation`
+Should represent the baseline fixed observation vector structure.
+At WP1 stage it does not need full sensor logic yet, but the type must already exist.
 
-* center
-* up
-* down
-* left
-* right
+A good approach is either:
 
-The final observation must match the baseline structure and remain stable across all later packages.
+* a dedicated typed record with named fields
+* or a strict wrapper around a fixed-length vector
+
+Prefer clarity over compactness.
+
+#### `MemoryState`
+
+* bounded list-like state holder
+* at WP1 only the structural representation is required, not full update behavior
+
+#### `AgentState`
+
+* `energy: float`
+* `memory_state: MemoryState`
 
 Important:
 
-* out-of-bounds neighbors must be represented as `(0, 0)`
-* no gradients
-* no semantic labels
-* no derived directional summaries
-* no access to hidden world parameters such as regeneration rate or max resource capacity
-
-The observation builder must remain a **pure projection component**, not a decision component.
+* absolute world position must **not** be part of `AgentState`
 
 ---
 
-### **5. Normalization Rule**
+### **4. Minimal Validation**
+Implement basic validation rules, such as:
 
-If the world stores resource values already normalized to `[0,1]`, the observation builder may pass them through directly.
+* grid dimensions > 0
+* `0 < initial_energy <= max_energy`
+* `memory_capacity > 0`
+* `temperature > 0`
+* `max_steps > 0`
+* `stay_suppression >= 0`
+* `consume_weight > 0`
 
-If not, explicit normalization must be applied in the observation layer.
-
-For WP2, prefer the simpler implementation:
-
-* store world resource values already in `[0,1]`
-* pass them through directly into observation
-
-This keeps the MVP simpler while remaining fully consistent with the baseline model.
-
----
-
-### **6. Minimal World Initialization**
-
-Provide a minimal deterministic way to construct a valid world instance.
-
-This can be simple and explicit.
-
-Examples:
-
-* build from dimensions + default empty cells
-* optionally allow a handcrafted grid input for tests
-
-Do not implement complex world generation strategies yet.
+Validation must fail explicitly.
 
 ---
 
 ## **Out of Scope**
+Do **not** implement any of the following in WP1:
 
-Do **not** implement any of the following in WP2:
-
+* world grid or cell behavior
+* observation construction logic
 * hunger drive computation
 * policy logic
-* action masking
-* Softmax
 * transition engine
-* movement application
-* consumption mechanics
-* regeneration update logic
 * episode loop
 * logging
 * experiment system
 * visualization
-* random world generation frameworks
-* complex scenario DSLs
-* memory behavior
-* learned or semantic observation features
+* advanced plugin systems
+* alternative policy families
+* memory update behavior
+* YAML-based config loading unless trivially small
 
-Do not anticipate WP3+ behavior in this package.
+Do not anticipate future systems beyond what is needed structurally.
 
 ---
 
 ## **Architectural Constraints**
+The implementation must follow these rules:
 
-The implementation must follow these rules.
+### **1. No hidden global state**
+Do not use module-level mutable state.
 
-### **1. World is passive**
+### **2. No premature abstraction**
+Do not introduce plugin frameworks, registries, factories, or inheritance hierarchies that are not needed for WP1.
 
-The world must not:
+### **3. Explicitness over cleverness**
+Prefer readable, strongly typed structures over compressed or generic meta-programming solutions.
 
-* update itself
-* evaluate actions
-* compute transitions
-* encode reward or desirability semantics
+### **4. Serialization readiness**
+All types should be easy to serialize later to JSON-compatible structures.
 
-### **2. Observation is pure**
-
-The observation builder must:
-
-* depend only on world state and position
-* construct local observations deterministically
-* add no higher-order interpretation
-
-### **3. No leakage of global information**
-
-The observation must not expose:
-
-* absolute position
-* full grid
-* distant cells
-* hidden world parameters
-* future information
-
-### **4. Explicitness over compactness**
-
-Prefer:
-
-* readable classes / models
-* explicit field names
-* inspectable structures
-
-Avoid:
-
-* overly compressed encodings
-* premature vectorization
-* tensor-first designs
-
-### **5. Stable ordering**
-
-Observation field ordering must be explicit and stable, because later drive and policy modules depend on it.
+### **5. Agent/world separation**
+Do not place world information, especially position, inside `AgentState`.
 
 ---
 
 ## **Expected File Structure**
+You may choose a clean Python package layout under `src/`, but keep it simple.
 
-Extend the existing `src/` package from WP1 in a simple and readable way.
-
-A reasonable structure could be:
+A reasonable target would be something like:
 
 ```text
 src/axis_system_a/
     config.py
     enums.py
     types.py
-    world.py
-    observation.py
     __init__.py
 ```
 
-If desired, `Cell` may live in `world.py` unless a separate `cells.py` is clearly justified.
-
-Do not fragment the world layer into too many small files.
+You may refine the layout slightly if it improves clarity, but do not fragment the package into too many files.
 
 ---
 
 ## **Testing Requirements**
+Also create initial tests for WP1.
 
-Also create pytest tests for WP2.
+At minimum include tests for:
 
-At minimum include tests for the following.
+### Configuration validation
 
-### **World structure tests**
+* valid config passes
+* invalid grid size fails
+* invalid energy bounds fail
+* invalid memory capacity fails
+* invalid policy parameters fail
 
-* valid world can be created from config
-* width / height are correct
-* agent position is valid
-* cells can be retrieved correctly
-* out-of-bounds access is handled explicitly or safely, depending on chosen API
+### Enum correctness
 
-### **Cell invariant tests**
+* action enum contains exactly the required actions
+* ordering is stable
 
-* obstacle / blocked cells behave as non-traversable
-* resource values remain within valid range
-* invalid cell configurations fail explicitly if validation is implemented
+### Type structure sanity
 
-### **Observation construction tests**
+* `Position` can be instantiated correctly
+* `AgentState` contains energy and memory only
+* `Observation` enforces expected structure
+* objects are serializable or easily dumpable
 
-* observation contains exactly the expected neighborhood structure
-* field ordering is correct and stable
-* center / up / down / left / right mapping is correct
-* out-of-bounds neighbors are mapped to `(0,0)`
-* blocked cells produce the correct traversability signal
-* resource values propagate correctly into observation
+Use **pytest**.
 
-### **Separation tests**
-
-* agent position is not stored in `AgentState`
-* observation builder uses world state + position only
-* no hidden world information is included in observation
-
-Use **small handcrafted worlds** for tests.
-Do not rely on random generation.
+Keep the tests simple, deterministic, and focused on structure and validation.
 
 ---
 
@@ -334,84 +256,34 @@ Do not rely on random generation.
 
 * Python 3.11
 * clear type hints
-* strongly typed, readable models
+* small, readable modules
 * concise docstrings where useful
 * no unnecessary comments
-* no speculative abstractions
-
-If Pydantic is used for world-side models, use it only where it improves validation clarity.
-Do not force Pydantic everywhere if normal dataclasses or explicit classes are clearer.
+* no speculative features
 
 ---
 
 ## **Expected Deliverable**
-
 Return:
 
 1. the proposed file structure
-2. the implementation for WP2
+2. the implementation for WP1
 3. the corresponding pytest tests
 4. a short explanation of any design decision that is not obvious
 
 ---
 
 ## **Important Final Constraint**
-
-This package is still a **foundation package**.
+This package is a **foundation package**.
 
 That means:
 
-* it must remain small
-* it must remain correct
-* it must preserve architectural boundaries
-* it must not sneak transition logic or policy logic into the world / observation layer
+* it must be small
+* it must be correct
+* it must be stable
+* it must not try to “jump ahead” into WP2 or later packages
 
-A modest but architecturally correct implementation is preferred over a broader implementation that begins to blur component responsibilities.
-
----
-
-# **Optional shorter Plan Mode variant**
-
-If you want a shorter first-pass prompt for Copilot Plan Mode before asking for implementation:
-
-```text
-Implement WP2 for AXIS System A.
-
-First read and understand the existing specifications, especially:
-- System A Baseline
-- The World
-- The Sensor Model
-- Implementation Architecture and Delivery Plan
-
-Then focus only on WP2: World Model and Observation Construction.
-
-Scope:
-- implement Cell and World representation
-- represent agent position in world state
-- implement local observation builder using center/up/down/left/right
-- implement stable observation ordering
-- implement out-of-bounds handling as (0,0)
-- add pytest tests with small handcrafted worlds
-
-Constraints:
-- world must be a passive state container
-- observation must be a pure projection
-- no hunger, no policy, no transition logic, no episode loop
-- no global information leakage
-- no premature abstractions
-- keep file structure simple under src/
-
-Do not generate code yet.
-First produce a plan with:
-1. understanding summary
-2. WP2 scope interpretation
-3. proposed file structure
-4. world/cell model design
-5. observation design
-6. implementation order
-7. testing plan
-8. open questions or risks
-```
+A modest but architecturally correct implementation is preferred over a larger but speculative one.
 
 ---
 
