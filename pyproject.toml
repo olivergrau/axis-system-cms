@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-axis = "axis_system_a.cli:main"
+axis = "axis.framework.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

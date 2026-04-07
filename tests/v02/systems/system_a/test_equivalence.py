@@ -228,8 +228,7 @@ def _run_new_episode(overrides: dict | None = None) -> Trajectory:
 
     world = create_world(world_config, Position(x=0, y=0), seed=seed)
 
-    config_dict = system_config.model_dump()
-    agent_state = system.initialize_state(config_dict)
+    agent_state = system.initialize_state()
     rng = np.random.default_rng(seed)
     regen_rate = system_config.world_dynamics.resource_regen_rate
     max_consume = system_config.transition.max_consume

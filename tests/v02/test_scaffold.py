@@ -89,6 +89,41 @@ def test_framework_exports_config_types() -> None:
         "get_config_value",
         "parse_parameter_path",
         "set_config_value",
+        # WP-3.1: System registry
+        "SystemFactory",
+        "create_system",
+        "get_system_factory",
+        "register_system",
+        "registered_system_types",
+        # WP-3.2: Episode runner
+        "run_episode",
+        "setup_episode",
+        # WP-3.3: Run executor
+        "RunConfig",
+        "RunExecutor",
+        "RunResult",
+        "RunSummary",
+        "compute_run_summary",
+        "resolve_episode_seeds",
+        # WP-3.3: Experiment executor
+        "ExperimentExecutor",
+        "ExperimentResult",
+        "ExperimentSummary",
+        "RunSummaryEntry",
+        "compute_experiment_summary",
+        "resolve_run_configs",
+        "variation_description",
+        "execute_experiment",
+        "resume_experiment",
+        "is_run_complete",
+        # WP-3.4: Persistence
+        "ExperimentRepository",
+        "ExperimentStatus",
+        "ExperimentStatusRecord",
+        "ExperimentMetadata",
+        "RunStatus",
+        "RunStatusRecord",
+        "RunMetadata",
     }
     actual = set(axis.framework.__all__)
     assert expected == actual

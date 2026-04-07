@@ -51,7 +51,7 @@ def _setup(
         grid = _make_resource_grid()
     world = World(grid, Position(x=2, y=2))
 
-    state = system.initialize_state(config_dict)
+    state = system.initialize_state()
     rng = np.random.default_rng(seed)
     return system, registry, world, state, rng
 

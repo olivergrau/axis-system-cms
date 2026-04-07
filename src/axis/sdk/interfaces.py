@@ -34,9 +34,10 @@ class SystemInterface(Protocol):
         """
         ...
 
-    def initialize_state(self, system_config: dict[str, Any]) -> Any:
-        """Create the initial agent state from the system config.
+    def initialize_state(self) -> Any:
+        """Create the initial agent state.
 
+        Uses the system's stored config (set at construction time).
         The returned state is opaque to the framework. Only the system
         and its sub-components interpret it. The framework passes it
         back to decide() and transition() without inspection.
@@ -79,6 +80,35 @@ class SystemInterface(Protocol):
         Receives the outcome of the applied action (what happened in the
         world) and the post-action observation. Updates internal state
         (energy, memory, etc.) and checks for system-level termination.
+        """
+        ...
+
+    def action_handlers(self) -> dict[str, Any]:
+        """Return custom action handlers for registration with ActionRegistry.
+
+        Returns a mapping of action_name -> handler_callable for actions
+        beyond the base set (up/down/left/right/stay). The framework
+        runner registers these with the ActionRegistry before episode execution.
+
+        Systems with no custom actions return an empty dict.
+        """
+        ...
+
+    def observe(self, world_view: Any, position: Any) -> Any:
+        """Produce a system-specific observation from the world state.
+
+        Called by the framework runner after action application to obtain
+        the post-action observation for transition(). Delegates to the
+        system's internal sensor.
+        """
+        ...
+
+    def action_context(self) -> dict[str, Any]:
+        """Return context dict needed by this system's action handlers.
+
+        The framework runner calls this once at setup time and passes
+        the result to every registry.apply() call. Systems with no
+        custom action context return an empty dict.
         """
         ...
 

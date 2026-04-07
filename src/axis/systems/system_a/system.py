@@ -51,14 +51,13 @@ class SystemA:
         """Return the ordered tuple of action names."""
         return ("up", "down", "left", "right", "consume", "stay")
 
-    def initialize_state(self, system_config: dict[str, Any]) -> AgentState:
-        """Create initial agent state from system config dict."""
-        config = SystemAConfig(**system_config)
+    def initialize_state(self) -> AgentState:
+        """Create initial agent state from stored config."""
         return AgentState(
-            energy=config.agent.initial_energy,
+            energy=self._config.agent.initial_energy,
             memory_state=MemoryState(
                 entries=(),
-                capacity=config.agent.memory_capacity,
+                capacity=self._config.agent.memory_capacity,
             ),
         )
 
@@ -107,6 +106,20 @@ class SystemA:
         return self._transition.transition(
             agent_state, action_outcome, new_observation,
         )
+
+    def action_handlers(self) -> dict[str, Any]:
+        """Return custom action handlers for ActionRegistry registration."""
+        from axis.systems.system_a.actions import handle_consume
+
+        return {"consume": handle_consume}
+
+    def observe(self, world_view: Any, position: Any) -> Any:
+        """Produce System A observation from world state."""
+        return self._sensor.observe(world_view, position)
+
+    def action_context(self) -> dict[str, Any]:
+        """Return context dict for System A's action handlers."""
+        return {"max_consume": self._config.transition.max_consume}
 
     @property
     def sensor(self) -> SystemASensor:

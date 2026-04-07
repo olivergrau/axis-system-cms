@@ -143,7 +143,7 @@ class _MockSystem:
     def action_space(self) -> tuple[str, ...]:
         return ("up", "down", "left", "right", "stay")
 
-    def initialize_state(self, system_config: dict[str, Any]) -> Any:
+    def initialize_state(self) -> Any:
         return {"energy": 50.0}
 
     def vitality(self, agent_state: Any) -> float:
@@ -168,6 +168,15 @@ class _MockSystem:
             trace_data={},
             terminated=False,
         )
+
+    def action_handlers(self) -> dict[str, Any]:
+        return {}
+
+    def observe(self, world_view: Any, position: Any) -> Any:
+        return {}
+
+    def action_context(self) -> dict[str, Any]:
+        return {}
 
 
 class _MockSensor:
@@ -247,7 +256,7 @@ class TestProtocolConformance:
         assert system.system_type() == "mock"
         assert "up" in system.action_space()
 
-        state = system.initialize_state({})
+        state = system.initialize_state()
         assert system.vitality(state) == 1.0
 
         decide_result = system.decide(None, state, rng)

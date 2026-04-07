@@ -226,22 +226,22 @@ class TestSubInterfaceConformance:
 
 
 class TestInitializeState:
-    """State initialization from config dict."""
+    """State initialization from stored config."""
 
     def test_returns_agent_state(self, system: SystemA, config_dict: dict) -> None:
-        state = system.initialize_state(config_dict)
+        state = system.initialize_state()
         assert isinstance(state, AgentState)
 
     def test_initial_energy(self, system: SystemA, config_dict: dict) -> None:
-        state = system.initialize_state(config_dict)
+        state = system.initialize_state()
         assert state.energy == 50.0
 
     def test_empty_memory(self, system: SystemA, config_dict: dict) -> None:
-        state = system.initialize_state(config_dict)
+        state = system.initialize_state()
         assert state.memory_state.entries == ()
 
     def test_memory_capacity(self, system: SystemA, config_dict: dict) -> None:
-        state = system.initialize_state(config_dict)
+        state = system.initialize_state()
         assert state.memory_state.capacity == 5
 
 

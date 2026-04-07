@@ -1,2 +1,2 @@
 [console_scripts]
-axis = axis_system_a.cli:main
+axis = axis.framework.cli:main
