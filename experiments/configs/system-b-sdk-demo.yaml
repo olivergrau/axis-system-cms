@@ -1,0 +1,30 @@
+system_type: "system_b"
+experiment_type: "single_run"
+
+general:
+  seed: 42
+
+execution:
+  max_steps: 200
+
+world:
+  grid_width: 10
+  grid_height: 10
+  obstacle_density: 0.0
+
+system:
+  agent:
+    initial_energy: 30.0
+    max_energy: 50.0
+  policy:
+    selection_mode: "sample"
+    temperature: 1.0
+    scan_bonus: 2.0
+  transition:
+    move_cost: 1.0
+    scan_cost: 0.5
+    stay_cost: 0.5
+  world_dynamics:
+    resource_regen_rate: 0.05
+
+num_episodes_per_run: 5

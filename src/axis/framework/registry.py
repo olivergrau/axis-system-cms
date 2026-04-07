@@ -64,5 +64,14 @@ def _system_a_factory(system_config: dict[str, Any]) -> SystemInterface:
     return SystemA(config)
 
 
-# Auto-register System A
+def _system_b_factory(system_config: dict[str, Any]) -> SystemInterface:
+    """Factory for System B."""
+    from axis.systems.system_b import SystemB, SystemBConfig
+
+    config = SystemBConfig(**system_config)
+    return SystemB(config)
+
+
+# Auto-register built-in systems
 register_system("system_a", _system_a_factory)
+register_system("system_b", _system_b_factory)
