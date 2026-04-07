@@ -1,0 +1,27 @@
+"""Shared test constants for the v0.2.0 test suites.
+
+These values define the default test scenario and must remain consistent
+with the existing v0.1.0 test fixtures for behavioral comparison.
+"""
+
+# Framework defaults
+DEFAULT_SEED = 42
+DEFAULT_MAX_STEPS = 200
+DEFAULT_GRID_WIDTH = 10
+DEFAULT_GRID_HEIGHT = 10
+DEFAULT_OBSTACLE_DENSITY = 0.0
+
+# System A defaults
+DEFAULT_INITIAL_ENERGY = 50.0
+DEFAULT_MAX_ENERGY = 100.0
+DEFAULT_MEMORY_CAPACITY = 5
+DEFAULT_TEMPERATURE = 1.0
+DEFAULT_SELECTION_MODE = "sample"
+DEFAULT_STAY_SUPPRESSION = 0.1
+DEFAULT_CONSUME_WEIGHT = 1.5
+DEFAULT_MOVE_COST = 1.0
+DEFAULT_CONSUME_COST = 1.0
+DEFAULT_STAY_COST = 0.5
+DEFAULT_MAX_CONSUME = 1.0
+DEFAULT_ENERGY_GAIN_FACTOR = 10.0
+DEFAULT_REGEN_RATE = 0.0
