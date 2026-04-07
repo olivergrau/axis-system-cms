@@ -59,9 +59,7 @@ def test_unpopulated_packages_are_empty() -> None:
     import types
 
     module_names = [
-        "axis.world",
         "axis.systems",
-        "axis.systems.system_a",
         "axis.visualization",
     ]
     for name in module_names:
@@ -93,6 +91,26 @@ def test_framework_exports_config_types() -> None:
         "set_config_value",
     }
     actual = set(axis.framework.__all__)
+    assert expected == actual
+
+
+def test_world_exports_model_and_factory() -> None:
+    """axis.world exports the world model types and factory."""
+    import axis.world
+
+    expected = {
+        # WP-2.1: World extraction
+        "CellType",
+        "RegenerationMode",
+        "Cell",
+        "World",
+        "create_world",
+        # WP-2.2: Action engine and dynamics
+        "ActionRegistry",
+        "create_action_registry",
+        "apply_regeneration",
+    }
+    actual = set(axis.world.__all__)
     assert expected == actual
 
 
@@ -130,4 +148,17 @@ def test_sdk_exports_interfaces_and_types() -> None:
         "BaseEpisodeTrace",
     }
     actual = set(axis.sdk.__all__)
+    assert expected == actual
+
+
+def test_system_a_exports() -> None:
+    """axis.systems.system_a exports SystemA, SystemAConfig, handle_consume."""
+    import axis.systems.system_a
+
+    expected = {
+        "SystemA",
+        "SystemAConfig",
+        "handle_consume",
+    }
+    actual = set(axis.systems.system_a.__all__)
     assert expected == actual

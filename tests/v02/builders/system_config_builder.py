@@ -63,6 +63,42 @@ class SystemAConfigBuilder:
         self._policy["temperature"] = temp
         return self
 
+    def with_memory_capacity(self, capacity: int) -> SystemAConfigBuilder:
+        self._agent["memory_capacity"] = capacity
+        return self
+
+    def with_selection_mode(self, mode: str) -> SystemAConfigBuilder:
+        self._policy["selection_mode"] = mode
+        return self
+
+    def with_stay_suppression(self, value: float) -> SystemAConfigBuilder:
+        self._policy["stay_suppression"] = value
+        return self
+
+    def with_consume_weight(self, value: float) -> SystemAConfigBuilder:
+        self._policy["consume_weight"] = value
+        return self
+
+    def with_move_cost(self, cost: float) -> SystemAConfigBuilder:
+        self._transition["move_cost"] = cost
+        return self
+
+    def with_consume_cost(self, cost: float) -> SystemAConfigBuilder:
+        self._transition["consume_cost"] = cost
+        return self
+
+    def with_stay_cost(self, cost: float) -> SystemAConfigBuilder:
+        self._transition["stay_cost"] = cost
+        return self
+
+    def with_max_consume(self, value: float) -> SystemAConfigBuilder:
+        self._transition["max_consume"] = value
+        return self
+
+    def with_energy_gain_factor(self, value: float) -> SystemAConfigBuilder:
+        self._transition["energy_gain_factor"] = value
+        return self
+
     def with_regen_rate(self, rate: float) -> SystemAConfigBuilder:
         self._world_dynamics["resource_regen_rate"] = rate
         return self
