@@ -13,9 +13,9 @@ from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
 from axis.systems.system_a.types import AgentState, MemoryState
 from axis.world.actions import create_action_registry
-from axis.world.dynamics import apply_regeneration
-from axis.world.factory import create_world
-from axis.world.model import Cell, CellType, World
+from axis.world.grid_2d.factory import create_world
+from axis.world.grid_2d.factory import create_world
+from axis.world.grid_2d.model import Cell, CellType, World
 from tests.v02.builders.system_config_builder import SystemAConfigBuilder
 
 
@@ -28,7 +28,8 @@ def _make_resource_grid(
     width: int = 5, height: int = 5, value: float = 0.5,
 ) -> list[list[Cell]]:
     return [
-        [Cell(cell_type=CellType.RESOURCE, resource_value=value) for _ in range(width)]
+        [Cell(cell_type=CellType.RESOURCE, resource_value=value)
+         for _ in range(width)]
         for _ in range(height)
     ]
 
@@ -62,15 +63,15 @@ def _full_step(
     world: World,
     agent_state: AgentState,
     rng: np.random.Generator,
-    regen_rate: float = 0.0,
 ) -> tuple[AgentState, TransitionResult]:
     """Run one full decide -> apply -> transition cycle."""
     decide_result = system.decide(world, agent_state, rng)
 
-    apply_regeneration(world, regen_rate=regen_rate)
+    world.tick()
 
     context = {"max_consume": system.config.transition.max_consume}
-    outcome = registry.apply(world, decide_result.action, context=context)  # type: ignore[attr-defined]
+    # type: ignore[attr-defined]
+    outcome = registry.apply(world, decide_result.action, context=context)
 
     new_obs = system.sensor.observe(world, world.agent_position)
     result = system.transition(agent_state, outcome, new_obs)
@@ -146,7 +147,7 @@ class TestPipeline:
         outcome = ActionOutcome(
             action="consume", moved=False,
             new_position=Position(x=2, y=2),
-            consumed=True, resource_consumed=0.8,
+            data={"consumed": True, "resource_consumed": 0.8},
         )
         from axis.systems.system_a.types import CellObservation, Observation
         obs = Observation(

@@ -18,8 +18,8 @@ from axis.systems.system_a.actions import handle_consume
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
 from axis.world.actions import create_action_registry
-from axis.world.dynamics import apply_regeneration
-from axis.world.factory import create_world
+from axis.world.grid_2d.factory import create_world
+from axis.world.grid_2d.factory import create_world
 from axis_system_a.config import (
     AgentConfig as LegacyAgentConfig,
     ExecutionConfig as LegacyExecutionConfig,
@@ -46,7 +46,6 @@ from tests.v02.constants import (
     DEFAULT_MEMORY_CAPACITY,
     DEFAULT_MOVE_COST,
     DEFAULT_OBSTACLE_DENSITY,
-    DEFAULT_REGEN_RATE,
     DEFAULT_SEED,
     DEFAULT_SELECTION_MODE,
     DEFAULT_STAY_COST,
@@ -103,25 +102,33 @@ def _build_legacy_config(overrides: dict | None = None) -> SimulationConfig:
             grid_width=grid_width,
             grid_height=grid_height,
             obstacle_density=obstacle_density,
-            resource_regen_rate=wd_ov.get("resource_regen_rate", DEFAULT_REGEN_RATE),
+            resource_regen_rate=wd_ov.get(
+                "resource_regen_rate", 0.0),
         ),
         agent=LegacyAgentConfig(
-            initial_energy=agent_ov.get("initial_energy", DEFAULT_INITIAL_ENERGY),
+            initial_energy=agent_ov.get(
+                "initial_energy", DEFAULT_INITIAL_ENERGY),
             max_energy=agent_ov.get("max_energy", DEFAULT_MAX_ENERGY),
-            memory_capacity=agent_ov.get("memory_capacity", DEFAULT_MEMORY_CAPACITY),
+            memory_capacity=agent_ov.get(
+                "memory_capacity", DEFAULT_MEMORY_CAPACITY),
         ),
         policy=LegacyPolicyConfig(
-            selection_mode=policy_ov.get("selection_mode", DEFAULT_SELECTION_MODE),
+            selection_mode=policy_ov.get(
+                "selection_mode", DEFAULT_SELECTION_MODE),
             temperature=policy_ov.get("temperature", DEFAULT_TEMPERATURE),
-            stay_suppression=policy_ov.get("stay_suppression", DEFAULT_STAY_SUPPRESSION),
-            consume_weight=policy_ov.get("consume_weight", DEFAULT_CONSUME_WEIGHT),
+            stay_suppression=policy_ov.get(
+                "stay_suppression", DEFAULT_STAY_SUPPRESSION),
+            consume_weight=policy_ov.get(
+                "consume_weight", DEFAULT_CONSUME_WEIGHT),
         ),
         transition=LegacyTransitionConfig(
             move_cost=transition_ov.get("move_cost", DEFAULT_MOVE_COST),
-            consume_cost=transition_ov.get("consume_cost", DEFAULT_CONSUME_COST),
+            consume_cost=transition_ov.get(
+                "consume_cost", DEFAULT_CONSUME_COST),
             stay_cost=transition_ov.get("stay_cost", DEFAULT_STAY_COST),
             max_consume=transition_ov.get("max_consume", DEFAULT_MAX_CONSUME),
-            energy_gain_factor=transition_ov.get("energy_gain_factor", DEFAULT_ENERGY_GAIN_FACTOR),
+            energy_gain_factor=transition_ov.get(
+                "energy_gain_factor", DEFAULT_ENERGY_GAIN_FACTOR),
         ),
         execution=LegacyExecutionConfig(max_steps=max_steps),
         logging=LegacyLoggingConfig(enabled=False),
@@ -168,16 +175,15 @@ def _build_new_configs(
                 "max_consume": transition_ov.get("max_consume", DEFAULT_MAX_CONSUME),
                 "energy_gain_factor": transition_ov.get("energy_gain_factor", DEFAULT_ENERGY_GAIN_FACTOR),
             },
-            "world_dynamics": {
-                "resource_regen_rate": wd_ov.get("resource_regen_rate", DEFAULT_REGEN_RATE),
-            },
         }
     )
 
+    regen_rate = wd_ov.get("resource_regen_rate", 0.0)
     world_config = BaseWorldConfig(
         grid_width=grid_width,
         grid_height=grid_height,
         obstacle_density=obstacle_density,
+        resource_regen_rate=regen_rate,
     )
 
     return system_config, world_config, seed, max_steps
@@ -220,7 +226,8 @@ def _run_new_episode(overrides: dict | None = None) -> Trajectory:
     Manually orchestrates the framework's role (regen, action application,
     new observation) to match the legacy step lifecycle.
     """
-    system_config, world_config, seed, max_steps = _build_new_configs(overrides)
+    system_config, world_config, seed, max_steps = _build_new_configs(
+        overrides)
 
     system = SystemA(system_config)
     registry = create_action_registry()
@@ -230,7 +237,6 @@ def _run_new_episode(overrides: dict | None = None) -> Trajectory:
 
     agent_state = system.initialize_state()
     rng = np.random.default_rng(seed)
-    regen_rate = system_config.world_dynamics.resource_regen_rate
     max_consume = system_config.transition.max_consume
 
     traj = Trajectory()
@@ -240,8 +246,8 @@ def _run_new_episode(overrides: dict | None = None) -> Trajectory:
         decide_result = system.decide(world, agent_state, rng)
         traj.actions.append(decide_result.action)
 
-        # Phase 2: Framework applies regeneration
-        apply_regeneration(world, regen_rate=regen_rate)
+        # Phase 2: World advances its dynamics
+        world.tick()
 
         # Phase 3: Framework applies action
         context = {"max_consume": max_consume}

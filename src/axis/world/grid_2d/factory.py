@@ -6,7 +6,15 @@ import numpy as np
 
 from axis.sdk.position import Position
 from axis.sdk.world_types import BaseWorldConfig
-from axis.world.model import Cell, CellType, RegenerationMode, World
+from axis.world.grid_2d.config import Grid2DWorldConfig
+from axis.world.grid_2d.model import Cell, CellType, RegenerationMode, World
+
+
+def _parse_grid_config(config: BaseWorldConfig) -> Grid2DWorldConfig:
+    """Extract and validate Grid2D fields from BaseWorldConfig extras."""
+    extra_data = {k: v for k, v in config.__pydantic_extra__.items(
+    )} if config.__pydantic_extra__ else {}
+    return Grid2DWorldConfig(**extra_data)
 
 
 def create_world(
@@ -15,52 +23,53 @@ def create_world(
     grid: list[list[Cell]] | None = None,
     *,
     seed: int | None = None,
-    regeneration_mode: RegenerationMode = RegenerationMode.ALL_TRAVERSABLE,
-    regen_eligible_ratio: float | None = None,
 ) -> World:
     """Create a World from configuration.
 
     If grid is None, creates a grid of EMPTY cells.
     If grid is provided, validates dimensions against config.
 
-    Regeneration parameters are system-provided (not part of
-    BaseWorldConfig) since systems own their dynamics (Q12).
+    Regeneration parameters are read from the world config.
+    The world owns its dynamics (regeneration mode, rate, eligibility).
 
     When ``regeneration_mode`` is ``SPARSE_FIXED_RATIO``,
     a deterministic subset of traversable cells is marked as
     regeneration-eligible using the supplied *seed*.
     """
+    gc = _parse_grid_config(config)
+
     if grid is None:
         empty_cell = Cell(cell_type=CellType.EMPTY, resource_value=0.0)
         grid = [
-            [empty_cell for _ in range(config.grid_width)]
-            for _ in range(config.grid_height)
+            [empty_cell for _ in range(gc.grid_width)]
+            for _ in range(gc.grid_height)
         ]
     else:
-        if len(grid) != config.grid_height:
+        if len(grid) != gc.grid_height:
             raise ValueError(
                 f"Grid height {len(grid)} does not match "
-                f"config grid_height {config.grid_height}"
+                f"config grid_height {gc.grid_height}"
             )
         for y, row in enumerate(grid):
-            if len(row) != config.grid_width:
+            if len(row) != gc.grid_width:
                 raise ValueError(
                     f"Row {y} width {len(row)} does not match "
-                    f"config grid_width {config.grid_width}"
+                    f"config grid_width {gc.grid_width}"
                 )
 
-    if config.obstacle_density > 0:
-        _apply_obstacles(grid, config, agent_position, seed)
+    if gc.obstacle_density > 0:
+        _apply_obstacles(grid, gc, agent_position, seed)
 
+    regeneration_mode = RegenerationMode(gc.regeneration_mode)
     if regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO:
-        _apply_sparse_eligibility(grid, regen_eligible_ratio, seed)
+        _apply_sparse_eligibility(grid, gc.regen_eligible_ratio, seed)
 
-    return World(grid=grid, agent_position=agent_position)
+    return World(grid=grid, agent_position=agent_position, regen_rate=gc.resource_regen_rate)
 
 
 def _apply_obstacles(
     grid: list[list[Cell]],
-    config: BaseWorldConfig,
+    config: Grid2DWorldConfig,
     agent_position: Position,
     seed: int | None,
 ) -> None:

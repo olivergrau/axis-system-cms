@@ -114,21 +114,40 @@ An episode ends when either `max_steps` is reached (termination reason:
 | `grid_width`       | integer            | yes      | --      | > 0 |
 | `grid_height`      | integer            | yes      | --      | > 0 |
 | `obstacle_density` | float              | no       | `0.0`   | >= 0.0 and < 1.0 |
+| `resource_regen_rate` | float           | no       | `0.0`   | 0.0--1.0 |
+| `regeneration_mode` | string            | no       | `"all_traversable"` | see Section 3.3.1 |
+| `regen_eligible_ratio` | float or null  | no       | `null`  | > 0 and <= 1.0 |
+| `world_type`       | string             | no       | `"grid_2d"` | Registered world type |
 
 ```yaml
 world:
   grid_width: 10
   grid_height: 10
   obstacle_density: 0.1
+  resource_regen_rate: 0.05
 ```
 
-The `world` section defines the physical grid. Obstacles are placed
-randomly at initialization using the experiment seed.
+The `world` section defines the physical grid and its dynamics.
+Obstacles are placed randomly at initialization using the experiment
+seed. Regeneration parameters control how resources recover over time
+and are a property of the world, not the system.
 
-**Important:** The `world` section only controls grid structure. Resource
-regeneration parameters belong in the system-specific config (for
-System A: `system.world_dynamics`). Placing regeneration fields under
-`world` will cause a validation error. See Section 5.4 for details.
+> **Architecture note:** At the SDK level, `BaseWorldConfig` is a minimal
+> type with only `world_type: str` defined. All other fields (`grid_width`,
+> `grid_height`, etc.) pass through as Pydantic extras via `extra="allow"`.
+> The world factory for the `"grid_2d"` world type validates these extras
+> against a typed `Grid2DWorldConfig`. Custom world types can define their
+> own configuration fields.
+
+#### 3.3.1 Regeneration modes
+
+- **`"all_traversable"`** (default) -- Every non-obstacle cell regenerates
+  resources by `resource_regen_rate` per step. Simple and uniform.
+
+- **`"sparse_fixed_ratio"`** -- Only a fixed fraction of traversable cells
+  (determined by `regen_eligible_ratio`) can regenerate. The eligible
+  cells are chosen randomly at world initialization using the experiment
+  seed. This creates spatially uneven resource availability.
 
 ### 3.4 `logging` -- Runtime observability
 
@@ -183,7 +202,6 @@ system:
   agent: { ... }
   policy: { ... }
   transition: { ... }
-  world_dynamics: { ... }
 ```
 
 If you register a custom system type, the `system` dict can contain
@@ -194,7 +212,7 @@ whatever fields your system factory expects.
 ## 5. System A configuration (`system_type: "system_a"`)
 
 When `system_type` is `"system_a"`, the `system` dict is parsed into a
-`SystemAConfig` with four sub-sections. All fields within each
+`SystemAConfig` with three sub-sections. All fields within each
 sub-section are required unless a default is shown.
 
 ### 5.1 `system.agent` -- Agent initialization
@@ -277,70 +295,6 @@ Each step:
 4. If energy reaches 0, the episode terminates with reason
    `"energy_depleted"`.
 
-### 5.4 `system.world_dynamics` -- Resource regeneration
-
-| Field                   | Type         | Required | Default             | Constraints | Description |
-|-------------------------|--------------|----------|---------------------|-------------|-------------|
-| `resource_regen_rate`   | float        | no       | `0.0`               | 0.0--1.0    | Per-step regeneration amount added to each eligible cell. |
-| `regeneration_mode`     | string       | no       | `"all_traversable"` | see below   | Which cells can regenerate resources. |
-| `regen_eligible_ratio`  | float or null| no       | `null`              | > 0 and <= 1.0 | Fraction of traversable cells that are eligible for regeneration. Required when mode is `"sparse_fixed_ratio"`. |
-
-```yaml
-system:
-  world_dynamics:
-    resource_regen_rate: 0.05
-    regeneration_mode: "all_traversable"
-```
-
-#### Regeneration modes
-
-- **`"all_traversable"`** (default) -- Every non-obstacle cell regenerates
-  resources by `resource_regen_rate` per step. Simple and uniform.
-
-- **`"sparse_fixed_ratio"`** -- Only a fixed fraction of traversable cells
-  (determined by `regen_eligible_ratio`) can regenerate. The eligible
-  cells are chosen randomly at world initialization using the experiment
-  seed. This creates spatially uneven resource availability.
-
-```yaml
-# Sparse regeneration: only ~17% of traversable cells regenerate
-system:
-  world_dynamics:
-    resource_regen_rate: 0.05
-    regeneration_mode: "sparse_fixed_ratio"
-    regen_eligible_ratio: 0.17
-```
-
-#### Common mistake: placing regeneration under `world`
-
-The top-level `world` section only accepts `grid_width`, `grid_height`,
-and `obstacle_density`. Regeneration parameters must go under
-`system.world_dynamics`:
-
-```yaml
-# WRONG -- these fields are not recognized under world:
-world:
-  grid_width: 10
-  grid_height: 10
-  regeneration_mode: "sparse_fixed_ratio"    # ERROR
-  regen_eligible_ratio: 0.17                 # ERROR
-
-# CORRECT -- regeneration parameters go under system.world_dynamics:
-world:
-  grid_width: 10
-  grid_height: 10
-
-system:
-  world_dynamics:
-    resource_regen_rate: 0.05
-    regeneration_mode: "sparse_fixed_ratio"
-    regen_eligible_ratio: 0.17
-```
-
-This separation exists because regeneration behavior is system-specific.
-Different system types may implement different regeneration strategies
-(or none at all). The framework only manages the grid structure.
-
 ---
 
 ## 6. Complete field reference
@@ -359,6 +313,10 @@ Different system types may implement different regeneration strategies
 | `world.grid_width`              | int     | yes      | --          |
 | `world.grid_height`             | int     | yes      | --          |
 | `world.obstacle_density`        | float   | no       | `0.0`       |
+| `world.resource_regen_rate`     | float   | no       | `0.0`       |
+| `world.regeneration_mode`       | string  | no       | `"all_traversable"` |
+| `world.regen_eligible_ratio`    | float   | no       | `null`      |
+| `world.world_type`              | string  | no       | `"grid_2d"` |
 | `logging.enabled`               | bool    | no       | `true`      |
 | `logging.console_enabled`       | bool    | no       | `true`      |
 | `logging.verbosity`             | string  | no       | `"compact"` |
@@ -385,9 +343,6 @@ Different system types may implement different regeneration strategies
 | `system.transition.stay_cost`           | float  | yes      | --                  |
 | `system.transition.max_consume`         | float  | yes      | --                  |
 | `system.transition.energy_gain_factor`  | float  | yes      | --                  |
-| `system.world_dynamics.resource_regen_rate` | float | no   | `0.0`               |
-| `system.world_dynamics.regeneration_mode`   | string | no  | `"all_traversable"` |
-| `system.world_dynamics.regen_eligible_ratio`| float | conditional | `null`        |
 
 ---
 
@@ -414,8 +369,8 @@ Paths use 3 dot-separated segments: `<domain>.<section>.<field>`.
 
 | Domain      | Addressable sections | Examples |
 |-------------|----------------------|----------|
-| `framework` | `general`, `execution`, `world`, `logging` | `framework.execution.max_steps`, `framework.world.grid_width` |
-| `system`    | Any key in the `system` dict | `system.policy.temperature`, `system.transition.energy_gain_factor`, `system.world_dynamics.resource_regen_rate` |
+| `framework` | `general`, `execution`, `world`, `logging` | `framework.execution.max_steps`, `framework.world.grid_width`, `framework.world.resource_regen_rate` |
+| `system`    | Any key in the `system` dict | `system.policy.temperature`, `system.transition.energy_gain_factor` |
 
 ### 7.3 Validation rules
 
@@ -463,7 +418,7 @@ parameter_values: [5.0, 10.0, 15.0, 20.0]
 
 ```yaml
 experiment_type: "ofat"
-parameter_path: "system.world_dynamics.resource_regen_rate"
+parameter_path: "framework.world.resource_regen_rate"
 parameter_values: [0.0, 0.01, 0.05, 0.1, 0.2]
 ```
 
@@ -568,7 +523,7 @@ under a framework section (or vice versa). The ownership rules are:
 |------|-------|-----------------|
 | Grid dimensions (`grid_width`, `grid_height`) | Framework | `world:` |
 | Obstacle density | Framework | `world:` |
-| Resource regeneration | System | `system.world_dynamics:` |
+| Resource regeneration | Framework | `world:` |
 | Agent energy parameters | System | `system.agent:` |
 | Action selection strategy | System | `system.policy:` |
 | Movement/consumption costs | System | `system.transition:` |
@@ -580,25 +535,43 @@ under a framework section (or vice versa). The ownership rules are:
 
 ## 10. Shipped config files
 
-The project includes two ready-to-use config files at
+The project includes four ready-to-use config files at
 `experiments/configs/`:
 
-### `baseline.yaml` -- Single-run experiment
+### `system-a-baseline.yaml` -- Single-run experiment
 
 Runs 5 episodes on a 10x10 grid with sparse regeneration. Suitable
 as a starting point for custom experiments.
 
 ```
-axis experiments run experiments/configs/baseline.yaml
+axis experiments run experiments/configs/system-a-baseline.yaml
 ```
 
-### `energy-gain-sweep.yaml` -- OFAT experiment
+### `system-a-energy-gain-sweep.yaml` -- OFAT experiment
 
 Sweeps `system.transition.energy_gain_factor` across 4 values
 (5.0, 10.0, 15.0, 20.0), producing 4 runs of 5 episodes each.
 
 ```
-axis experiments run experiments/configs/energy-gain-sweep.yaml
+axis experiments run experiments/configs/system-a-energy-gain-sweep.yaml
+```
+
+### `system-b-sdk-demo.yaml` -- System B SDK demo
+
+System B SDK demo with signal landscape world. Runs 5 episodes with
+the scout agent on a signal-based world.
+
+```
+axis experiments run experiments/configs/system-b-sdk-demo.yaml
+```
+
+### `system-a-toroidal-demo.yaml` -- Toroidal grid demo
+
+System A on a toroidal (wraparound) grid world. Runs 5 episodes on a
+10x10 toroidal grid with 5% obstacles and 3% regeneration.
+
+```
+axis experiments run experiments/configs/system-a-toroidal-demo.yaml
 ```
 
 To create a custom config, copy one of these files, modify the values

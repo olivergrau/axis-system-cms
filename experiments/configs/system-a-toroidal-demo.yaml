@@ -1,6 +1,6 @@
-# OFAT sweep over energy gain factor (v0.2.0 format)
+# Toroidal world demo (System A with wraparound edges)
 system_type: "system_a"
-experiment_type: "ofat"
+experiment_type: "single_run"
 
 general:
   seed: 42
@@ -9,9 +9,11 @@ execution:
   max_steps: 200
 
 world:
+  world_type: "toroidal"
   grid_width: 10
   grid_height: 10
-  obstacle_density: 0.0
+  obstacle_density: 0.05
+  resource_regen_rate: 0.03
 
 system:
   agent:
@@ -31,6 +33,3 @@ system:
     energy_gain_factor: 10.0
 
 num_episodes_per_run: 5
-
-parameter_path: "system.transition.energy_gain_factor"
-parameter_values: [5.0, 10.0, 15.0, 20.0]

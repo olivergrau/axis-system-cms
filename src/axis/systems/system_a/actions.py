@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from axis.sdk.world_types import ActionOutcome
-from axis.world.model import Cell, CellType, World
+from axis.sdk.world_types import ActionOutcome, MutableWorldProtocol
 
 
 def handle_consume(
-    world: World,
+    world: MutableWorldProtocol,
     *,
     context: dict[str, Any],
 ) -> ActionOutcome:
@@ -20,38 +19,14 @@ def handle_consume(
     """
     max_consume: float = context["max_consume"]
     pos = world.agent_position
-    cell = world.get_internal_cell(pos)
-
-    if cell.resource_value <= 0:
-        return ActionOutcome(
-            action="consume",
-            moved=False,
-            new_position=pos,
-            consumed=False,
-            resource_consumed=0.0,
-        )
-
-    delta_r = min(cell.resource_value, max_consume)
-    remainder = cell.resource_value - delta_r
-
-    if remainder <= 0:
-        new_cell = Cell(
-            cell_type=CellType.EMPTY,
-            resource_value=0.0,
-            regen_eligible=cell.regen_eligible,
-        )
-    else:
-        new_cell = Cell(
-            cell_type=CellType.RESOURCE,
-            resource_value=remainder,
-            regen_eligible=cell.regen_eligible,
-        )
-    world.set_cell(pos, new_cell)
+    extracted = world.extract_resource(pos, max_consume)
 
     return ActionOutcome(
         action="consume",
         moved=False,
         new_position=pos,
-        consumed=True,
-        resource_consumed=delta_r,
+        data={
+            "consumed": extracted > 0,
+            "resource_consumed": extracted,
+        },
     )

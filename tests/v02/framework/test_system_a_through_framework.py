@@ -113,18 +113,20 @@ def _run_framework_episode(overrides: dict | None = None) -> Trajectory:
     if "max_consume" in transition_ov:
         builder = builder.with_max_consume(transition_ov["max_consume"])
     if "energy_gain_factor" in transition_ov:
-        builder = builder.with_energy_gain_factor(transition_ov["energy_gain_factor"])
-    if "resource_regen_rate" in wd_ov:
-        builder = builder.with_regen_rate(wd_ov["resource_regen_rate"])
+        builder = builder.with_energy_gain_factor(
+            transition_ov["energy_gain_factor"])
 
     system_config = builder.build()
+
+    # Build world config -- regen params now live in the world config
+    regen_rate = wd_ov.get("resource_regen_rate", 0.0)
     world_config = BaseWorldConfig(
         grid_width=grid_width,
         grid_height=grid_height,
         obstacle_density=obstacle_density,
+        resource_regen_rate=regen_rate,
     )
 
-    # Run via RunExecutor (which uses the registry -> runner pipeline)
     run_config = RunConfig(
         system_type="system_a",
         system_config=system_config,
@@ -188,7 +190,7 @@ class TestSystemAViaRunner:
             seed=42,
         )
         trace = run_episode(
-            system, world, registry, max_steps=10, regen_rate=0.0, seed=42,
+            system, world, registry, max_steps=10, seed=42,
         )
         assert isinstance(trace, BaseEpisodeTrace)
         assert trace.system_type == "system_a"

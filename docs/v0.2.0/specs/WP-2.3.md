@@ -1,5 +1,15 @@
 # WP-2.3 Implementation Brief -- System A Conformance
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `WorldDynamicsConfig` and `world_dynamics` field removed from
+>   `SystemAConfig`. System config keys are `{"agent", "policy", "transition"}`.
+> - Regeneration parameters now live in `BaseWorldConfig` (world section).
+> - `handle_consume` uses `world.extract_resource()` instead of directly
+>   importing and manipulating `Cell`/`CellType` from `axis.world.model`.
+> - `ActionOutcome` uses `data={"consumed": True, "resource_consumed": delta}`
+>   instead of `consumed=True, resource_consumed=delta`.
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. WP-2.1 extracted the world model into `axis/world/` and WP-2.2 implemented the action engine and dynamics.
@@ -194,34 +204,21 @@ class TransitionConfig(BaseModel):
     energy_gain_factor: float = Field(..., ge=0)
 
 
-class WorldDynamicsConfig(BaseModel):
-    """System A world dynamics parameters (system-owned per Q12)."""
-    model_config = ConfigDict(frozen=True)
-
-    resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
-
-
 class SystemAConfig(BaseModel):
     """Complete System A configuration.
-
     Parsed from the opaque `system: dict[str, Any]` in ExperimentConfig.
     """
     model_config = ConfigDict(frozen=True)
-
     agent: AgentConfig
     policy: PolicyConfig
     transition: TransitionConfig
-    world_dynamics: WorldDynamicsConfig = Field(
-        default_factory=lambda: WorldDynamicsConfig()
-    )
 ```
 
 **Design notes**:
 
 - `PolicyConfig.selection_mode` is `str` (not enum) for simplicity. Values: `"sample"`, `"argmax"`
-- `WorldDynamicsConfig` holds `resource_regen_rate` -- the system-owned dynamics parameter that was previously in `WorldConfig`
 - `SystemAConfig` is parsed from the opaque `system: dict` in `ExperimentConfig` via `SystemAConfig(**system_dict)`
-- The `system` dict structure in `ExperimentConfig` matches: `{"agent": {...}, "policy": {...}, "transition": {...}, "world_dynamics": {...}}`
+- The system config dict keys are `{"agent", "policy", "transition"}`
 
 ### 3. Sensor
 
@@ -376,7 +373,7 @@ class SystemATransition:
         """
         # Phase 4: Energy update
         cost = self._get_action_cost(action_outcome.action)
-        energy_gain = self._energy_gain_factor * action_outcome.resource_consumed
+        energy_gain = self._energy_gain_factor * action_outcome.data.get("resource_consumed", 0.0)
         new_energy = clip_energy(
             agent_state.energy - cost + energy_gain,
             self._max_energy,
@@ -413,7 +410,7 @@ class SystemATransition:
 
 - Only handles phases 4-6. Phases 1-3 (regen, action, new obs) are framework-owned
 - `action_outcome.action` is a string -- use to determine cost type
-- `action_outcome.resource_consumed` provides the delta for energy gain
+- `action_outcome.data.get("resource_consumed", 0.0)` provides the delta for energy gain
 - `trace_data` carries system-specific trace information (packed into `system_data` in `BaseStepTrace`)
 - Returns `TransitionResult` (SDK type)
 - **Timestep parameter**: The transition needs the timestep for memory entries. This is passed via the agent state or as an additional parameter. The cleanest approach is to include `timestep` as a field on `AgentState` or to have the `SystemA.transition()` method inject it. See design decision below.
@@ -450,66 +447,34 @@ Functionally identical to `axis_system_a/memory.py:update_memory()`.
 
 ```python
 from typing import Any
-
-from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
-from axis.world.model import Cell, CellType, World
-
 
 def handle_consume(
-    world: World,
+    world: Any,
     *,
     context: dict[str, Any],
 ) -> ActionOutcome:
     """System A consume action handler.
-
     Extracts resource from the agent's current cell.
     context must contain {"max_consume": float}.
     """
     max_consume = context["max_consume"]
     pos = world.agent_position
-    cell = world.get_internal_cell(pos)
-
-    if cell.resource_value <= 0:
-        return ActionOutcome(
-            action="consume",
-            moved=False,
-            new_position=pos,
-            consumed=False,
-            resource_consumed=0.0,
-        )
-
-    delta_r = min(cell.resource_value, max_consume)
-    remainder = cell.resource_value - delta_r
-
-    if remainder <= 0:
-        new_cell = Cell(
-            cell_type=CellType.EMPTY,
-            resource_value=0.0,
-            regen_eligible=cell.regen_eligible,
-        )
-    else:
-        new_cell = Cell(
-            cell_type=CellType.RESOURCE,
-            resource_value=remainder,
-            regen_eligible=cell.regen_eligible,
-        )
-    world.set_cell(pos, new_cell)
+    delta_r = world.extract_resource(pos, max_consume)
 
     return ActionOutcome(
         action="consume",
         moved=False,
         new_position=pos,
-        consumed=True,
-        resource_consumed=delta_r,
+        data={"consumed": delta_r > 0, "resource_consumed": delta_r},
     )
 ```
 
 **Design notes**:
 
-- Functionally identical to `axis_system_a/transition.py:_apply_consume()`
-- Returns `ActionOutcome` (SDK type) instead of a `(bool, float)` tuple
-- Uses `world.get_internal_cell()` (needs regen_eligible for new cell)
+- Uses `world.extract_resource()` protocol method instead of importing `Cell`/`CellType` from `axis.world.model`
+- No longer has any import dependency on `axis.world.model`
+- Returns `data` dict instead of `consumed`/`resource_consumed` fields
 - Registered with the `ActionRegistry` during `SystemA` initialization
 
 ### 9. SystemA Class
@@ -690,9 +655,8 @@ Each sub-component must satisfy its corresponding protocol:
 
 `axis.systems.system_a` imports from:
 - `axis.sdk` (interfaces, types, position, world_types, actions)
-- `axis.world` (Cell, CellType, World -- for consume handler only)
 
-It does **not** import from `axis.framework`.
+It does **not** import from `axis.world` or `axis.framework`.
 
 ### 4. Opaque Agent State
 

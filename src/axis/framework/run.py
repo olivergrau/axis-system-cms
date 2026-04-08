@@ -152,19 +152,13 @@ class RunExecutor:
         episode_seed: int,
     ) -> BaseEpisodeTrace:
         """Run one episode and return its trace."""
-        world_dynamics = config.system_config.get("world_dynamics", {})
-        regen_rate = world_dynamics.get("resource_regen_rate", 0.0)
-        regen_mode = world_dynamics.get("regeneration_mode", "all_traversable")
-        regen_ratio = world_dynamics.get("regen_eligible_ratio", None)
+        world_config = config.framework_config.world
 
         world, registry = setup_episode(
             system,
-            config.framework_config.world,
+            world_config,
             config.agent_start_position,
             seed=episode_seed,
-            regen_rate=regen_rate,
-            regeneration_mode=regen_mode,
-            regen_eligible_ratio=regen_ratio,
         )
 
         return run_episode(
@@ -172,6 +166,5 @@ class RunExecutor:
             world,
             registry,
             max_steps=config.framework_config.execution.max_steps,
-            regen_rate=regen_rate,
             seed=episode_seed,
         )

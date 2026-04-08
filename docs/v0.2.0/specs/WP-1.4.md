@@ -1,5 +1,14 @@
 # WP-1.4 Implementation Brief -- Framework Config Types
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - Section 6 ("Regeneration Config is System Responsibility") is outdated.
+>   Regeneration parameters now live in `BaseWorldConfig` (via `extra="allow"`),
+>   not in `system.world_dynamics`. System config keys are
+>   `{"agent", "policy", "transition"}`.
+> - `BaseWorldConfig` now uses `extra="allow"` so grid-specific fields
+>   pass through as extras while the SDK type remains minimal.
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. WP-1.1 defined the core SDK interfaces, WP-1.2 defined the world contracts (`Position`, `WorldView`, `ActionOutcome`, `BaseWorldConfig`), and WP-1.3 defined the replay contract (`WorldSnapshot`, `BaseStepTrace`, `BaseEpisodeTrace`).
@@ -485,22 +494,29 @@ axis.framework.config     -- imports from axis.sdk (Position, BaseWorldConfig)
 
 `axis.framework` depends on `axis.sdk`. No reverse dependency.
 
-### 6. Regeneration Config is System Responsibility
+### 6. World Config is Extensible via Extras
 
-`BaseWorldConfig` contains only structural world config (`grid_width`, `grid_height`, `obstacle_density`). Regeneration parameters (`resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio`) are part of the system config dict. For System A, they will be in `system.world_dynamics`:
+`BaseWorldConfig` uses `ConfigDict(extra="allow")` with only `world_type: str` as a defined field. Grid-specific fields (`grid_width`, `grid_height`, `obstacle_density`, `resource_regen_rate`, etc.) pass through as Pydantic extras.
+
+This means:
+- `BaseWorldConfig(grid_width=10, grid_height=10, obstacle_density=0.1, resource_regen_rate=0.05)` stores all extra fields transparently
+- OFAT paths like `framework.world.grid_width` work because `getattr(config.world, "grid_width")` accesses the extra field
+- The world factory parses extras into `Grid2DWorldConfig` for type-safe validation
+- Custom world types can pass different extras (e.g. `hex_radius=5`)
+
+The system config dict contains only system-owned sections:
 
 ```json
 {
     "system": {
         "agent": { "initial_energy": 50.0, "max_energy": 100.0, "memory_capacity": 5 },
         "policy": { "selection_mode": "sample", "temperature": 1.0, ... },
-        "transition": { "move_cost": 1.0, ... },
-        "world_dynamics": { "resource_regen_rate": 0.0, "regeneration_mode": "all_traversable", ... }
+        "transition": { "move_cost": 1.0, ... }
     }
 }
 ```
 
-The framework runner will extract regen params from the system config and pass them to the world dynamics engine (WP-3.2). This is a bridging concern resolved at runtime, not in the config type hierarchy.
+The framework runner does not extract or pass regen parameters -- regeneration is handled internally by the world via `World.tick()`.
 
 ---
 

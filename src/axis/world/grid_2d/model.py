@@ -71,6 +71,8 @@ class World:
         self,
         grid: list[list[Cell]],
         agent_position: Position,
+        *,
+        regen_rate: float = 0.0,
     ) -> None:
         if not grid or not grid[0]:
             raise ValueError("Grid must be non-empty")
@@ -100,6 +102,7 @@ class World:
         self._width: int = width
         self._height: int = height
         self._agent_position: Position = agent_position
+        self._regen_rate: float = regen_rate
 
     # --- WorldView protocol (read-only) ---
 
@@ -182,3 +185,57 @@ class World:
     def is_regen_eligible(self, position: Position) -> bool:
         """Check regen eligibility. Framework-only."""
         return self.get_internal_cell(position).regen_eligible
+
+    # --- World dynamics ---
+
+    def tick(self) -> None:
+        """Advance world dynamics by one step (regeneration)."""
+        from axis.world.grid_2d.dynamics import apply_regeneration
+
+        apply_regeneration(self, regen_rate=self._regen_rate)
+
+    def extract_resource(self, position: Position, max_amount: float) -> float:
+        """Extract up to *max_amount* resource from the cell at *position*.
+
+        Returns the amount actually extracted. Mutates the cell accordingly:
+        - If the cell has no resource, returns 0.0
+        - If the cell is fully consumed, it becomes EMPTY
+        - If partially consumed, it stays RESOURCE with the remainder
+        """
+        cell = self.get_internal_cell(position)
+        if cell.resource_value <= 0:
+            return 0.0
+
+        delta = min(cell.resource_value, max_amount)
+        remainder = cell.resource_value - delta
+
+        if remainder <= 0:
+            new_cell = Cell(
+                cell_type=CellType.EMPTY,
+                resource_value=0.0,
+                regen_eligible=cell.regen_eligible,
+            )
+        else:
+            new_cell = Cell(
+                cell_type=CellType.RESOURCE,
+                resource_value=remainder,
+                regen_eligible=cell.regen_eligible,
+            )
+        self.set_cell(position, new_cell)
+        return delta
+
+    def snapshot(self) -> WorldSnapshot:
+        """Create an immutable snapshot of the current world state."""
+        from axis.sdk.snapshot import WorldSnapshot
+
+        grid = tuple(
+            tuple(self.get_cell(Position(x=x, y=y))
+                  for x in range(self._width))
+            for y in range(self._height)
+        )
+        return WorldSnapshot(
+            grid=grid,
+            agent_position=self._agent_position,
+            width=self._width,
+            height=self._height,
+        )

@@ -1,5 +1,15 @@
 # WP-1.2 Implementation Brief -- World Contracts
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `ActionOutcome` now uses a generic `data: dict[str, Any]` instead of
+>   `consumed: bool` and `resource_consumed: float` fields
+> - `BaseWorldConfig` now uses `extra="allow"` with only `world_type: str`
+>   as a defined field. Grid-specific fields are parsed by `Grid2DWorldConfig`
+>   in `axis.world.config`
+> - `MutableWorldProtocol` extends `WorldView` with `tick()`,
+>   `extract_resource()`, and `snapshot()` methods
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. WP-1.1 defined the core SDK interfaces (`SystemInterface`, `SensorInterface`, etc.).
@@ -191,15 +201,19 @@ class ActionOutcome(BaseModel):
 
     Returned by the framework to the system after action application.
     The system uses this to update its internal state (energy, memory, etc.).
+
+    Universal fields (action, moved, new_position) are provided by the
+    framework. The ``data`` dict carries action-specific results set by
+    the action handler (e.g. consume results, scan results). Systems
+    read what they need from ``data``; the framework never inspects it.
     """
 
     model_config = ConfigDict(frozen=True)
 
-    action: str                             # The action that was applied
-    moved: bool                             # Whether the agent's position changed
-    new_position: Position                  # Agent position after action
-    consumed: bool = False                  # Whether resources were consumed
-    resource_consumed: float = 0.0          # Amount of resource extracted [0, 1]
+    action: str
+    moved: bool
+    new_position: Position
+    data: dict[str, Any] = Field(default_factory=dict)
 ```
 
 **Field descriptions**:
@@ -209,14 +223,13 @@ class ActionOutcome(BaseModel):
 | `action` | Echo of the requested action | Systems can verify which action was applied |
 | `moved` | Framework movement handler | True if position changed (movement actions only) |
 | `new_position` | Framework, post-action | Agent's new grid position |
-| `consumed` | System-registered consume handler | True if resource was extracted |
-| `resource_consumed` | System-registered consume handler | Delta of resource value `[0, max_consume]` |
+| `data` | Action handler | Action-specific result data (e.g. `{"consumed": True, "resource_consumed": 0.5}` for consume, `{"scan_total": 3.2}` for scan). Empty dict for base actions. |
 
 **Design notes**:
 
-- `consumed` and `resource_consumed` default to `False`/`0.0`. For base actions (movement, stay), these remain at defaults. Only system-registered action handlers (e.g., consume) populate them.
-- This is extensible: future action types may add fields via subclassing or additional metadata. For now, the fields cover all System A needs.
-- Matches the information currently extracted inline in `transition.py:step()`.
+- `data` defaults to an empty dict. For base actions (movement, stay), the dict stays empty.
+- System-specific action handlers populate `data` with whatever key-value pairs the system's `transition()` method needs. The framework never inspects this dict.
+- This replaces the original `consumed`/`resource_consumed` fields, which were System-A-specific. The generic `data` dict enables any system to pass custom action results without modifying the SDK type.
 
 ---
 
@@ -228,24 +241,27 @@ class ActionOutcome(BaseModel):
 class BaseWorldConfig(BaseModel):
     """Framework-level world configuration.
 
-    Defines the structural properties of the world grid.
-    System-specific world dynamics (e.g., regeneration parameters)
-    are part of the system config, not this type.
+    Only ``world_type`` is framework-owned. All other fields are
+    world-type-specific and passed through to the world factory via
+    ``extra="allow"``.  This mirrors how system config is an opaque
+    dict validated by the system at instantiation.
+
+    Custom world types add their own fields (e.g. ``hex_radius``) and
+    the framework stores them transparently.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="allow")
 
-    grid_width: int = Field(..., gt=0)
-    grid_height: int = Field(..., gt=0)
-    obstacle_density: float = Field(default=0.0, ge=0.0, lt=1.0)
+    world_type: str = "grid_2d"
 ```
 
 **Design notes**:
 
-- Contains only **framework-owned** world structure parameters
-- `obstacle_density` has `lt=1.0` (strictly less than 1), matching the existing `WorldConfig` constraint
-- Regeneration parameters (`resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio`) are **not** here -- they are system config (per Q12: system owns dynamics). They will reside in `SystemAConfig.world_dynamics` (WP-2.3)
-- This is the type that `create_world()` will accept in WP-2.1
+- Contains only `world_type` as a framework-owned routing field
+- Uses `extra="allow"` so grid-specific parameters (`grid_width`, `grid_height`, `obstacle_density`, `resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio`) pass through as Pydantic extras
+- The world factory (e.g. the built-in `grid_2d` factory) parses extras into a `Grid2DWorldConfig` for type-safe validation
+- This mirrors how `ExperimentConfig.system` is an opaque dict -- world config is similarly opaque to the framework beyond the routing key
+- OFAT parameter paths like `framework.world.grid_width` work because Pydantic extras are accessible via `getattr`
 
 ---
 
@@ -379,12 +395,7 @@ The world contract types live in `axis.sdk` because both the framework and syste
 
 ### 4. Forward Compatibility
 
-`ActionOutcome` is designed to accommodate System A's consume action. Future systems with different action types may need additional outcome fields. When that happens, the approach should be:
-
-- Add optional fields with defaults (backward compatible)
-- Or introduce a `metadata: dict[str, Any]` field
-
-For now, the fields are sufficient for all base actions plus consume.
+The `data: dict[str, Any]` pattern on `ActionOutcome` provides forward compatibility by design. Each system's action handlers populate whatever keys they need, and only that system's `transition()` method reads them. No SDK changes required for new action types.
 
 ### 5. Frozen Pydantic Models
 
@@ -434,18 +445,15 @@ Must include:
    - Frozen: setting `cell_type` raises
 
 3. **ActionOutcome**:
-   - Default construction: `ActionOutcome(action="up", moved=True, new_position=Position(x=1, y=0))` works
-   - `consumed` defaults to `False`, `resource_consumed` defaults to `0.0`
-   - Full construction: `ActionOutcome(action="consume", moved=False, new_position=..., consumed=True, resource_consumed=0.5)` works
+   - Default construction: `ActionOutcome(action="up", moved=True, new_position=Position(x=1, y=0))` works with `data` defaulting to `{}`
+   - Construction with data: `ActionOutcome(action="consume", moved=False, new_position=..., data={"consumed": True, "resource_consumed": 0.5})` works
    - Frozen: setting `moved` raises
 
 4. **BaseWorldConfig**:
-   - `BaseWorldConfig(grid_width=10, grid_height=10)` works with default `obstacle_density=0.0`
-   - `BaseWorldConfig(grid_width=10, grid_height=10, obstacle_density=0.3)` works
-   - `grid_width=0` raises validation error (must be > 0)
-   - `obstacle_density=1.0` raises validation error (must be < 1.0)
-   - `obstacle_density=-0.1` raises validation error (must be >= 0.0)
-   - Frozen
+   - `BaseWorldConfig()` works with default `world_type="grid_2d"`
+   - `BaseWorldConfig(world_type="hex", hex_radius=5)` accepts custom world type and arbitrary extras
+   - `BaseWorldConfig(grid_width=10, grid_height=10)` accepted via `extra="allow"`
+   - Frozen: setting fields raises
 
 5. **WorldView protocol**:
    - A mock class with `width`, `height`, `agent_position`, `get_cell`, `is_within_bounds`, `is_traversable` satisfies `isinstance(mock, WorldView)`

@@ -9,10 +9,14 @@ execution:
   max_steps: 200
 
 world:
+  world_type: "grid_2d"
   grid_width: 10
   grid_height: 10
   obstacle_density: 0.0
-  
+  resource_regen_rate: 0.2
+  regeneration_mode: "sparse_fixed_ratio"
+  regen_eligible_ratio: 0.17
+
 system:
   agent:
     initial_energy: 50.0
@@ -29,9 +33,5 @@ system:
     stay_cost: 0.5
     max_consume: 1.0
     energy_gain_factor: 10.0
-  world_dynamics:
-    resource_regen_rate: 0.2
-    regeneration_mode: "sparse_fixed_ratio"
-    regen_eligible_ratio: 0.17
 
 num_episodes_per_run: 5

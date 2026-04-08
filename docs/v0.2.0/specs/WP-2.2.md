@@ -1,5 +1,14 @@
 # WP-2.2 Implementation Brief -- World Action Engine
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `apply_regeneration()` is now called internally by `World.tick()`,
+>   not directly by the framework runner.
+> - The framework runner calls `world.tick()` instead of
+>   `apply_regeneration(world, regen_rate=...)`.
+> - `apply_regeneration()` remains as an internal implementation detail
+>   in `axis.world.dynamics`.
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. WP-2.1 extracted the world model (`Cell`, `World`, `create_world`) into `axis/world/`.
@@ -238,7 +247,7 @@ from axis.sdk.position import Position
 from axis.world.model import Cell, CellType, World
 
 
-def apply_regeneration(world: World, *, regen_rate: float) -> int:
+def apply_regeneration(world: MutableWorldProtocol, *, regen_rate: float) -> int:
     """Apply deterministic cell regeneration to all eligible cells.
 
     For each non-obstacle, regen-eligible cell:
@@ -246,6 +255,10 @@ def apply_regeneration(world: World, *, regen_rate: float) -> int:
     EMPTY cells that gain resource become RESOURCE cells.
 
     Returns the number of cells updated.
+
+    Note: The framework runner calls world.tick() instead of calling
+    apply_regeneration() directly. World.tick() delegates to this
+    function internally.
     """
     if regen_rate == 0.0:
         return 0
@@ -352,7 +365,7 @@ The intended registration flow (fully realized in WP-2.3 and WP-3.2):
 Regeneration runs **before** action application at each step, preserving the v0.1.0 pipeline ordering:
 
 ```
-1. apply_regeneration(world, regen_rate=...)  # Phase 1
+1. world.tick()                               # Phase 1 (world advances its own dynamics)
 2. registry.apply(world, action, context=...) # Phase 2
 3. system.transition(...)                      # Phases 4-6 (energy, memory, termination)
 ```
@@ -429,8 +442,7 @@ Must include:
    - Action name echoed in `ActionOutcome.action`
 
 3. **Stay action**:
-   - Position unchanged, `moved=False`
-   - `consumed=False`, `resource_consumed=0.0`
+   - Position unchanged, `moved=False`, `data` is empty dict
 
 4. **Custom action registration**:
    - `register("consume", handler)` succeeds

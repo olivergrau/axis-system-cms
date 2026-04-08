@@ -47,16 +47,6 @@ class TransitionConfig(BaseModel):
     energy_gain_factor: float = Field(..., ge=0)
 
 
-class WorldDynamicsConfig(BaseModel):
-    """System A world dynamics parameters (system-owned per Q12)."""
-
-    model_config = ConfigDict(frozen=True)
-
-    resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
-    regeneration_mode: str = "all_traversable"
-    regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)
-
-
 class SystemAConfig(BaseModel):
     """Complete System A configuration.
 
@@ -68,6 +58,3 @@ class SystemAConfig(BaseModel):
     agent: AgentConfig
     policy: PolicyConfig
     transition: TransitionConfig
-    world_dynamics: WorldDynamicsConfig = Field(
-        default_factory=WorldDynamicsConfig,
-    )

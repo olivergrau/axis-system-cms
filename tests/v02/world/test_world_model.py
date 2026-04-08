@@ -8,8 +8,8 @@ from pydantic import ValidationError
 from axis.sdk.position import Position
 from axis.sdk.snapshot import snapshot_world
 from axis.sdk.world_types import BaseWorldConfig, CellView, WorldView
-from axis.world.factory import create_world
-from axis.world.model import Cell, CellType, RegenerationMode, World
+from axis.world.grid_2d.factory import create_world
+from axis.world.grid_2d.model import Cell, CellType, RegenerationMode, World
 
 
 # ---------------------------------------------------------------------------
@@ -387,13 +387,15 @@ class TestCreateWorld:
             create_world(config, Position(x=0, y=0), grid=grid)
 
     def test_sparse_regeneration(self) -> None:
-        config = BaseWorldConfig(grid_width=5, grid_height=5)
+        config = BaseWorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="sparse_fixed_ratio",
+            regen_eligible_ratio=0.5,
+        )
         world = create_world(
             config,
             Position(x=0, y=0),
             seed=42,
-            regeneration_mode=RegenerationMode.SPARSE_FIXED_RATIO,
-            regen_eligible_ratio=0.5,
         )
         eligible_count = sum(
             1
@@ -406,12 +408,14 @@ class TestCreateWorld:
         assert eligible_count == expected
 
     def test_sparse_without_ratio_raises(self) -> None:
-        config = BaseWorldConfig(grid_width=5, grid_height=5)
+        config = BaseWorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="sparse_fixed_ratio",
+        )
         with pytest.raises(ValueError, match="regen_eligible_ratio"):
             create_world(
                 config,
                 Position(x=0, y=0),
-                regeneration_mode=RegenerationMode.SPARSE_FIXED_RATIO,
             )
 
     def test_deterministic_obstacles(self) -> None:
@@ -495,10 +499,10 @@ class TestImports:
         from axis.world import Cell, CellType, RegenerationMode, World, create_world  # noqa: F401
 
     def test_import_from_model(self) -> None:
-        from axis.world.model import Cell, CellType, RegenerationMode, World  # noqa: F401
+        from axis.world.grid_2d.model import Cell, CellType, RegenerationMode, World  # noqa: F401
 
     def test_import_from_factory(self) -> None:
-        from axis.world.factory import create_world  # noqa: F401
+        from axis.world.grid_2d.factory import create_world  # noqa: F401
 
     def test_world_view_protocol_satisfied(self) -> None:
         """Explicitly verify the WorldView protocol is satisfied."""

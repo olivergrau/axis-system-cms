@@ -1,5 +1,15 @@
 # WP-2.4 Implementation Brief -- System A Test Suite
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `test_world_dynamics_defaults` replaced by `test_construct_without_world_dynamics`
+>   since `WorldDynamicsConfig` no longer exists.
+> - Equivalence test `_run_new_episode` reads regen rate from
+>   `world_config.resource_regen_rate` (BaseWorldConfig extras).
+> - `run_episode()` no longer takes a `regen_rate` parameter.
+> - `handle_consume` returns `data={"consumed": ..., "resource_consumed": ...}`
+>   instead of top-level fields.
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. WP-2.1 through WP-2.3 extracted the world model, built the action engine, and restructured System A to implement `SystemInterface`.
@@ -149,8 +159,8 @@ Tests for `handle_consume()`.
 
 | Test | Description |
 |------|-------------|
-| `test_consume_resource_cell` | On resource cell: `consumed=True`, resource extracted |
-| `test_consume_empty_cell` | On empty cell: `consumed=False`, `resource_consumed=0.0` |
+| `test_consume_resource_cell` | On resource cell: `data["consumed"] is True`, resource extracted |
+| `test_consume_empty_cell` | On empty cell: `data["consumed"] is False`, `data["resource_consumed"] == 0.0` |
 | `test_partial_consume` | `resource_value > max_consume`: extracts `max_consume`, cell retains remainder |
 | `test_full_consume` | `resource_value <= max_consume`: cell becomes EMPTY |
 | `test_world_cell_updated` | After consume, world cell reflects reduced resource |
@@ -168,7 +178,7 @@ Tests for `SystemAConfig` and sub-configs.
 | `test_agent_energy_bounds` | `initial_energy > max_energy` raises |
 | `test_policy_config_values` | All policy fields accessible |
 | `test_transition_config_values` | All transition fields accessible |
-| `test_world_dynamics_defaults` | Default `resource_regen_rate == 0.0` |
+| `test_construct_without_world_dynamics` | `SystemAConfig` has no `world_dynamics` field |
 | `test_frozen` | Setting fields raises |
 
 ### 8. Integration Tests -- Full Pipeline (`tests/v02/systems/system_a/test_pipeline.py`)
@@ -235,7 +245,7 @@ def _run_legacy_episode(config_dict, seed, world_seed=None):
 def _run_new_episode(framework_config, system_config_dict, seed, world_seed=None):
     """Run an episode using the new SystemA + axis.world code."""
     from axis.systems.system_a import SystemA, SystemAConfig, handle_consume
-    from axis.world import World, create_world, ActionRegistry, create_action_registry, apply_regeneration
+    from axis.world import World, create_world, ActionRegistry, create_action_registry
     from axis.sdk.position import Position
     import numpy as np
 
@@ -250,12 +260,10 @@ def _run_new_episode(framework_config, system_config_dict, seed, world_seed=None
         framework_config.world,
         Position(x=0, y=0),
         seed=world_seed,
-        # Pass regen params if needed for world factory
     )
 
     agent_state = system.initialize_state(system_config_dict)
     rng = np.random.default_rng(seed)
-    regen_rate = config.world_dynamics.resource_regen_rate
 
     # Step loop
     actions = []
@@ -263,20 +271,20 @@ def _run_new_episode(framework_config, system_config_dict, seed, world_seed=None
     positions = []
 
     for timestep in range(framework_config.execution.max_steps):
-        # Phase 1: Regeneration
-        apply_regeneration(world, regen_rate=regen_rate)
-
-        # Phase 2: System decides
+        # Phase 1: System decides
         decide_result = system.decide(world, agent_state, rng)
         actions.append(decide_result.action)
 
-        # Phase 3: Framework applies action
+        # Phase 2: Framework applies action
         context = {"max_consume": config.transition.max_consume}
         outcome = registry.apply(world, decide_result.action, context=context)
 
-        # Phase 4: New observation for system
+        # Phase 3: New observation for system
         sensor = system._sensor
         new_obs = sensor.observe(world, world.agent_position)
+
+        # Phase 4: World tick (regeneration handled internally)
+        world.tick()
 
         # Phase 5: System processes outcome
         result = system.transition(agent_state, outcome, new_obs)

@@ -126,8 +126,8 @@ class SystemB:
         # Update scan result if this was a scan action
         if action == "scan":
             last_scan = ScanResult(
-                total_resource=action_outcome.resource_consumed,
-                cell_count=9,  # 3x3 neighborhood
+                total_resource=action_outcome.data.get("scan_total", 0.0),
+                cell_count=action_outcome.data.get("cell_count", 9),
             )
         else:
             last_scan = agent_state.last_scan

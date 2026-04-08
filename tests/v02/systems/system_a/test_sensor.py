@@ -8,12 +8,13 @@ from axis.sdk.interfaces import SensorInterface
 from axis.sdk.position import Position
 from axis.systems.system_a.sensor import SystemASensor
 from axis.systems.system_a.types import CellObservation, Observation
-from axis.world.model import Cell, CellType, World
+from axis.world.grid_2d.model import Cell, CellType, World
 
 
 def _make_grid(width: int = 5, height: int = 5) -> list[list[Cell]]:
     return [
-        [Cell(cell_type=CellType.EMPTY, resource_value=0.0) for _ in range(width)]
+        [Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+         for _ in range(width)]
         for _ in range(height)
     ]
 

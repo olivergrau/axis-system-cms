@@ -5,12 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from axis.sdk.position import Position
-from axis.sdk.world_types import ActionOutcome
-from axis.world.model import World
+from axis.sdk.world_types import ActionOutcome, MutableWorldProtocol
 
 
 def handle_scan(
-    world: World,
+    world: MutableWorldProtocol,
     *,
     context: dict[str, Any],
 ) -> ActionOutcome:
@@ -35,12 +34,10 @@ def handle_scan(
                 cell_count += 1
 
     # Scan never moves the agent and never consumes resources.
-    # We encode the scan result in resource_consumed for transport
-    # to transition(). The framework does not interpret this field.
+    # Scan results are passed to transition() via the data dict.
     return ActionOutcome(
         action="scan",
         moved=False,
         new_position=pos,
-        consumed=False,
-        resource_consumed=total_resource,
+        data={"scan_total": total_resource, "cell_count": cell_count},
     )

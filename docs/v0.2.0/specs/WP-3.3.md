@@ -1,5 +1,15 @@
 # WP-3.3 Implementation Brief -- Run and Experiment Executors
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `_run_single_episode` no longer extracts regen params from
+>   `config.system_config["world_dynamics"]`. Regeneration is world-owned:
+>   `World.tick()` handles dynamics internally.
+> - `setup_episode()` no longer takes `regen_rate`, `regeneration_mode`,
+>   or `regen_eligible_ratio` parameters. They are read from
+>   `BaseWorldConfig` by the world factory.
+> - `run_episode()` no longer takes a `regen_rate` parameter.
+
 ## Context
 
 We are implementing **Phase 3 -- Framework Alignment** of the AXIS modular architecture evolution. WP-3.1 provided the system registry. WP-3.2 provided the framework-owned episode runner (`run_episode()`). This work package implements the system-agnostic **RunExecutor** and **ExperimentExecutor** that wire together registry lookup, world creation, episode execution, config resolution, and result aggregation.
@@ -150,26 +160,16 @@ def _run_single_episode(
     episode_seed: int,
 ) -> BaseEpisodeTrace:
     """Run one episode and return its trace."""
-    # Extract regen params from system config
-    world_dynamics = config.system_config.get("world_dynamics", {})
-    regen_rate = world_dynamics.get("resource_regen_rate", 0.0)
-    regen_mode = world_dynamics.get("regeneration_mode", "all_traversable")
-    regen_ratio = world_dynamics.get("regen_eligible_ratio", None)
-
     world, registry = setup_episode(
         system,
         config.framework_config.world,
         config.agent_start_position,
         seed=episode_seed,
-        regen_rate=regen_rate,
-        regeneration_mode=regen_mode,
-        regen_eligible_ratio=regen_ratio,
     )
 
     return run_episode(
         system, world, registry,
         max_steps=config.framework_config.execution.max_steps,
-        regen_rate=regen_rate,
         seed=episode_seed,
     )
 ```
@@ -373,9 +373,9 @@ The new `ExperimentConfig` is already defined in `axis/framework/config.py` with
 
 The `extract_framework_config()` function already exists. `RunConfig` stores a `FrameworkConfig` (not a full `ExperimentConfig`) because it's the minimal info needed to execute episodes.
 
-### 5. Regen Rate Source
+### 5. World Owns Its Dynamics
 
-The regeneration rate is extracted from `system_config.get("world_dynamics", {}).get("resource_regen_rate", 0.0)`. This follows from Q12: the system owns dynamics parameters, but the framework executes regeneration.
+Regeneration parameters are part of `BaseWorldConfig` and are handled internally by the world via `World.tick()`. The framework runner does not extract or pass regen parameters -- it simply calls `world.tick()` each step.
 
 ### 6. One System Per Experiment
 

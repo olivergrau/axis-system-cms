@@ -57,7 +57,8 @@ class SystemATransition:
         """
         # Phase 4: Energy update
         cost = self._get_action_cost(action_outcome.action)
-        energy_gain = self._energy_gain_factor * action_outcome.resource_consumed
+        energy_gain = self._energy_gain_factor * \
+            action_outcome.data.get("resource_consumed", 0.0)
         new_energy = clip_energy(
             agent_state.energy - cost + energy_gain,
             self._max_energy,

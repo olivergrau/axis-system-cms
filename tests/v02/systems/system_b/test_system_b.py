@@ -18,11 +18,10 @@ from axis.systems.system_b.config import (
     PolicyConfig,
     SystemBConfig,
     TransitionConfig,
-    WorldDynamicsConfig,
 )
 from axis.systems.system_b.system import SystemB
 from axis.systems.system_b.types import AgentState, ScanResult
-from axis.world.model import Cell, CellType, World
+from axis.world.grid_2d.model import Cell, CellType, World
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +111,6 @@ class TestSystemBConfig:
         assert cfg.transition.move_cost == 1.0
         assert cfg.transition.scan_cost == 0.5
         assert cfg.transition.stay_cost == 0.5
-        assert cfg.world_dynamics.resource_regen_rate == 0.0
 
     def test_energy_bounds_validation(self) -> None:
         with pytest.raises(ValueError, match="initial_energy"):
@@ -123,7 +121,6 @@ class TestSystemBConfig:
         assert isinstance(cfg.agent, AgentConfig)
         assert isinstance(cfg.policy, PolicyConfig)
         assert isinstance(cfg.transition, TransitionConfig)
-        assert isinstance(cfg.world_dynamics, WorldDynamicsConfig)
 
     def test_construct_from_dict(self) -> None:
         raw = {
@@ -231,15 +228,14 @@ class TestScanHandler:
         outcome = handle_scan(simple_world, context={"scan_radius": 1})
         assert outcome.action == "scan"
         assert outcome.moved is False
-        assert outcome.consumed is False
-        assert outcome.resource_consumed == 0.0
+        assert outcome.data.get("scan_total", 0.0) == 0.0
 
     def test_scan_on_resource_grid(self, resource_world: World) -> None:
         outcome = handle_scan(resource_world, context={"scan_radius": 1})
         assert outcome.action == "scan"
         assert outcome.moved is False
         # 3x3 neighborhood, all 0.5 → total = 4.5
-        assert outcome.resource_consumed == pytest.approx(4.5)
+        assert outcome.data["scan_total"] == pytest.approx(4.5)
 
     def test_scan_does_not_mutate_world(self, resource_world: World) -> None:
         cells_before = [
@@ -265,7 +261,7 @@ class TestScanHandler:
         world = World(grid, Position(x=0, y=0))
         outcome = handle_scan(world, context={"scan_radius": 1})
         # Corner: (0,0), (1,0), (0,1), (1,1) → 4 cells * 0.5 = 2.0
-        assert outcome.resource_consumed == pytest.approx(2.0)
+        assert outcome.data["scan_total"] == pytest.approx(2.0)
 
     def test_scan_at_edge(self) -> None:
         """Scan at (0,2) reads 6 cells."""
@@ -273,7 +269,7 @@ class TestScanHandler:
         world = World(grid, Position(x=0, y=2))
         outcome = handle_scan(world, context={"scan_radius": 1})
         # Left edge: 2x3 = 6 cells * 0.5 = 3.0
-        assert outcome.resource_consumed == pytest.approx(3.0)
+        assert outcome.data["scan_total"] == pytest.approx(3.0)
 
     def test_scan_radius_from_context(self) -> None:
         """Larger scan radius reads more cells."""
@@ -281,7 +277,7 @@ class TestScanHandler:
         world = World(grid, Position(x=2, y=2))
         outcome = handle_scan(world, context={"scan_radius": 2})
         # 5x5 neighborhood, all in bounds → 25 * 0.5 = 12.5
-        assert outcome.resource_consumed == pytest.approx(12.5)
+        assert outcome.data["scan_total"] == pytest.approx(12.5)
 
 
 # ===========================================================================
@@ -374,7 +370,7 @@ class TestTransition:
         outcome = ActionOutcome(
             action="scan", moved=False,
             new_position=Position(x=2, y=2),
-            resource_consumed=4.5,
+            data={"scan_total": 4.5, "cell_count": 9},
         )
         result = system.transition(state, outcome, {})
         assert result.new_state.energy == 29.5  # 30 - 0.5 scan_cost
@@ -393,7 +389,7 @@ class TestTransition:
         outcome = ActionOutcome(
             action="scan", moved=False,
             new_position=Position(x=2, y=2),
-            resource_consumed=4.5,
+            data={"scan_total": 4.5, "cell_count": 9},
         )
         result = system.transition(state, outcome, {})
         assert result.new_state.last_scan.total_resource == 4.5
@@ -444,7 +440,7 @@ class TestTransition:
         outcome = ActionOutcome(
             action="scan", moved=False,
             new_position=Position(x=2, y=2),
-            resource_consumed=4.5,
+            data={"scan_total": 4.5, "cell_count": 9},
         )
         result = system.transition(state, outcome, {})
         assert isinstance(result, TransitionResult)
@@ -543,7 +539,7 @@ class TestFrameworkIntegration:
 
         trace = run_episode(
             system, world, registry,
-            max_steps=50, regen_rate=0.0, seed=42,
+            max_steps=50, seed=42,
         )
 
         assert trace.system_type == "system_b"
@@ -569,7 +565,7 @@ class TestFrameworkIntegration:
         )
         trace = run_episode(
             system, world, registry,
-            max_steps=50, regen_rate=0.0, seed=42,
+            max_steps=50, seed=42,
         )
 
         actions = [step.action for step in trace.steps]
@@ -633,7 +629,7 @@ class TestFrameworkIntegration:
             )
             trace = run_episode(
                 system, world, registry,
-                max_steps=30, regen_rate=0.0, seed=42,
+                max_steps=30, seed=42,
             )
             traces.append(trace)
 

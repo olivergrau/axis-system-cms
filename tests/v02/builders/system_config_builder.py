@@ -11,7 +11,6 @@ from tests.v02.constants import (
     DEFAULT_MAX_ENERGY,
     DEFAULT_MEMORY_CAPACITY,
     DEFAULT_MOVE_COST,
-    DEFAULT_REGEN_RATE,
     DEFAULT_SELECTION_MODE,
     DEFAULT_STAY_COST,
     DEFAULT_STAY_SUPPRESSION,
@@ -44,11 +43,6 @@ class SystemAConfigBuilder:
             "stay_cost": DEFAULT_STAY_COST,
             "max_consume": DEFAULT_MAX_CONSUME,
             "energy_gain_factor": DEFAULT_ENERGY_GAIN_FACTOR,
-        }
-        self._world_dynamics = {
-            "resource_regen_rate": DEFAULT_REGEN_RATE,
-            "regeneration_mode": "all_traversable",
-            "regen_eligible_ratio": None,
         }
 
     def with_initial_energy(self, energy: float) -> SystemAConfigBuilder:
@@ -99,14 +93,9 @@ class SystemAConfigBuilder:
         self._transition["energy_gain_factor"] = value
         return self
 
-    def with_regen_rate(self, rate: float) -> SystemAConfigBuilder:
-        self._world_dynamics["resource_regen_rate"] = rate
-        return self
-
     def build(self) -> dict:
         return {
             "agent": dict(self._agent),
             "policy": dict(self._policy),
             "transition": dict(self._transition),
-            "world_dynamics": dict(self._world_dynamics),
         }

@@ -1,5 +1,12 @@
 # WP-3.5 Implementation Brief -- CLI Adaptation
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - The baseline YAML example no longer includes `system.world_dynamics`.
+>   Regeneration parameters belong in the `world:` section.
+> - `BaseWorldConfig` uses `extra="allow"`, so world-specific fields
+>   like `grid_width` pass through as extras.
+
 ## Context
 
 We are implementing **Phase 3 -- Framework Alignment**. WP-3.1 through WP-3.4 provided the system registry, episode runner, executors, and persistence layer. This work package adapts the CLI to use the new framework components, making it system-agnostic.
@@ -103,8 +110,6 @@ system:
     stay_cost: 0.5
     max_consume: 1.0
     energy_gain_factor: 10.0
-  world_dynamics:
-    resource_regen_rate: 0.0
 num_episodes_per_run: 5
 ```
 

@@ -165,8 +165,7 @@ Inputs:
       action="right",         # which action was applied
       moved=True,             # whether position changed
       new_position=Position(x=3, y=2),
-      consumed=False,         # True only for consume-type actions
-      resource_consumed=0.0,  # amount consumed
+      data={},                # empty for base actions
   )
   ```
 - `new_observation` -- the observation from `observe()` after the
@@ -337,10 +336,14 @@ class SystemBConfig(BaseModel):
     agent: AgentConfig
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
     transition: TransitionConfig = Field(default_factory=TransitionConfig)
-    world_dynamics: WorldDynamicsConfig = Field(
-        default_factory=WorldDynamicsConfig,
-    )
 ```
+
+> **Note:** As of the latest architecture update, regeneration parameters
+> (`resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio`)
+> have been moved from `SystemBConfig.world_dynamics` to
+> `BaseWorldConfig`. The `WorldDynamicsConfig` class shown above is no
+> longer part of the system config. Regeneration is now a property of
+> the world, not the system. See the world config section below.
 
 ### 4.4 The `scan` action handler
 
@@ -354,7 +357,7 @@ from typing import Any
 
 from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
-from axis.world.model import World
+from axis.world.grid_2d.model import World
 
 
 def handle_scan(
@@ -383,8 +386,7 @@ def handle_scan(
         action="scan",
         moved=False,
         new_position=pos,
-        consumed=False,
-        resource_consumed=total_resource,  # repurposed: total detected
+        data={"scan_total": total_resource, "cell_count": cell_count},
     )
 ```
 
@@ -392,18 +394,15 @@ def handle_scan(
 
 1. The handler uses `world.get_cell()` (which returns the read-only
    `CellView`) for reading. To mutate cells, use
-   `world.get_internal_cell()` and `world.set_cell()` -- but `scan`
-   intentionally does not mutate.
+   `world.extract_resource()` -- but `scan` intentionally does not
+   mutate.
 
-2. The `ActionOutcome` model has fixed fields (`moved`, `consumed`,
-   `resource_consumed`). You reuse these to convey your action's
-   result. The framework does not interpret `resource_consumed` -- only
-   your `transition()` method reads it. So you can repurpose it (here
-   we store total detected resource).
+2. The `ActionOutcome.data` dict carries action-specific results. The
+   framework does not inspect it -- only your `transition()` method
+   reads it. You can put any JSON-serializable data in it.
 
-3. If your action needs to communicate more data, encode it in
-   `resource_consumed` or `consumed` flags. The framework passes the
-   `ActionOutcome` opaquely to your `transition()`.
+3. If your action extracts resources, use `world.extract_resource(pos, max_amount)`
+   instead of directly manipulating cells via `get_internal_cell()` / `set_cell()`.
 
 ### 4.5 The SystemB class
 
@@ -520,7 +519,7 @@ class SystemB:
         # Update scan result if this was a scan action
         if action == "scan":
             last_scan = ScanResult(
-                total_resource=action_outcome.resource_consumed,
+                total_resource=action_outcome.data.get("scan_total", 0.0),
                 cell_count=9,  # 3x3
             )
         else:
@@ -666,6 +665,7 @@ world:
   grid_width: 10
   grid_height: 10
   obstacle_density: 0.1
+  resource_regen_rate: 0.05
 
 system:
   agent:
@@ -679,8 +679,6 @@ system:
     move_cost: 1.0
     scan_cost: 0.5
     stay_cost: 0.5
-  world_dynamics:
-    resource_regen_rate: 0.05
 
 num_episodes_per_run: 5
 ```
@@ -700,12 +698,11 @@ The `system:` section is an **opaque dict** -- the framework passes it
 to your factory without inspection. Its internal structure is entirely
 up to you.
 
-### 6.2 Common mistake: world vs system.world_dynamics
+### 6.2 Regeneration parameters live in the world config
 
-The top-level `world:` section configures the grid structure
-(dimensions, obstacles). Parameters like resource regeneration rate
-and regeneration mode are **system-owned** and belong under
-`system.world_dynamics:`.
+Regeneration parameters (`resource_regen_rate`, `regeneration_mode`,
+`regen_eligible_ratio`) are properties of the world, not the system.
+They belong in the `world:` section of the config file.
 
 ```yaml
 # CORRECT:
@@ -713,16 +710,13 @@ world:
   grid_width: 10        # framework-owned
   grid_height: 10       # framework-owned
   obstacle_density: 0.1 # framework-owned
+  resource_regen_rate: 0.05     # world-owned
+  regeneration_mode: "sparse_fixed_ratio"  # world-owned
+  regen_eligible_ratio: 0.17   # world-owned
 
+# WRONG -- regeneration fields do not belong under system:
 system:
-  world_dynamics:
-    resource_regen_rate: 0.05     # system-owned
-    regeneration_mode: "sparse_fixed_ratio"  # system-owned
-    regen_eligible_ratio: 0.17   # system-owned
-
-# WRONG -- framework will reject these fields under world:
-world:
-  regeneration_mode: "sparse_fixed_ratio"  # ✗ not a BaseWorldConfig field
+  resource_regen_rate: 0.05  # ✗ not a system config field
 ```
 
 ### 6.3 OFAT parameter paths
@@ -791,16 +785,19 @@ ActionOutcome(
     action: str,              # the action name
     moved: bool,              # whether agent position changed
     new_position: Position,   # agent position after action
-    consumed: bool = False,   # whether resources were extracted
-    resource_consumed: float = 0.0,  # amount extracted
+    data: dict[str, Any] = {},  # action-specific result data
 )
 ```
 
-The `consumed` and `resource_consumed` fields are conventions. The
-framework does not interpret them -- it passes the entire
-`ActionOutcome` to your `transition()`. You can repurpose
-`resource_consumed` to carry custom numeric data (as System B does
-with scan results).
+The `data` dict carries action-specific results. The framework does
+not inspect it -- it passes the entire `ActionOutcome` to your
+`transition()`. Put whatever key-value pairs your transition logic
+needs to process the action result.
+
+Common patterns:
+- Consume: `data={"consumed": True, "resource_consumed": 0.5}`
+- Scan: `data={"scan_total": 3.2, "cell_count": 9}`
+- No extra data: `data={}` (the default)
 
 ### 7.4 The context dict
 
@@ -970,7 +967,7 @@ def test_system_b_decide():
 from axis.sdk.position import Position
 from axis.sdk.world_types import BaseWorldConfig
 from axis.systems.system_b.actions import handle_scan
-from axis.world.factory import create_world
+from axis.world.grid_2d.factory import create_world
 
 def test_scan_does_not_mutate():
     config = BaseWorldConfig(grid_width=5, grid_height=5)
@@ -1077,8 +1074,8 @@ from axis.sdk.world_types import WorldView, CellView, ActionOutcome, BaseWorldCo
 from axis.sdk.position import Position
 from axis.sdk.actions import BASE_ACTIONS, MOVEMENT_DELTAS
 
-# World model (for action handlers only)
-from axis.world.model import World, Cell, CellType
+# World model (for action handlers -- use protocol methods preferred)
+# Use world.extract_resource() instead of direct Cell/CellType manipulation
 
 # Framework registration
 from axis.framework.registry import register_system

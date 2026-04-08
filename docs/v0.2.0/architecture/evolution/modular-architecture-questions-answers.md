@@ -473,6 +473,19 @@ Definitively (A) Single opaque system.step(). This gives max flexibility for the
 
 (A)
 
+> **Updated:** The implementation evolved beyond option (A). `BaseWorldConfig`
+> is now a minimal SDK type with only `world_type: str` defined; all other
+> fields (including grid dimensions, obstacles, and regeneration parameters)
+> pass through as Pydantic extras via `extra="allow"`. The world factory
+> (`Grid2DWorldConfig`) validates world-type-specific fields internally.
+>
+> Additionally, the world now owns its dynamics through `MutableWorldProtocol`
+> methods: `tick()` (per-step dynamics like regeneration), `extract_resource()`
+> (resource extraction without systems importing concrete world types), and
+> `snapshot()` (self-serialization). Custom world types can be registered via
+> `register_world()` / `create_world_from_config()`, making the world layer
+> as pluggable as the system layer.
+
 ---
 
 ## Q13. Backward Compatibility of Persisted Artifacts

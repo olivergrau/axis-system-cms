@@ -10,7 +10,6 @@ from axis.systems.system_a.config import (
     PolicyConfig,
     SystemAConfig,
     TransitionConfig,
-    WorldDynamicsConfig,
 )
 from tests.v02.builders.system_config_builder import SystemAConfigBuilder
 
@@ -20,7 +19,8 @@ class TestConfig:
 
     def test_valid_construction(self) -> None:
         config = SystemAConfig(
-            agent=AgentConfig(initial_energy=50, max_energy=100, memory_capacity=5),
+            agent=AgentConfig(initial_energy=50,
+                              max_energy=100, memory_capacity=5),
             policy=PolicyConfig(
                 selection_mode="sample", temperature=1.0,
                 stay_suppression=0.1, consume_weight=1.5,
@@ -41,7 +41,8 @@ class TestConfig:
 
     def test_agent_energy_bounds(self) -> None:
         with pytest.raises(ValidationError, match="initial_energy"):
-            AgentConfig(initial_energy=200.0, max_energy=100.0, memory_capacity=5)
+            AgentConfig(initial_energy=200.0,
+                        max_energy=100.0, memory_capacity=5)
 
     def test_policy_config_values(self) -> None:
         d = SystemAConfigBuilder().build()
@@ -59,20 +60,6 @@ class TestConfig:
         assert config.transition.stay_cost == 0.5
         assert config.transition.max_consume == 1.0
         assert config.transition.energy_gain_factor == 10.0
-
-    def test_world_dynamics_defaults(self) -> None:
-        config = SystemAConfig(
-            agent=AgentConfig(initial_energy=50, max_energy=100, memory_capacity=5),
-            policy=PolicyConfig(
-                selection_mode="sample", temperature=1.0,
-                stay_suppression=0.1, consume_weight=1.5,
-            ),
-            transition=TransitionConfig(
-                move_cost=1.0, consume_cost=1.0, stay_cost=0.5,
-                max_consume=1.0, energy_gain_factor=10.0,
-            ),
-        )
-        assert config.world_dynamics.resource_regen_rate == 0.0
 
     def test_frozen(self) -> None:
         d = SystemAConfigBuilder().build()

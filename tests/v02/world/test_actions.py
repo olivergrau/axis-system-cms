@@ -9,7 +9,7 @@ import pytest
 from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
 from axis.world.actions import ActionRegistry, create_action_registry
-from axis.world.model import Cell, CellType, World
+from axis.world.grid_2d.model import Cell, CellType, World
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +126,7 @@ class TestMovementActions:
         world = _make_world()
         registry = create_action_registry()
         outcome = registry.apply(world, "up")
-        assert outcome.consumed is False
-        assert outcome.resource_consumed == 0.0
+        assert outcome.data == {}
 
     def test_returns_action_outcome(self) -> None:
         world = _make_world()
@@ -157,8 +156,7 @@ class TestStayAction:
         world = _make_world()
         registry = create_action_registry()
         outcome = registry.apply(world, "stay")
-        assert outcome.consumed is False
-        assert outcome.resource_consumed == 0.0
+        assert outcome.data == {}
 
     def test_action_name(self) -> None:
         world = _make_world()
@@ -182,8 +180,7 @@ def _dummy_handler(
         action="custom",
         moved=False,
         new_position=world.agent_position,
-        consumed=True,
-        resource_consumed=0.42,
+        data={"consumed": True, "resource_consumed": 0.42},
     )
 
 
@@ -216,8 +213,8 @@ class TestCustomRegistration:
         registry = create_action_registry()
         registry.register("custom", _dummy_handler)
         outcome = registry.apply(world, "custom")
-        assert outcome.consumed is True
-        assert outcome.resource_consumed == 0.42
+        assert outcome.data["consumed"] is True
+        assert outcome.data["resource_consumed"] == 0.42
 
     def test_custom_in_registered_actions(self) -> None:
         registry = create_action_registry()
@@ -255,8 +252,10 @@ def _context_echo_handler(
         action="echo",
         moved=False,
         new_position=world.agent_position,
-        consumed=bool(context.get("flag")),
-        resource_consumed=context.get("value", 0.0),
+        data={
+            "flag": bool(context.get("flag")),
+            "value": context.get("value", 0.0),
+        },
     )
 
 
@@ -270,16 +269,16 @@ class TestContextPassing:
         outcome = registry.apply(
             world, "echo", context={"flag": True, "value": 0.77}
         )
-        assert outcome.consumed is True
-        assert outcome.resource_consumed == 0.77
+        assert outcome.data["flag"] is True
+        assert outcome.data["value"] == 0.77
 
     def test_empty_context_by_default(self) -> None:
         world = _make_world()
         registry = create_action_registry()
         registry.register("echo", _context_echo_handler)
         outcome = registry.apply(world, "echo")
-        assert outcome.consumed is False
-        assert outcome.resource_consumed == 0.0
+        assert outcome.data["flag"] is False
+        assert outcome.data["value"] == 0.0
 
 
 # ---------------------------------------------------------------------------

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from axis.sdk.interfaces import TransitionInterface
@@ -52,12 +54,14 @@ def _make_outcome(
     consumed: bool = False,
     resource_consumed: float = 0.0,
 ) -> ActionOutcome:
+    data: dict[str, Any] = {}
+    if consumed or resource_consumed > 0.0:
+        data = {"consumed": consumed, "resource_consumed": resource_consumed}
     return ActionOutcome(
         action=action,
         moved=moved,
         new_position=Position(x=2, y=2),
-        consumed=consumed,
-        resource_consumed=resource_consumed,
+        data=data,
     )
 
 

@@ -30,10 +30,11 @@ The project separates config files from output data:
 
 ```
 experiments/
-    configs/
-        v02/                      # v0.2.0 experiment config files (input)
-            baseline.yaml
-            energy-gain-sweep.yaml
+    configs/                      # v0.2.0 experiment config files (input)
+        system-a-baseline.yaml
+        system-a-energy-gain-sweep.yaml
+        system-a-toroidal-demo.yaml
+        system-b-sdk-demo.yaml
     results/                      # repository root: all output data (auto-created)
         <experiment-id>/
             experiment_config.json
@@ -53,7 +54,7 @@ experiments/
                         ...
 ```
 
-- **`experiments/configs/v02/`** -- you put your experiment config files here.
+- **`experiments/configs/`** -- you put your experiment config files here.
 - **`experiments/results/`** -- the CLI writes all output here automatically
   (one subdirectory per experiment). This is the default `--root`.
 
@@ -81,7 +82,7 @@ separates concerns into three areas:
 
 ### 2.1 Baseline single-run experiment (System A)
 
-A ready-to-use config ships at `experiments/configs/v02/baseline.yaml`:
+A ready-to-use config ships at `experiments/configs/system-a-baseline.yaml`:
 
 ```yaml
 system_type: "system_a"
@@ -114,8 +115,6 @@ system:
     stay_cost: 0.5
     max_consume: 1.0
     energy_gain_factor: 10.0
-  world_dynamics:
-    resource_regen_rate: 0.0
 
 num_episodes_per_run: 5
 ```
@@ -148,14 +147,18 @@ framework-owned and identical regardless of system type.
 | `grid_width`        | required  | Width of the world grid (> 0) |
 | `grid_height`       | required  | Height of the world grid (> 0) |
 | `obstacle_density`  | `0.0`     | Fraction of cells that are obstacles (0.0--1.0) |
+| `resource_regen_rate`  | `0.0`  | Per-step regeneration amount added to each eligible cell (0.0--1.0) |
+| `regeneration_mode`    | `"all_traversable"` | `"all_traversable"` or `"sparse_fixed_ratio"` |
+| `regen_eligible_ratio` | not set | Fraction of traversable cells that can regenerate (0.0--1.0). Required when mode is `"sparse_fixed_ratio"`. |
+| `world_type`           | `"grid_2d"` | World implementation type. Selects from the world registry. |
 
-Resource regeneration is controlled in the system's `world_dynamics`
-section (see section 2.4), because regeneration parameters may vary
-between system types.
+Regeneration is a property of the world, not the system. All world
+dynamics parameters (regeneration rate, mode, eligibility) are
+configured here.
 
 ### 2.4 System A configuration reference
 
-When `system_type` is `"system_a"`, the `system` dict has four
+When `system_type` is `"system_a"`, the `system` dict has three
 sub-sections:
 
 **`system.agent`** -- Agent parameters
@@ -184,14 +187,6 @@ sub-sections:
 | `stay_cost`          | `0.5`   | Energy cost for staying in place |
 | `max_consume`        | `1.0`   | Max resource fraction consumed per action |
 | `energy_gain_factor` | `10.0`  | Multiplier converting consumed resource to energy |
-
-**`system.world_dynamics`** -- World regeneration
-
-| Field                  | Default              | Description |
-|------------------------|----------------------|-------------|
-| `resource_regen_rate`  | `0.0`                | Per-step regeneration amount added to each eligible cell (0.0--1.0) |
-| `regeneration_mode`    | `"all_traversable"`  | `"all_traversable"` or `"sparse_fixed_ratio"` |
-| `regen_eligible_ratio` | not set              | Fraction of traversable cells that can regenerate (0.0--1.0). Required when mode is `"sparse_fixed_ratio"`. |
 
 ### 2.5 Logging configuration
 
@@ -236,7 +231,7 @@ The `parameter_path` uses a 3-segment format: `<domain>.<section>.<field>`.
 | `system`      | System-specific config   | `system.transition.energy_gain_factor`, `system.policy.temperature` |
 
 Example -- sweep `energy_gain_factor` across four values
-(`experiments/configs/v02/energy-gain-sweep.yaml`):
+(`experiments/configs/system-a-energy-gain-sweep.yaml`):
 
 ```yaml
 system_type: "system_a"
@@ -266,8 +261,6 @@ system:
     stay_cost: 0.5
     max_consume: 1.0
     energy_gain_factor: 10.0
-  world_dynamics:
-    resource_regen_rate: 0.0
 
 num_episodes_per_run: 5
 
@@ -310,6 +303,7 @@ world:
   grid_width: 20
   grid_height: 20
   obstacle_density: 0.1
+  resource_regen_rate: 0.05
 system:
   agent:
     initial_energy: 50.0
@@ -326,8 +320,6 @@ system:
     stay_cost: 0.5
     max_consume: 1.0
     energy_gain_factor: 10.0
-  world_dynamics:
-    resource_regen_rate: 0.05
 
 num_episodes_per_run: 20
 ```
@@ -336,7 +328,7 @@ Key changes from the baseline:
 - Larger grid (20x20 instead of 10x10)
 - 10% obstacles
 - 500 max steps instead of 200
-- Resource regeneration at 5% per step
+- Resource regeneration at 5% per step (in the `world` section)
 - 20 episodes instead of 5
 
 ### 3.2 Changing agent behavior
@@ -362,8 +354,6 @@ system:
     stay_cost: 1.0          # expensive staying
     max_consume: 1.0
     energy_gain_factor: 15.0  # more energy per resource
-  world_dynamics:
-    resource_regen_rate: 0.03
 ```
 
 ### 3.3 Deterministic (argmax) mode
@@ -386,11 +376,12 @@ Use the sparse regeneration mode to create a world where only a
 fraction of cells can recover resource:
 
 ```yaml
-system:
-  world_dynamics:
-    resource_regen_rate: 0.05
-    regeneration_mode: "sparse_fixed_ratio"
-    regen_eligible_ratio: 0.17   # only ~17% of cells regenerate
+world:
+  grid_width: 10
+  grid_height: 10
+  resource_regen_rate: 0.05
+  regeneration_mode: "sparse_fixed_ratio"
+  regen_eligible_ratio: 0.17   # only ~17% of cells regenerate
 ```
 
 ### 3.5 Sweeping a system parameter (OFAT)
@@ -422,7 +413,7 @@ axis experiments run <config_file>
 Run the shipped baseline:
 
 ```
-$ axis experiments run experiments/configs/v02/baseline.yaml
+$ axis experiments run experiments/configs/system-a-baseline.yaml
 Experiment completed.
   ID: a1b2c3d4e5f6...
   Runs: 1
@@ -433,7 +424,7 @@ The output data is now at `experiments/results/<experiment-id>/`.
 Run the OFAT sweep:
 
 ```
-$ axis experiments run experiments/configs/v02/energy-gain-sweep.yaml
+$ axis experiments run experiments/configs/system-a-energy-gain-sweep.yaml
 Experiment completed.
   ID: f7e8d9c0b1a2...
   Runs: 4
@@ -774,10 +765,16 @@ and resume again.
 
 ```bash
 # Run the shipped baseline experiment
-axis experiments run experiments/configs/v02/baseline.yaml
+axis experiments run experiments/configs/system-a-baseline.yaml
 
 # Run the OFAT sweep
-axis experiments run experiments/configs/v02/energy-gain-sweep.yaml
+axis experiments run experiments/configs/system-a-energy-gain-sweep.yaml
+
+# Run the System B SDK demo
+axis experiments run experiments/configs/system-b-sdk-demo.yaml
+
+# Run the toroidal world demo
+axis experiments run experiments/configs/system-a-toroidal-demo.yaml
 
 # List all experiments
 axis experiments list

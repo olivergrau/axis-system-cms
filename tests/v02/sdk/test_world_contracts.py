@@ -124,19 +124,17 @@ class TestActionOutcome:
             moved=True,
             new_position=Position(x=0, y=0),
         )
-        assert outcome.consumed is False
-        assert outcome.resource_consumed == 0.0
+        assert outcome.data == {}
 
-    def test_construction_consume(self) -> None:
+    def test_construction_with_data(self) -> None:
         outcome = ActionOutcome(
             action="consume",
             moved=False,
             new_position=Position(x=2, y=3),
-            consumed=True,
-            resource_consumed=0.5,
+            data={"consumed": True, "resource_consumed": 0.5},
         )
-        assert outcome.consumed is True
-        assert outcome.resource_consumed == 0.5
+        assert outcome.data["consumed"] is True
+        assert outcome.data["resource_consumed"] == 0.5
 
     def test_frozen(self) -> None:
         outcome = ActionOutcome(
@@ -169,35 +167,22 @@ class TestBaseWorldConfig:
         config = BaseWorldConfig(grid_width=10, grid_height=10)
         assert config.grid_width == 10
         assert config.grid_height == 10
-        assert config.obstacle_density == 0.0
+        assert config.world_type == "grid_2d"
 
-    def test_construction_with_obstacles(self) -> None:
+    def test_construction_with_extras(self) -> None:
         config = BaseWorldConfig(
             grid_width=20, grid_height=15, obstacle_density=0.3
         )
         assert config.obstacle_density == 0.3
 
-    def test_grid_width_zero_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            BaseWorldConfig(grid_width=0, grid_height=10)
+    def test_default_world_type(self) -> None:
+        config = BaseWorldConfig()
+        assert config.world_type == "grid_2d"
 
-    def test_grid_height_zero_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            BaseWorldConfig(grid_width=10, grid_height=0)
-
-    def test_obstacle_density_one_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            BaseWorldConfig(grid_width=10, grid_height=10, obstacle_density=1.0)
-
-    def test_obstacle_density_negative_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            BaseWorldConfig(grid_width=10, grid_height=10, obstacle_density=-0.1)
-
-    def test_obstacle_density_just_below_one(self) -> None:
-        config = BaseWorldConfig(
-            grid_width=10, grid_height=10, obstacle_density=0.99
-        )
-        assert config.obstacle_density == 0.99
+    def test_custom_world_type(self) -> None:
+        config = BaseWorldConfig(world_type="hex", hex_radius=5)
+        assert config.world_type == "hex"
+        assert config.hex_radius == 5
 
     def test_frozen(self) -> None:
         config = BaseWorldConfig(grid_width=10, grid_height=10)

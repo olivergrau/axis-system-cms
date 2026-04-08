@@ -79,7 +79,7 @@ class TestFrameworkConfigBuilder:
 class TestSystemAConfigBuilder:
     def test_build_has_expected_keys(self) -> None:
         result = SystemAConfigBuilder().build()
-        assert set(result.keys()) == {"agent", "policy", "transition", "world_dynamics"}
+        assert set(result.keys()) == {"agent", "policy", "transition"}
 
     def test_default_initial_energy(self) -> None:
         result = SystemAConfigBuilder().build()
@@ -96,10 +96,6 @@ class TestSystemAConfigBuilder:
     def test_with_temperature_override(self) -> None:
         result = SystemAConfigBuilder().with_temperature(0.5).build()
         assert result["policy"]["temperature"] == 0.5
-
-    def test_with_regen_rate_override(self) -> None:
-        result = SystemAConfigBuilder().with_regen_rate(0.1).build()
-        assert result["world_dynamics"]["resource_regen_rate"] == 0.1
 
 
 # ---------------------------------------------------------------------------

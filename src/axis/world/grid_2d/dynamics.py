@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from axis.sdk.position import Position
-from axis.world.model import Cell, CellType, World
+from axis.sdk.world_types import MutableWorldProtocol
+from axis.world.grid_2d.model import Cell, CellType
 
 
-def apply_regeneration(world: World, *, regen_rate: float) -> int:
+def apply_regeneration(world: MutableWorldProtocol, *, regen_rate: float) -> int:
     """Apply deterministic cell regeneration to all eligible cells.
 
     For each non-obstacle, regen-eligible cell:

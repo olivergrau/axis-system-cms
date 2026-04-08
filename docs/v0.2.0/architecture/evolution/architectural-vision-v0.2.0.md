@@ -219,7 +219,8 @@ World (mutable, framework-owned)
     ├── grid: Cell[height][width]
     ├── agent_position: Position
     ├── width, height: int
-    └── methods: get_cell, set_cell, is_within_bounds, is_traversable
+    └── methods: get_cell, set_cell, is_within_bounds, is_traversable,
+                 tick, extract_resource, snapshot
 
 WorldView (read-only protocol, passed to systems)
     ├── get_cell(position) -> CellView
@@ -230,13 +231,14 @@ WorldView (read-only protocol, passed to systems)
 
 ### 5.2 World Dynamics
 
-World dynamics (regeneration) are framework-owned and configurable per experiment:
+World dynamics (regeneration) are owned by the world itself, invoked by the framework:
 
-- Regeneration runs before the system is called each step
-- Mode and rates are specified in the framework config's world section
+- The framework calls `world.tick()` each step; the world applies its own dynamics internally
+- Mode and rates are specified in the framework config's world section and stored in the world at creation
 - Systems do not control regeneration -- they experience it as part of the world state they observe
+- Resource extraction is also world-owned via `world.extract_resource(position, max_amount)`
 
-This ensures cross-system consistency: two systems in the same world configuration see the same regeneration behavior.
+This ensures cross-system consistency: two systems in the same world configuration see the same regeneration behavior. The world is a self-contained entity that knows how to evolve its own state.
 
 ### 5.3 Action Engine
 
@@ -257,22 +259,26 @@ ActionOutcome
     action: str
     moved: bool
     new_position: Position
-    consumed: bool
-    resource_consumed: float
+    data: dict[str, Any]       # action-specific results (e.g., consumed amount)
 ```
 
-The `ActionOutcome` tells the system what happened in the world as a result of its action. The system uses this to update its internal state (energy, memory, etc.).
+The `ActionOutcome` tells the system what happened in the world as a result of its action. The `data` dict carries action-specific results (e.g., `{"consumed": True, "resource_consumed": 0.5}` for consume, `{"scan_total": 1.2}` for scan). The system uses this to update its internal state (energy, memory, etc.).
 
 ### 5.4 World Configuration
 
-Split between framework and system:
+`BaseWorldConfig` is a minimal SDK type with only `world_type: str` as a framework-defined field. All other fields (grid dimensions, obstacles, regeneration parameters) pass through as Pydantic extras via `extra="allow"`, validated by the world factory for the specific world type.
 
-| Owner | Fields |
-|-------|--------|
-| **Framework** (BaseWorldConfig) | `grid_width`, `grid_height`, `obstacle_density` |
-| **System** (via system config) | `resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio` |
+For the built-in `grid_2d` world type, the factory validates extras against `Grid2DWorldConfig`:
 
-The framework creates the structural grid (dimensions, obstacles). World dynamics parameters (regen) travel through the framework config but are conceptually tied to the experimental setup, not to a specific system's logic.
+| Field | Description |
+|-------|-------------|
+| `grid_width`, `grid_height` | Grid dimensions |
+| `obstacle_density` | Fraction of cells that are obstacles |
+| `resource_regen_rate` | Per-step regeneration amount |
+| `regeneration_mode` | `"all_traversable"` or `"sparse_fixed_ratio"` |
+| `regen_eligible_ratio` | Fraction of cells eligible for regeneration |
+
+This design allows custom world types (hex grids, continuous spaces) to define their own configuration fields without modifying the SDK.
 
 ---
 
@@ -583,7 +589,9 @@ SystemAConfig
     agent: AgentConfig              # initial_energy, max_energy, memory_capacity
     policy: PolicyConfig            # selection_mode, temperature, stay_suppression, consume_weight
     transition: TransitionConfig    # move_cost, consume_cost, stay_cost, max_consume, energy_gain_factor
-    world_dynamics: WorldDynamicsConfig  # resource_regen_rate, regeneration_mode, regen_eligible_ratio
+    # Note: WorldDynamicsConfig has been removed. Regeneration parameters
+    # (resource_regen_rate, regeneration_mode, regen_eligible_ratio) now
+    # live in BaseWorldConfig (the world: section of the config file).
 ```
 
 ### 10.4 Consume Action Handler
@@ -591,10 +599,13 @@ SystemAConfig
 System A registers a `consume` action handler with the world framework:
 
 ```python
-def handle_consume(world: World, position: Position, config: dict) -> ActionOutcome:
-    cell = world.get_cell(position)
-    max_consume = config["max_consume"]
-    # ... apply consumption, return outcome
+def handle_consume(world: MutableWorldProtocol, position: Position, context: dict) -> ActionOutcome:
+    max_consume = context["max_consume"]
+    delta = world.extract_resource(position, max_consume)
+    return ActionOutcome(
+        action="consume", moved=False, new_position=position,
+        data={"consumed": delta > 0, "resource_consumed": delta},
+    )
 ```
 
 This handler is registered when the system is initialized for an episode. The framework calls it when the system's `decide()` returns `action="consume"`.
@@ -634,7 +645,7 @@ The key validation question: can this system be added without modifying any fram
         │                                                              │
         ├── snapshot_before ◄──────────────────────────────────────────┤
         │                                                              │
-        ├── apply_regeneration(config) ────────────────────────────────►│
+        ├── world.tick() ────────────────────────────────────────────────►│
         │                                                              │
         ├── snapshot_intermediate (optional) ◄──────────────────────────┤
         │                                                              │
@@ -724,7 +735,7 @@ This architectural vision is realized when:
 - Performance optimization (parallel execution, caching)
 - Multi-agent systems
 - Learning or adaptation within episodes
-- Non-grid world types
+- Non-grid world types (architecture supports them via the world registry, but none are implemented yet)
 - Web-based visualization
 - Backward compatibility with v0.1.0 artifacts
 

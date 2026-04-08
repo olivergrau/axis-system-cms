@@ -8,23 +8,20 @@ import numpy as np
 
 from axis.sdk.interfaces import SystemInterface
 from axis.sdk.position import Position
-from axis.sdk.snapshot import WorldSnapshot, snapshot_world
 from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
-from axis.sdk.world_types import BaseWorldConfig
+from axis.sdk.world_types import BaseWorldConfig, MutableWorldProtocol
 from axis.world.actions import ActionRegistry, create_action_registry
-from axis.world.dynamics import apply_regeneration
-from axis.world.model import RegenerationMode, World
+from axis.world.registry import create_world_from_config
 
 
 def _run_step(
     system: SystemInterface,
-    world: World,
+    world: MutableWorldProtocol,
     registry: ActionRegistry,
     agent_state: Any,
     rng: np.random.Generator,
     timestep: int,
     *,
-    regen_rate: float,
     action_context: dict[str, Any],
 ) -> tuple[Any, BaseStepTrace]:
     """Execute one step of the episode loop.
@@ -32,28 +29,30 @@ def _run_step(
     Returns (new_agent_state, step_trace).
     """
     # 1. Capture BEFORE snapshot
-    world_before = snapshot_world(world, world.width, world.height)
+    world_before = world.snapshot()
     position_before = world.agent_position
     vitality_before = system.vitality(agent_state)
 
     # 2. System decides
     decide_result = system.decide(world, agent_state, rng)
 
-    # 3. Framework applies regeneration
-    apply_regeneration(world, regen_rate=regen_rate)
+    # 3. World advances its own dynamics (e.g. regeneration)
+    world.tick()
 
     # 4. Framework applies action
-    outcome = registry.apply(world, decide_result.action, context=action_context)
+    outcome = registry.apply(
+        world, decide_result.action, context=action_context)
 
     # 5. Capture AFTER_ACTION snapshot
-    world_after = snapshot_world(world, world.width, world.height)
+    world_after = world.snapshot()
     position_after = world.agent_position
 
     # 6. System observes post-action world
     new_observation = system.observe(world, world.agent_position)
 
     # 7. System transitions
-    transition_result = system.transition(agent_state, outcome, new_observation)
+    transition_result = system.transition(
+        agent_state, outcome, new_observation)
     new_state = transition_result.new_state
     vitality_after = system.vitality(new_state)
 
@@ -81,11 +80,10 @@ def _run_step(
 
 def run_episode(
     system: SystemInterface,
-    world: World,
+    world: MutableWorldProtocol,
     registry: ActionRegistry,
     *,
     max_steps: int,
-    regen_rate: float,
     seed: int,
 ) -> BaseEpisodeTrace:
     """Run a complete episode from initialization to termination.
@@ -96,7 +94,6 @@ def run_episode(
     world : A mutable World (already created with correct grid layout).
     registry : ActionRegistry with all actions registered (base + system-specific).
     max_steps : Maximum step count (framework termination).
-    regen_rate : Per-step resource regeneration rate.
     seed : RNG seed for this episode.
 
     Returns
@@ -111,7 +108,7 @@ def run_episode(
     for timestep in range(max_steps):
         agent_state, step_trace = _run_step(
             system, world, registry, agent_state, rng, timestep,
-            regen_rate=regen_rate, action_context=ctx,
+            action_context=ctx,
         )
         steps.append(step_trace)
 
@@ -137,21 +134,14 @@ def setup_episode(
     start_position: Position,
     *,
     seed: int,
-    regen_rate: float = 0.0,
-    regeneration_mode: str = "all_traversable",
-    regen_eligible_ratio: float | None = None,
-) -> tuple[World, ActionRegistry]:
+) -> tuple[MutableWorldProtocol, ActionRegistry]:
     """Create a world and action registry for an episode.
+
+    Uses the world registry to create the world based on world_config.world_type.
 
     Returns (world, registry) ready for run_episode().
     """
-    from axis.world.factory import create_world
-
-    world = create_world(
-        world_config, start_position, seed=seed,
-        regeneration_mode=RegenerationMode(regeneration_mode),
-        regen_eligible_ratio=regen_eligible_ratio,
-    )
+    world = create_world_from_config(world_config, start_position, seed)
 
     registry = create_action_registry()
     for action_name, handler in system.action_handlers().items():

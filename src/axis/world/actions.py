@@ -6,8 +6,7 @@ from typing import Any, Protocol
 
 from axis.sdk.actions import BASE_ACTIONS, MOVEMENT_DELTAS
 from axis.sdk.position import Position
-from axis.sdk.world_types import ActionOutcome
-from axis.world.model import World
+from axis.sdk.world_types import ActionOutcome, MutableWorldProtocol
 
 
 class ActionHandler(Protocol):
@@ -19,14 +18,14 @@ class ActionHandler(Protocol):
 
     def __call__(
         self,
-        world: World,
+        world: MutableWorldProtocol,
         *,
         context: dict[str, Any],
     ) -> ActionOutcome: ...
 
 
 def _handle_movement(
-    world: World,
+    world: MutableWorldProtocol,
     action: str,
     *,
     context: dict[str, Any],
@@ -48,7 +47,7 @@ def _handle_movement(
 
 
 def _handle_stay(
-    world: World,
+    world: MutableWorldProtocol,
     *,
     context: dict[str, Any],
 ) -> ActionOutcome:
@@ -63,7 +62,7 @@ def _handle_stay(
 def _make_movement_handler(action_name: str) -> ActionHandler:
     """Create a movement handler bound to a specific direction."""
 
-    def handler(world: World, *, context: dict[str, Any]) -> ActionOutcome:
+    def handler(world: MutableWorldProtocol, *, context: dict[str, Any]) -> ActionOutcome:
         return _handle_movement(world, action_name, context=context)
 
     return handler  # type: ignore[return-value]
@@ -110,7 +109,7 @@ class ActionRegistry:
 
     def apply(
         self,
-        world: World,
+        world: MutableWorldProtocol,
         action: str,
         *,
         context: dict[str, Any] | None = None,

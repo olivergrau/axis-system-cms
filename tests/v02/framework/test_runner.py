@@ -17,16 +17,14 @@ from axis.systems.system_a.actions import handle_consume
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
 from axis.world.actions import ActionRegistry, create_action_registry
-from axis.world.dynamics import apply_regeneration
-from axis.world.factory import create_world
-from axis.world.model import World
+from axis.world.grid_2d.factory import create_world
+from axis.world.grid_2d.model import World
 from tests.v02.builders.system_config_builder import SystemAConfigBuilder
 from tests.v02.constants import (
     DEFAULT_GRID_HEIGHT,
     DEFAULT_GRID_WIDTH,
     DEFAULT_MAX_STEPS,
     DEFAULT_OBSTACLE_DENSITY,
-    DEFAULT_REGEN_RATE,
     DEFAULT_SEED,
 )
 
@@ -63,12 +61,9 @@ def _run_default_episode(
         Position(x=0, y=0),
         seed=seed,
     )
-    system_config = SystemAConfig(**cfg)
-    regen_rate = system_config.world_dynamics.resource_regen_rate
     return run_episode(
         system, world, registry,
         max_steps=max_steps,
-        regen_rate=regen_rate,
         seed=seed,
     )
 
@@ -142,7 +137,8 @@ class TestTermination:
         assert trace.total_steps < DEFAULT_MAX_STEPS
 
     def test_termination_max_steps(self) -> None:
-        cfg = SystemAConfigBuilder().with_initial_energy(200.0).with_max_energy(200.0).build()
+        cfg = SystemAConfigBuilder().with_initial_energy(
+            200.0).with_max_energy(200.0).build()
         trace = _run_default_episode(config_dict=cfg, max_steps=5)
         assert trace.termination_reason == "max_steps_reached"
         assert trace.total_steps == 5
@@ -228,7 +224,6 @@ class TestEquivalenceWithManualOrchestration:
         system_config = SystemAConfig(**cfg_dict)
         seed = DEFAULT_SEED
         max_steps = DEFAULT_MAX_STEPS
-        regen_rate = system_config.world_dynamics.resource_regen_rate
         max_consume = system_config.transition.max_consume
 
         # --- Manual orchestration (WP-2.4 pattern) ---
@@ -249,7 +244,7 @@ class TestEquivalenceWithManualOrchestration:
             decide_result = system_m.decide(world_m, agent_state, rng)
             manual_actions.append(decide_result.action)
 
-            apply_regeneration(world_m, regen_rate=regen_rate)
+            world_m.tick()
             context = {"max_consume": max_consume}
             outcome = registry_m.apply(
                 world_m, decide_result.action, context=context,
@@ -269,7 +264,7 @@ class TestEquivalenceWithManualOrchestration:
         )
         trace = run_episode(
             system_r, world_r, registry_r,
-            max_steps=max_steps, regen_rate=regen_rate, seed=seed,
+            max_steps=max_steps, seed=seed,
         )
 
         # --- Compare ---

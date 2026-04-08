@@ -28,7 +28,6 @@ from axis.systems.system_a.config import (
     PolicyConfig,
     SystemAConfig,
     TransitionConfig,
-    WorldDynamicsConfig,
 )
 from axis.systems.system_a.drive import SystemAHungerDrive
 from axis.systems.system_a.memory import update_memory
@@ -45,7 +44,7 @@ from axis.systems.system_a.types import (
     Observation,
     clip_energy,
 )
-from axis.world.model import Cell, CellType, World
+from axis.world.grid_2d.model import Cell, CellType, World
 from tests.v02.builders.system_config_builder import SystemAConfigBuilder
 
 
@@ -86,7 +85,8 @@ def initial_state(config: SystemAConfig) -> AgentState:
 def _make_grid(width: int, height: int) -> list[list[Cell]]:
     """Create a uniform empty grid."""
     return [
-        [Cell(cell_type=CellType.EMPTY, resource_value=0.0) for _ in range(width)]
+        [Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+         for _ in range(width)]
         for _ in range(height)
     ]
 
@@ -94,7 +94,8 @@ def _make_grid(width: int, height: int) -> list[list[Cell]]:
 def _make_resource_grid(width: int, height: int, value: float = 0.5) -> list[list[Cell]]:
     """Create a grid filled with resource cells."""
     return [
-        [Cell(cell_type=CellType.RESOURCE, resource_value=value) for _ in range(width)]
+        [Cell(cell_type=CellType.RESOURCE, resource_value=value)
+         for _ in range(width)]
         for _ in range(height)
     ]
 
@@ -136,17 +137,18 @@ class TestSystemAConfig:
 
     def test_energy_bounds_validation(self) -> None:
         with pytest.raises(ValueError, match="initial_energy"):
-            AgentConfig(initial_energy=200.0, max_energy=100.0, memory_capacity=5)
+            AgentConfig(initial_energy=200.0,
+                        max_energy=100.0, memory_capacity=5)
 
     def test_sub_configs_accessible(self, config: SystemAConfig) -> None:
         assert isinstance(config.agent, AgentConfig)
         assert isinstance(config.policy, PolicyConfig)
         assert isinstance(config.transition, TransitionConfig)
-        assert isinstance(config.world_dynamics, WorldDynamicsConfig)
 
-    def test_world_dynamics_defaults(self) -> None:
+    def test_construct_without_world_dynamics(self) -> None:
         cfg = SystemAConfig(
-            agent=AgentConfig(initial_energy=50, max_energy=100, memory_capacity=5),
+            agent=AgentConfig(initial_energy=50,
+                              max_energy=100, memory_capacity=5),
             policy=PolicyConfig(
                 selection_mode="sample", temperature=1.0,
                 stay_suppression=0.1, consume_weight=1.5,
@@ -156,7 +158,7 @@ class TestSystemAConfig:
                 max_consume=1.0, energy_gain_factor=10.0,
             ),
         )
-        assert cfg.world_dynamics.resource_regen_rate == 0.0
+        assert isinstance(cfg, SystemAConfig)
 
 
 # ===========================================================================
@@ -396,7 +398,8 @@ class TestDrive:
         output = drive.compute(state, obs)
         d_h = 0.5  # 1 - 50/100
         expected_consume = d_h * 1.5 * 0.5  # d_h * consume_weight * resource
-        assert output.action_contributions[4] == pytest.approx(expected_consume)
+        assert output.action_contributions[4] == pytest.approx(
+            expected_consume)
 
     def test_returns_hunger_drive_output(self) -> None:
         drive = self._make_drive()
@@ -433,14 +436,16 @@ class TestPolicy:
     def test_returns_policy_result(self) -> None:
         policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
-        result = policy.select(self._make_drive_output(), self._make_observation(), rng)
+        result = policy.select(self._make_drive_output(),
+                               self._make_observation(), rng)
         assert isinstance(result, PolicyResult)
         assert isinstance(result.action, str)
 
     def test_admissibility_masking(self) -> None:
         policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
-        result = policy.select(self._make_drive_output(), self._make_observation(), rng)
+        result = policy.select(self._make_drive_output(),
+                               self._make_observation(), rng)
         probs = result.policy_data["probabilities"]
         assert probs[2] == 0.0  # left is blocked
 
@@ -449,7 +454,8 @@ class TestPolicy:
         rng = np.random.default_rng(42)
         actions = set()
         for _ in range(10):
-            result = policy.select(self._make_drive_output(), self._make_observation(), rng)
+            result = policy.select(
+                self._make_drive_output(), self._make_observation(), rng)
             actions.add(result.action)
         assert len(actions) == 1  # always same action
 
@@ -466,7 +472,8 @@ class TestPolicy:
     def test_policy_data_keys(self) -> None:
         policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
-        result = policy.select(self._make_drive_output(), self._make_observation(), rng)
+        result = policy.select(self._make_drive_output(),
+                               self._make_observation(), rng)
         data = result.policy_data
         assert "raw_contributions" in data
         assert "admissibility_mask" in data
@@ -507,9 +514,10 @@ class TestTransition:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="up", moved=True,
-            new_position=Position(x=2, y=1), resource_consumed=0.0,
+            new_position=Position(x=2, y=1),
         )
-        result = trans.transition(self._make_state(50.0), outcome, self._make_observation())
+        result = trans.transition(self._make_state(
+            50.0), outcome, self._make_observation())
         assert result.new_state.energy == 49.0
 
     def test_consume_gains_energy(self) -> None:
@@ -517,9 +525,10 @@ class TestTransition:
         outcome = ActionOutcome(
             action="consume", moved=False,
             new_position=Position(x=2, y=2),
-            consumed=True, resource_consumed=0.5,
+            data={"consumed": True, "resource_consumed": 0.5},
         )
-        result = trans.transition(self._make_state(50.0), outcome, self._make_observation())
+        result = trans.transition(self._make_state(
+            50.0), outcome, self._make_observation())
         # energy = 50 - 1.0 (consume_cost) + 10 * 0.5 (gain) = 54.0
         assert result.new_state.energy == 54.0
 
@@ -528,9 +537,10 @@ class TestTransition:
         outcome = ActionOutcome(
             action="consume", moved=False,
             new_position=Position(x=2, y=2),
-            consumed=True, resource_consumed=1.0,
+            data={"consumed": True, "resource_consumed": 1.0},
         )
-        result = trans.transition(self._make_state(95.0), outcome, self._make_observation())
+        result = trans.transition(self._make_state(
+            95.0), outcome, self._make_observation())
         # energy = 95 - 1 + 10 = 104 -> clipped to 100
         assert result.new_state.energy == 100.0
 
@@ -538,18 +548,20 @@ class TestTransition:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="stay", moved=False,
-            new_position=Position(x=2, y=2), resource_consumed=0.0,
+            new_position=Position(x=2, y=2),
         )
-        result = trans.transition(self._make_state(50.0), outcome, self._make_observation())
+        result = trans.transition(self._make_state(
+            50.0), outcome, self._make_observation())
         assert result.new_state.energy == 49.5
 
     def test_termination_on_zero_energy(self) -> None:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="up", moved=True,
-            new_position=Position(x=2, y=1), resource_consumed=0.0,
+            new_position=Position(x=2, y=1),
         )
-        result = trans.transition(self._make_state(1.0), outcome, self._make_observation())
+        result = trans.transition(self._make_state(
+            1.0), outcome, self._make_observation())
         assert result.new_state.energy == 0.0
         assert result.terminated is True
         assert result.termination_reason == "energy_depleted"
@@ -558,9 +570,10 @@ class TestTransition:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="stay", moved=False,
-            new_position=Position(x=2, y=2), resource_consumed=0.0,
+            new_position=Position(x=2, y=2),
         )
-        result = trans.transition(self._make_state(50.0), outcome, self._make_observation())
+        result = trans.transition(self._make_state(
+            50.0), outcome, self._make_observation())
         assert result.terminated is False
         assert result.termination_reason is None
 
@@ -568,18 +581,20 @@ class TestTransition:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="stay", moved=False,
-            new_position=Position(x=2, y=2), resource_consumed=0.0,
+            new_position=Position(x=2, y=2),
         )
-        result = trans.transition(self._make_state(), outcome, self._make_observation())
+        result = trans.transition(
+            self._make_state(), outcome, self._make_observation())
         assert len(result.new_state.memory_state.entries) == 1
 
     def test_trace_data_keys(self) -> None:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="stay", moved=False,
-            new_position=Position(x=2, y=2), resource_consumed=0.0,
+            new_position=Position(x=2, y=2),
         )
-        result = trans.transition(self._make_state(), outcome, self._make_observation())
+        result = trans.transition(
+            self._make_state(), outcome, self._make_observation())
         assert isinstance(result, TransitionResult)
         assert "energy_before" in result.trace_data
         assert "energy_after" in result.trace_data
@@ -601,24 +616,24 @@ class TestConsumeHandler:
         grid[2][2] = Cell(cell_type=CellType.RESOURCE, resource_value=0.8)
         world = World(grid, Position(x=2, y=2))
         outcome = handle_consume(world, context={"max_consume": 1.0})
-        assert outcome.consumed is True
-        assert outcome.resource_consumed == 0.8
+        assert outcome.data["consumed"] is True
+        assert outcome.data["resource_consumed"] == 0.8
         assert outcome.action == "consume"
 
     def test_consume_on_empty_cell(self) -> None:
         grid = _make_grid(5, 5)
         world = World(grid, Position(x=2, y=2))
         outcome = handle_consume(world, context={"max_consume": 1.0})
-        assert outcome.consumed is False
-        assert outcome.resource_consumed == 0.0
+        assert outcome.data["consumed"] is False
+        assert outcome.data["resource_consumed"] == 0.0
 
     def test_partial_consume(self) -> None:
         grid = _make_grid(5, 5)
         grid[2][2] = Cell(cell_type=CellType.RESOURCE, resource_value=0.8)
         world = World(grid, Position(x=2, y=2))
         outcome = handle_consume(world, context={"max_consume": 0.3})
-        assert outcome.consumed is True
-        assert outcome.resource_consumed == pytest.approx(0.3)
+        assert outcome.data["consumed"] is True
+        assert outcome.data["resource_consumed"] == pytest.approx(0.3)
         # Cell should still be resource with remainder
         cell = world.get_internal_cell(Position(x=2, y=2))
         assert cell.cell_type == CellType.RESOURCE
@@ -683,7 +698,7 @@ class TestTransitionIntegration:
         )
         outcome = ActionOutcome(
             action="up", moved=True,
-            new_position=Position(x=2, y=1), resource_consumed=0.0,
+            new_position=Position(x=2, y=1),
         )
         obs = Observation(
             current=CellObservation(traversability=1.0, resource=0.0),
@@ -703,7 +718,7 @@ class TestTransitionIntegration:
         )
         outcome = ActionOutcome(
             action="stay", moved=False,
-            new_position=Position(x=2, y=2), resource_consumed=0.0,
+            new_position=Position(x=2, y=2),
         )
         obs = Observation(
             current=CellObservation(traversability=1.0, resource=0.0),

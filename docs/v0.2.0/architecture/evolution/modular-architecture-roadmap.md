@@ -39,7 +39,7 @@ These decisions were made in the Q&A document and are **binding for all work pac
 | Q9 | Snapshots | 2 mandatory (`BEFORE`, `AFTER_ACTION`) + optional named intermediates |
 | Q10 | Visualization | Adapter with structured extension points (`SystemVisualizationAdapter`) |
 | Q11 | System registry | Explicit code-level registry (dict of factory functions) |
-| Q12 | WorldConfig | Framework owns structure (grid size, obstacles); system owns dynamics (regen params) |
+| Q12 | WorldConfig | `BaseWorldConfig` is minimal (`world_type` only); grid-specific fields pass as extras; world owns dynamics via `tick()`/`extract_resource()`/`snapshot()` |
 | Q13 | Backward compat | Clean break -- no legacy artifact support required |
 | Q14 | Observations | System-defined, opaque to framework |
 | Q15 | Energy/vitality | Mandatory normalized metric `[0, 1]` exposed by all systems |
@@ -183,14 +183,11 @@ ActionOutcome
     action: str
     moved: bool
     new_position: Position
-    consumed: bool
-    resource_consumed: float
-    # extensible for future action types
+    data: dict[str, Any]           # action-specific results
 
 BaseWorldConfig
-    grid_width: int
-    grid_height: int
-    obstacle_density: float
+    world_type: str = "grid_2d"    # routing key for world registry
+    # All other fields pass through as Pydantic extras (extra="allow")
 ```
 
 **Key design notes**:
@@ -275,9 +272,8 @@ LoggingConfig
     # ... (carry forward from current)
 
 BaseWorldConfig
-    grid_width: int
-    grid_height: int
-    obstacle_density: float
+    world_type: str = "grid_2d"
+    # Grid-specific fields (grid_width, grid_height, etc.) pass as extras
 
 FrameworkConfig
     general: GeneralConfig
@@ -354,7 +350,7 @@ Move existing code into the new structure and make System A conform to the SDK i
 
 | Current location | New location | Owner |
 |-----------------|-------------|-------|
-| `_apply_regeneration` | `axis/world/dynamics.py` | Framework |
+| `_apply_regeneration` | `axis/world/dynamics.py` (called internally by `World.tick()`) | World (via `MutableWorldProtocol.tick()`) |
 | `_apply_movement` | `axis/world/actions.py` | Framework (base action) |
 | `_apply_consume` | `axis/systems/system_a/actions.py` | System A (registered handler) |
 | Energy computation | `axis/systems/system_a/transition.py` | System A |
@@ -385,7 +381,8 @@ Move existing code into the new structure and make System A conform to the SDK i
   - Accept `ActionOutcome` from framework instead of mutating world directly
 - Implement `SystemA.step()` as the orchestration of: sensor -> drive -> policy -> action intent -> (framework applies action) -> transition with outcome
 - Define `SystemAConfig` as a typed Pydantic model that validates from `dict[str, Any]`
-  - Contains: `AgentConfig`, `PolicyConfig`, `TransitionConfig`, `WorldDynamicsConfig` (regen params)
+  - Contains: `AgentConfig`, `PolicyConfig`, `TransitionConfig`
+  - Note: `WorldDynamicsConfig` (regen params) has been removed; regeneration parameters now live in `BaseWorldConfig`
 - Implement `SystemA.vitality()` returning `energy / max_energy`
 
 **Important**: `SystemA.step()` must produce trace data conforming to `BaseStepTrace`, with System A-specific data (drive output, decision trace, transition details) packed into `system_data`.

@@ -1,5 +1,12 @@
 # WP-0.2 Implementation Brief -- Test Infrastructure Preparation
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `SystemAConfigBuilder` no longer includes `world_dynamics` or
+>   `with_regen_rate()`. Builder output keys are `{"agent", "policy",
+>   "transition"}`. The `DEFAULT_REGEN_RATE` constant has been removed.
+> - Regeneration parameters moved from system config to `BaseWorldConfig`.
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. WP-0.1 established the `axis` package scaffold and the `tests/v02/` directory tree.
@@ -145,16 +152,10 @@ class SystemAConfigBuilder:
             "max_consume": 1.0,
             "energy_gain_factor": 10.0,
         }
-        self._world_dynamics = {
-            "resource_regen_rate": 0.0,
-            "regeneration_mode": "all_traversable",
-            "regen_eligible_ratio": None,
-        }
 
     def with_initial_energy(self, energy: float) -> SystemAConfigBuilder: ...
     def with_max_energy(self, energy: float) -> SystemAConfigBuilder: ...
     def with_temperature(self, temp: float) -> SystemAConfigBuilder: ...
-    def with_regen_rate(self, rate: float) -> SystemAConfigBuilder: ...
     def build(self) -> dict: ...
 ```
 
@@ -303,7 +304,6 @@ DEFAULT_CONSUME_COST = 1.0
 DEFAULT_STAY_COST = 0.5
 DEFAULT_MAX_CONSUME = 1.0
 DEFAULT_ENERGY_GAIN_FACTOR = 10.0
-DEFAULT_REGEN_RATE = 0.0
 ```
 
 These constants are used by the builders and can be referenced directly in tests.
@@ -318,7 +318,7 @@ Tests that verify the test infrastructure itself works:
 
 1. **Builder smoke tests**:
    - `FrameworkConfigBuilder().build()` produces a dict with keys: `general`, `execution`, `world`, `logging`
-   - `SystemAConfigBuilder().build()` produces a dict with keys: `agent`, `policy`, `transition`, `world_dynamics`
+   - `SystemAConfigBuilder().build()` produces a dict with keys: `agent`, `policy`, `transition`
    - Builder chaining works: `FrameworkConfigBuilder().with_seed(99).with_max_steps(500).build()` applies overrides correctly
    - `SystemAConfigBuilder().with_initial_energy(75.0).build()` applies the override
 
@@ -430,7 +430,7 @@ Must include:
 
 1. Builder dict output structure:
    - `FrameworkConfigBuilder().build()` has keys `general`, `execution`, `world`, `logging`
-   - `SystemAConfigBuilder().build()` has keys `agent`, `policy`, `transition`, `world_dynamics`
+   - `SystemAConfigBuilder().build()` has keys `agent`, `policy`, `transition`
    - `FrameworkConfigBuilder().build()["general"]["seed"]` equals `DEFAULT_SEED`
    - `SystemAConfigBuilder().build()["agent"]["initial_energy"]` equals `DEFAULT_INITIAL_ENERGY`
 

@@ -102,7 +102,8 @@ class TestRegistryToRunner:
     def test_registry_to_runner(self) -> None:
         from axis.framework.registry import create_system
 
-        system = create_system("mock", {"initial_energy": 10.0, "max_energy": 10.0})
+        system = create_system(
+            "mock", {"initial_energy": 10.0, "max_energy": 10.0})
         world, registry = setup_episode(
             system,
             BaseWorldConfig(grid_width=5, grid_height=5),
@@ -110,7 +111,7 @@ class TestRegistryToRunner:
             seed=42,
         )
         trace = run_episode(
-            system, world, registry, max_steps=15, regen_rate=0.0, seed=42,
+            system, world, registry, max_steps=15, seed=42,
         )
         assert isinstance(trace, BaseEpisodeTrace)
         assert trace.system_type == "mock"
@@ -176,7 +177,8 @@ class TestExperimentExecutorMock:
             execution=ExecutionConfig(max_steps=15),
             world=BaseWorldConfig(grid_width=5, grid_height=5),
             logging=LoggingConfig(enabled=False),
-            system={"initial_energy": 10.0, "max_energy": 10.0, "section": {"param": 1}},
+            system={"initial_energy": 10.0,
+                    "max_energy": 10.0, "section": {"param": 1}},
             num_episodes_per_run=1,
             parameter_path="system.section.param",
             parameter_values=(1, 2, 3),
@@ -261,7 +263,7 @@ class TestTraceAndSummary:
             seed=42,
         )
         trace = run_episode(
-            system, world, registry, max_steps=5, regen_rate=0.0, seed=42,
+            system, world, registry, max_steps=5, seed=42,
         )
         step = trace.steps[0]
         assert "decision_data" in step.system_data

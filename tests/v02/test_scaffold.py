@@ -143,7 +143,11 @@ def test_world_exports_model_and_factory() -> None:
         # WP-2.2: Action engine and dynamics
         "ActionRegistry",
         "create_action_registry",
-        "apply_regeneration",
+        # World registry
+        "register_world",
+        "get_world_factory",
+        "registered_world_types",
+        "create_world_from_config",
     }
     actual = set(axis.world.__all__)
     assert expected == actual
@@ -167,6 +171,7 @@ def test_sdk_exports_interfaces_and_types() -> None:
         "Position",
         "CellView",
         "WorldView",
+        "MutableWorldProtocol",
         "ActionOutcome",
         "BaseWorldConfig",
         "BASE_ACTIONS",

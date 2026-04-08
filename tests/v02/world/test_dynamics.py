@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from axis.sdk.position import Position
-from axis.world.dynamics import apply_regeneration
-from axis.world.model import Cell, CellType, World
+from axis.world.grid_2d.dynamics import apply_regeneration
+from axis.world.grid_2d.model import Cell, CellType, World
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +209,8 @@ class TestFullGridRegeneration:
             (2, 0): Cell(cell_type=CellType.RESOURCE, resource_value=0.5),
         }
         # Agent at (1,1) to avoid obstacle at (0,0)
-        world = _make_world_with_cells(cells, width=3, height=3, agent_pos=Position(x=1, y=1))
+        world = _make_world_with_cells(
+            cells, width=3, height=3, agent_pos=Position(x=1, y=1))
         count = apply_regeneration(world, regen_rate=0.1)
 
         # (0,0) obstacle: skipped
@@ -219,9 +220,12 @@ class TestFullGridRegeneration:
         assert count == 7
 
         # Verify specific cells
-        assert world.get_internal_cell(Position(x=0, y=0)).cell_type == CellType.OBSTACLE
-        assert world.get_internal_cell(Position(x=1, y=0)).resource_value == 0.0
-        assert world.get_internal_cell(Position(x=2, y=0)).resource_value == pytest.approx(0.6)
+        assert world.get_internal_cell(
+            Position(x=0, y=0)).cell_type == CellType.OBSTACLE
+        assert world.get_internal_cell(
+            Position(x=1, y=0)).resource_value == 0.0
+        assert world.get_internal_cell(
+            Position(x=2, y=0)).resource_value == pytest.approx(0.6)
 
 
 # ---------------------------------------------------------------------------
@@ -232,8 +236,5 @@ class TestFullGridRegeneration:
 class TestImports:
     """Import paths work correctly."""
 
-    def test_import_from_axis_world(self) -> None:
-        from axis.world import apply_regeneration  # noqa: F401
-
     def test_import_from_dynamics_module(self) -> None:
-        from axis.world.dynamics import apply_regeneration  # noqa: F401
+        from axis.world.grid_2d.dynamics import apply_regeneration  # noqa: F401

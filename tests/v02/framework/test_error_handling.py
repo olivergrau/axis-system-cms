@@ -104,7 +104,7 @@ class TestTerminationModes:
             seed=42,
         )
         trace = run_episode(
-            system, world, registry, max_steps=3, regen_rate=0.0, seed=42,
+            system, world, registry, max_steps=3, seed=42,
         )
         assert trace.total_steps == 3
         assert trace.termination_reason == "max_steps_reached"
@@ -120,7 +120,7 @@ class TestTerminationModes:
             seed=42,
         )
         trace = run_episode(
-            system, world, registry, max_steps=20, regen_rate=0.0, seed=42,
+            system, world, registry, max_steps=20, seed=42,
         )
         assert trace.total_steps == 5
         assert trace.termination_reason == "energy_depleted"
@@ -150,7 +150,7 @@ class TestInvalidAction:
         )
         with pytest.raises((KeyError, ValueError)):
             run_episode(
-                system, world, registry, max_steps=5, regen_rate=0.0, seed=42,
+                system, world, registry, max_steps=5, seed=42,
             )
 
 

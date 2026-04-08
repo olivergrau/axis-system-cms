@@ -1,5 +1,15 @@
 # WP-2.1 Implementation Brief -- World Extraction
 
+> **Updated:** This spec has been updated to reflect the final implementation.
+> Key changes from the original spec:
+> - `create_world()` no longer takes regeneration parameters as keyword
+>   arguments. They are fields of `BaseWorldConfig` (via `extra="allow"`)
+>   and parsed internally by the `Grid2DWorldConfig` model.
+> - The `World` class now has `tick()`, `extract_resource()`, and
+>   `snapshot()` methods that satisfy the `MutableWorldProtocol`.
+> - A world registry (`axis.world.registry`) maps world type strings to
+>   factory functions, enabling pluggable world types.
+
 ## Context
 
 We are implementing the **modular architecture evolution** of the AXIS project. Phase 1 (WP-1.1 through WP-1.4) defined the SDK interfaces, world contracts, replay contract, and framework config types.
@@ -165,7 +175,7 @@ class World:
     protocol (for systems).
     """
 
-    def __init__(self, grid: list[list[Cell]], agent_position: Position) -> None:
+    def __init__(self, grid: list[list[Cell]], agent_position: Position, *, regen_rate: float = 0.0) -> None:
         # Validation: non-empty grid, uniform widths, agent on traversable cell
         ...
 
@@ -218,6 +228,22 @@ class World:
     def is_regen_eligible(self, position: Position) -> bool:
         """Check regen eligibility. Framework-only."""
         ...
+
+    # --- World dynamics ---
+
+    def tick(self) -> None:
+        """Advance world dynamics by one step (regeneration)."""
+        from axis.world.dynamics import apply_regeneration
+        apply_regeneration(self, regen_rate=self._regen_rate)
+
+    def extract_resource(self, position: Position, max_amount: float) -> float:
+        """Extract up to max_amount resource from the cell at position.
+        Returns the amount actually extracted. Mutates the cell."""
+        ...
+
+    def snapshot(self) -> WorldSnapshot:
+        """Create an immutable snapshot of the current world state."""
+        ...
 ```
 
 **Critical design decision -- `get_cell` returns `CellView`**:
@@ -246,17 +272,15 @@ def create_world(
     grid: list[list[Cell]] | None = None,
     *,
     seed: int | None = None,
-    regeneration_mode: RegenerationMode = RegenerationMode.ALL_TRAVERSABLE,
-    regen_eligible_ratio: float | None = None,
-    resource_regen_rate: float = 0.0,
 ) -> World:
     """Create a World from configuration.
 
     If grid is None, creates a grid of EMPTY cells.
     If grid is provided, validates dimensions against config.
 
-    Regeneration parameters are system-provided (not part of BaseWorldConfig)
-    since systems own their dynamics (Q12).
+    Regeneration parameters are now part of BaseWorldConfig (stored as
+    extras) and read from the config object directly via a
+    Grid2DWorldConfig parser.
     """
     ...
 ```
@@ -264,8 +288,7 @@ def create_world(
 **Design notes**:
 
 - Accepts `BaseWorldConfig` (the SDK type) instead of the old `WorldConfig`
-- Regeneration parameters (`regeneration_mode`, `regen_eligible_ratio`, `resource_regen_rate`) are separate keyword arguments because they are **system-owned dynamics** (per Q12), not part of the framework's `BaseWorldConfig`
-- `resource_regen_rate` is accepted here for initial world setup but not used during factory creation -- it's passed through to the dynamics engine at runtime. The factory only needs `regeneration_mode` and `regen_eligible_ratio` for determining initial eligibility
+- Regeneration parameters are now part of `BaseWorldConfig` (stored as extras) and read from the config object directly via a `Grid2DWorldConfig` parser
 - Obstacle placement logic is identical to the existing implementation
 - Sparse eligibility logic is identical to the existing implementation
 - Both internal helpers (`_apply_obstacles`, `_apply_sparse_eligibility`) move to this file
@@ -324,7 +347,8 @@ The `World` class has two APIs:
 | API | Audience | Methods |
 |-----|----------|---------|
 | **WorldView** (read-only) | Systems (via SDK) | `width`, `height`, `agent_position`, `get_cell`, `is_within_bounds`, `is_traversable` |
-| **Internal** (mutation) | Framework (action engine, dynamics) | `agent_position` setter, `get_internal_cell`, `set_cell`, `is_regen_eligible` |
+| **Mutation** (framework) | Framework (action engine, dynamics) | `agent_position` setter, `get_internal_cell`, `set_cell`, `is_regen_eligible` |
+| **Dynamics** (framework) | Framework (episode runner) | `tick`, `extract_resource`, `snapshot` |
 
 Systems never import from `axis.world` directly -- they use the `WorldView` protocol from `axis.sdk`.
 

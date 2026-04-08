@@ -43,16 +43,6 @@ class TransitionConfig(BaseModel):
     stay_cost: float = Field(default=0.5, ge=0)
 
 
-class WorldDynamicsConfig(BaseModel):
-    """System B world dynamics parameters."""
-
-    model_config = ConfigDict(frozen=True)
-
-    resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
-    regeneration_mode: str = "all_traversable"
-    regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)
-
-
 class SystemBConfig(BaseModel):
     """Complete System B configuration."""
 
@@ -61,6 +51,3 @@ class SystemBConfig(BaseModel):
     agent: AgentConfig
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
     transition: TransitionConfig = Field(default_factory=TransitionConfig)
-    world_dynamics: WorldDynamicsConfig = Field(
-        default_factory=WorldDynamicsConfig,
-    )

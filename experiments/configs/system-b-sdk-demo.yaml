@@ -8,9 +8,15 @@ execution:
   max_steps: 200
 
 world:
+  world_type: "signal_landscape"
   grid_width: 10
   grid_height: 10
+  num_hotspots: 3
+  hotspot_radius: 3.0
+  drift_speed: 0.5
+  decay_rate: 0.02
   obstacle_density: 0.0
+  signal_intensity: 1.0
 
 system:
   agent:
@@ -24,7 +30,5 @@ system:
     move_cost: 1.0
     scan_cost: 0.5
     stay_cost: 0.5
-  world_dynamics:
-    resource_regen_rate: 0.05
 
 num_episodes_per_run: 5

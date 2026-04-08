@@ -12,7 +12,13 @@ from axis.sdk.position import Position
 from axis.sdk.snapshot import WorldSnapshot, snapshot_world
 from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
 from axis.sdk.types import DecideResult, PolicyResult, TransitionResult
-from axis.sdk.world_types import ActionOutcome, BaseWorldConfig, CellView, WorldView
+from axis.sdk.world_types import (
+    ActionOutcome,
+    BaseWorldConfig,
+    CellView,
+    MutableWorldProtocol,
+    WorldView,
+)
 
 __all__ = [
     # Interfaces
@@ -30,6 +36,7 @@ __all__ = [
     "WorldView",
     "ActionOutcome",
     "BaseWorldConfig",
+    "MutableWorldProtocol",
     # Replay contract
     "WorldSnapshot",
     "snapshot_world",

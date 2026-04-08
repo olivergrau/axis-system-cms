@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from axis.sdk.position import Position
+
+if TYPE_CHECKING:
+    from axis.sdk.snapshot import WorldSnapshot
 
 
 class CellView(BaseModel):
@@ -65,11 +68,56 @@ class WorldView(Protocol):
         ...
 
 
+@runtime_checkable
+class MutableWorldProtocol(WorldView, Protocol):
+    """Full mutable world contract used by the framework and action handlers.
+
+    Extends WorldView with the mutation API that the framework needs.
+    Custom world implementations must satisfy this protocol.
+    """
+
+    @property
+    def agent_position(self) -> Position:  # type: ignore[override]
+        """Get/set agent position."""
+        ...
+
+    @agent_position.setter
+    def agent_position(self, position: Position) -> None: ...
+
+    def get_internal_cell(self, position: Position) -> Any:
+        """Get the internal cell representation. Framework-only."""
+        ...
+
+    def set_cell(self, position: Position, cell: Any) -> None:
+        """Replace a cell. Framework-only."""
+        ...
+
+    def tick(self) -> None:
+        """Advance world dynamics by one step (e.g. regeneration)."""
+        ...
+
+    def extract_resource(self, position: Position, max_amount: float) -> float:
+        """Extract up to *max_amount* resource from *position*.
+
+        Returns the amount actually extracted. Mutates the cell.
+        """
+        ...
+
+    def snapshot(self) -> WorldSnapshot:
+        """Create an immutable snapshot of the current world state."""
+        ...
+
+
 class ActionOutcome(BaseModel):
     """Result of applying an action to the world.
 
     Returned by the framework to the system after action application.
     The system uses this to update its internal state (energy, memory, etc.).
+
+    Universal fields (action, moved, new_position) are provided by the
+    framework. The ``data`` dict carries action-specific results set by
+    the action handler (e.g. consume results, scan results). Systems
+    read what they need from ``data``; the framework never inspects it.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -77,20 +125,21 @@ class ActionOutcome(BaseModel):
     action: str
     moved: bool
     new_position: Position
-    consumed: bool = False
-    resource_consumed: float = 0.0
+    data: dict[str, Any] = Field(default_factory=dict)
 
 
 class BaseWorldConfig(BaseModel):
     """Framework-level world configuration.
 
-    Defines the structural properties of the world grid.
-    System-specific world dynamics (e.g., regeneration parameters)
-    are part of the system config, not this type.
+    Only ``world_type`` is framework-owned. All other fields are
+    world-type-specific and passed through to the world factory via
+    ``extra="allow"``.  This mirrors how system config is an opaque
+    dict validated by the system at instantiation.
+
+    Custom world types add their own fields (e.g. ``hex_radius``) and
+    the framework stores them transparently.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="allow")
 
-    grid_width: int = Field(..., gt=0)
-    grid_height: int = Field(..., gt=0)
-    obstacle_density: float = Field(default=0.0, ge=0.0, lt=1.0)
+    world_type: str = "grid_2d"
