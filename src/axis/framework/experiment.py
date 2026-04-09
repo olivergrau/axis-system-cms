@@ -52,6 +52,7 @@ class ExperimentResult(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    experiment_id: str
     experiment_config: ExperimentConfig
     run_results: tuple[RunResult, ...]
     summary: ExperimentSummary
@@ -238,6 +239,7 @@ class ExperimentExecutor:
         summary = compute_experiment_summary(config, run_results)
 
         return ExperimentResult(
+            experiment_id=uuid.uuid4().hex,
             experiment_config=config,
             run_results=run_results,
             summary=summary,
@@ -422,6 +424,7 @@ class ExperimentExecutor:
         repo.save_experiment_status(experiment_id, ExperimentStatus.COMPLETED)
 
         return ExperimentResult(
+            experiment_id=experiment_id,
             experiment_config=config,
             run_results=results_tuple,
             summary=summary,

@@ -239,19 +239,15 @@ def _cmd_experiments_run(repo, config_path: str, output: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # Find the experiment ID from the repository
-    experiments = repo.list_experiments()
-    experiment_id = experiments[-1] if experiments else "unknown"
-
     if output == "json":
         print(json.dumps({
-            "experiment_id": experiment_id,
+            "experiment_id": result.experiment_id,
             "status": "completed",
             "num_runs": result.summary.num_runs,
         }, indent=2))
     else:
         print(f"Experiment completed.")
-        print(f"  ID: {experiment_id}")
+        print(f"  ID: {result.experiment_id}")
         print(f"  Runs: {result.summary.num_runs}")
 
 
