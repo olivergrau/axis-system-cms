@@ -53,7 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
 examples:
   axis experiments list                         List all experiments
   axis experiments run config.yaml              Run experiment from config
-  axis experiments run config.yaml --redo       Re-run, replacing old results
+  axis experiments run config.yaml              Run experiment from config
   axis experiments show <experiment_id>         Inspect experiment details
   axis experiments resume <experiment_id>       Resume incomplete experiment
 
@@ -94,10 +94,7 @@ examples:
     )
     run_p.add_argument(
         "config_path", help="Path to experiment config (YAML or JSON)")
-    run_p.add_argument(
-        "--redo", action="store_true", default=False,
-        help="Delete existing experiment results and re-run from scratch",
-    )
+
 
     resume_p = exp_action.add_parser(
         "resume", parents=[common], help="Resume an incomplete experiment")
@@ -218,7 +215,7 @@ def _cmd_experiments_list(repo, output: str) -> None:
             print("  ".join(parts))
 
 
-def _cmd_experiments_run(repo, config_path: str, output: str, *, redo: bool = False) -> None:
+def _cmd_experiments_run(repo, config_path: str, output: str) -> None:
     from axis.framework.experiment import ExperimentExecutor
 
     path = Path(config_path)
@@ -485,7 +482,6 @@ def main(argv: list[str] | None = None) -> int:
             elif args.action == "run":
                 _cmd_experiments_run(
                     repo, args.config_path, output,
-                    redo=getattr(args, "redo", False),
                 )
             elif args.action == "resume":
                 _cmd_experiments_resume(repo, args.experiment_id, output)

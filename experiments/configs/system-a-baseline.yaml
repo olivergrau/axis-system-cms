@@ -12,7 +12,7 @@ world:
   world_type: "grid_2d"
   grid_width: 10
   grid_height: 10
-  obstacle_density: 0.0
+  obstacle_density: 0.2
   resource_regen_rate: 0.2
   regeneration_mode: "sparse_fixed_ratio"
   regen_eligible_ratio: 0.17
@@ -21,7 +21,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 5
+    memory_capacity: 25
   policy:
     selection_mode: "sample"
     temperature: 1.0
