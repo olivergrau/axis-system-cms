@@ -1,176 +1,120 @@
-# AXIS System A
+# AXIS Experimentation Framework (v0.2.0)
 
-AXIS System A is a deterministic agent-environment simulation framework designed to implement and validate a formally specified model of perception, internal drives, and decision-making.
-
-The project follows a specification-first approach: system behavior is defined through structured documents, worked examples, and explicit invariants before implementation.
-
-## Purpose
-
-- Translate a formal system specification into a working runtime
-- Ensure correctness through deterministic execution and testable transitions
-- Validate behavior against worked examples and defined invariants
-- Explore how far structured specifications can guide AI-assisted implementation
-
-## System Overview
-
-The system models a single agent interacting with a discrete grid world through a closed perception-decision-action loop:
-
-- **World**: 2D grid of cells (empty, resource, obstacle) with configurable obstacle density and resource regeneration
-- **Observation**: Local sensor model providing the agent with information about its immediate neighborhood (traversability, resource values)
-- **Memory**: Bounded ring-buffer recording recent observations for temporal context
-- **Drives**: Internal signals (hunger) that generate action contributions based on energy state and observations
-- **Policy**: Softmax-based decision mechanism combining drive contributions with admissibility masking, temperature scaling, and configurable selection modes (sample / argmax)
-- **Transition Engine**: Deterministic state update — movement, consumption, energy accounting, resource regeneration
-- **Episode Loop**: Sequential step execution until termination (energy depletion or max steps)
+AXIS is a modular agent-environment experimentation framework. It provides
+a protocol-based architecture where **systems** (agent logic) and **worlds**
+(environment dynamics) are pluggable components, composed via registries and
+executed through a unified CLI.
 
 ## Architecture
 
 ```
-src/axis_system_a/
-  types.py                  Position, Observation, CellObservation
-  enums.py                  Action, CellType, SelectionMode, RegenerationMode
-  config.py                 SimulationConfig and sub-configs (world, agent, policy, ...)
-  world.py                  Cell, World, create_world (obstacle placement, sparse eligibility)
-  observation.py            Sensor model — local neighborhood extraction
-  memory.py                 Bounded observation memory (ring buffer)
-  drives.py                 HungerDrive — activation and action contributions
-  policy.py                 DecisionTrace — admissibility, masking, softmax, action selection
-  transition.py             TransitionTrace — movement, consumption, energy, regeneration
-  runner.py                 Episode loop — step execution until termination
-  results.py                StepResult, EpisodeResult — full execution trace
-  run.py                    RunExecutor — multi-episode batch execution
-  experiment.py             ExperimentConfig — multi-run experiment definitions
-  experiment_executor.py    ExperimentExecutor — orchestration and persistence
-  repository.py             ExperimentRepository — file-based artifact storage
-  logging.py                Structured logging (console + JSONL)
-  cli.py                    Command-line interface
+src/axis/
+  sdk/                  Protocol contracts and shared types
+    interfaces.py         SystemInterface, SensorInterface, DriveInterface, ...
+    world_types.py        WorldView, MutableWorldProtocol, BaseWorldConfig, ...
+    types.py              DecideResult, TransitionResult, PolicyResult
+    trace.py              BaseStepTrace, BaseEpisodeTrace
+    snapshot.py           WorldSnapshot
+    position.py           Position
+    actions.py            BASE_ACTIONS, MOVEMENT_DELTAS
 
-  visualization/
-    snapshot_models.py       ReplaySnapshot, ReplayPhase, ReplayCoordinate
-    snapshot_resolver.py     SnapshotResolver — world state at any step/phase
-    replay_models.py         EpisodeHandle, replay metadata
-    replay_access.py         ReplayAccess — load episodes from repository
-    replay_validation.py     Coordinate bounds checking
-    viewer_state.py          ViewerState — single source of truth for UI state
-    viewer_state_transitions.py  Pure transitions (next/prev step, seek, select, ...)
-    view_models.py           GridViewModel, AgentViewModel, StepAnalysisViewModel, ...
-    view_model_builder.py    Stateless projection: ViewerState → ViewerFrameViewModel
-    debug_overlay_models.py  Overlay data models (action prefs, drive bars, consumption)
-    playback_controller.py   Timer-driven auto-play
-    errors.py                Visualization-specific exceptions
+  framework/            Orchestration, persistence, CLI
+    cli.py                axis CLI entry point
+    config.py             ExperimentConfig, FrameworkConfig, OFAT path parsing
+    runner.py             Episode loop (setup_episode, run_episode)
+    run.py                RunExecutor, RunResult, RunSummary
+    experiment.py         ExperimentExecutor, OFAT, resume
+    persistence.py        ExperimentRepository (file-based)
+    registry.py           System registry (register_system, create_system)
 
-    ui/
-      app.py                 QApplication bootstrap
-      main_window.py         Top-level window — splitter layout with panels
-      grid_widget.py         Custom QWidget — grid rendering, overlays, mouse interaction
-      replay_controls_panel.py  Playback buttons and step/phase display
-      status_panel.py        Episode status line
-      detail_panel.py        Cell/agent detail on selection
-      step_analysis_panel.py Decision analysis — full numeric readout per step
-      debug_overlay_panel.py Overlay toggle checkboxes and legend
-      session_controller.py  Wires UI signals to state transitions
+  systems/              Pluggable system implementations
+    system_a/             Energy-driven forager (sensor, drive, policy, transition)
+    system_b/             Scout agent with scan action
+
+  world/                Pluggable world implementations
+    registry.py           World registry (register_world, create_world_from_config)
+    actions.py            ActionRegistry, base movement handlers
+    grid_2d/              Standard 2D rectangular grid (default)
+    toroidal/             Wraparound grid (edges connect)
+    signal_landscape/     Dynamic signal-based world with drifting hotspots
+
+  visualization/        Adapter-based interactive episode viewer
+    registry.py           Visualization adapter registry
+    launch.py             Viewer entry point
+    ui/                   Qt-based UI components
 ```
-
-## Experimentation Framework
-
-The CLI supports a three-level hierarchy: **experiments** contain **runs**, and runs contain **episodes**.
-
-- **Experiment configs** define one or more parameter variations (e.g., sweeping energy gain or obstacle density)
-- **Runs** execute multiple episodes with a shared configuration and independent seeds
-- **Results** are persisted to a file-based repository under `experiments/results/`
-
-Example configs are provided in `experiments/configs/`:
-
-| Config | Description |
-|---|---|
-| `baseline.json` | Standard single-run baseline |
-| `energy-gain-sweep.json` | Sweep over energy gain factor |
-| `sparsity-sweep.json` | Sweep over regeneration sparsity |
 
 ## CLI
 
 ```
-axis experiments list                         List all experiments
-axis experiments run config.yaml              Run experiment from config
-axis experiments run config.yaml --redo       Re-run, replacing old results
-axis experiments show <experiment_id>         Inspect experiment details
-axis experiments resume <experiment_id>       Resume incomplete experiment
+axis experiments run <config.yaml>             Run experiment from config
+axis experiments list                          List all experiments
+axis experiments show <experiment_id>          Inspect experiment details
+axis experiments resume <experiment_id>        Resume incomplete experiment
 
-axis runs list --experiment <experiment_id>   List runs in an experiment
-axis runs show <run_id> --experiment <eid>    Inspect a specific run
+axis runs list --experiment <experiment_id>    List runs in an experiment
+axis runs show <run_id> --experiment <eid>     Inspect a specific run
 
 axis visualize --experiment <eid> --run <rid> --episode 1
-                                              Open interactive episode viewer
+                                               Open interactive episode viewer
 ```
 
 Use `--output json` on any command for machine-readable output.
 Use `--root <path>` to point to a non-default repository location.
 
-Run with: `python -m axis_system_a.cli <command>`
+## Experiment Configs
 
-## Visualization
+Ready-to-use configs ship at `experiments/configs/`:
 
-The interactive episode viewer (`axis visualize`) provides:
-
-- **Grid display**: Color-coded cells (grey = empty, green = resource, black = obstacle), agent position
-- **Replay controls**: Play/pause, step forward/backward, phase navigation (BEFORE, AFTER_REGEN, AFTER_ACTION)
-- **Step Analysis panel**: Full decision pipeline readout — observation, drive activation, raw/effective contributions, admissibility, probabilities, selected action, energy delta, outcome
-- **Debug overlays**: Action preference arrows, drive contribution bars, consumption opportunity indicators (toggle via checkboxes)
-- **Detail panel**: Cell and agent details on click/selection
-
-## Configuration
-
-All simulation parameters are defined in a single `SimulationConfig`:
-
-| Section | Key Parameters |
+| Config | Description |
 |---|---|
-| `world` | `grid_width`, `grid_height`, `obstacle_density`, `resource_regen_rate`, `regeneration_mode`, `regen_eligible_ratio` |
-| `agent` | `initial_energy`, `max_energy`, `memory_capacity` |
-| `policy` | `selection_mode` (sample/argmax), `temperature`, `stay_suppression`, `consume_weight` |
-| `transition` | `move_cost`, `consume_cost`, `stay_cost`, `max_consume`, `energy_gain_factor` |
-| `execution` | `max_steps` |
-
-## Development Environment
-
-The project runs inside a Dev Container (VS Code + Docker + WSL2):
-
-- **Python 3.11** with PySide6, Pydantic v2, NumPy
-- **Testing**: pytest (1200+ tests across unit, integration, behavioral, e2e, and visualization layers)
-- **Linting**: Ruff
-- **GPU support**: Optional (not required for core simulation)
-- **Display**: X11/Wayland forwarding for PySide6 visualization
-
-## Testing
+| `system-a-baseline.yaml` | Single-run baseline (10x10, sparse regen) |
+| `system-a-energy-gain-sweep.yaml` | OFAT sweep over energy gain factor |
+| `system-a-toroidal-demo.yaml` | System A on a toroidal (wraparound) grid |
+| `system-b-sdk-demo.yaml` | System B scout agent on a signal landscape |
 
 ```bash
-# Run all tests
-python -m pytest tests/
-
-# Run specific layer
-python -m pytest tests/unit/
-python -m pytest tests/visualization/
-python -m pytest tests/behavioral/
-python -m pytest tests/e2e/
-python -m pytest tests/integration/
+axis experiments run experiments/configs/system-a-baseline.yaml
 ```
 
-Test categories:
+## Key Concepts
 
-- **Unit**: Core domain models, transitions, policy, world generation
-- **Integration**: Multi-component interaction (runner, repository, executor)
-- **Behavioral**: Scenario-based validation against specification examples
-- **E2E**: Full experiment execution and CLI validation
-- **Visualization**: Widget rendering, state transitions, overlay logic, panel content
+- **System**: Encapsulates all agent logic (sensing, decision-making, state
+  transitions). Implements `SystemInterface`. Plugged in via `register_system()`.
+- **World**: Encapsulates environment topology and dynamics. Implements
+  `MutableWorldProtocol`. Plugged in via `register_world()`.
+- **Experiment**: One or more runs with a shared config. Supports single-run
+  and OFAT (one-factor-at-a-time) sweep modes.
+- **Run**: Multiple episodes with a shared configuration and independent seeds.
+- **Episode**: One agent lifetime from initialization to termination.
 
-## Specifications
+## Development
 
-Design documents live in `docs/specs/`:
+```bash
+# Install in development mode
+pip install -e ".[dev]"
 
-- `System A Baseline.md` — formal system specification
-- `System A Baseline Worked Examples.md` — step-by-step validation scenarios
-- world model specification
-- implementation architecture
-- `work-packages/` — incremental implementation plan
+# Run tests
+python -m pytest
+
+# Run a specific test module
+python -m pytest tests/framework/test_cli.py
+```
+
+- **Python 3.11+** with PySide6, Pydantic v2, NumPy
+- **Testing**: pytest (72 test files across framework, SDK, systems, worlds,
+  and visualization)
+
+## Documentation
+
+Manuals and specs are in `docs/`:
+
+- `manuals/cli-manual.md` -- CLI user guide
+- `manuals/config-manual.md` -- Configuration reference
+- `manuals/system-dev-manual.md` -- Building custom systems
+- `manuals/world-dev-manual.md` -- Building custom worlds
+- `architecture/` -- Design documents and evolution history
+- `specs/` -- Specifications
 
 ## License
 

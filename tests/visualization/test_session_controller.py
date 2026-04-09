@@ -1,30 +1,51 @@
-"""Tests for VisualizationSessionController (VWP7)."""
+"""Tests for WP-V.4.4: SessionController, MainWindow, and signal wiring."""
 
 from __future__ import annotations
 
 import os
 
-import pytest
-
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import pytest  # noqa: E402
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from axis_system_a.visualization.playback_controller import (  # noqa: E402
-    is_at_final,
-    is_at_initial,
+from axis.sdk.position import Position  # noqa: E402
+from axis.sdk.snapshot import WorldSnapshot  # noqa: E402
+from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace  # noqa: E402
+from axis.sdk.world_types import CellView  # noqa: E402
+
+from axis.visualization.adapters.default_world import (  # noqa: E402
+    DefaultWorldVisualizationAdapter,
 )
-from axis_system_a.visualization.replay_models import (  # noqa: E402
+from axis.visualization.adapters.null_system import (  # noqa: E402
+    NullSystemVisualizationAdapter,
+)
+from axis.visualization.replay_models import (  # noqa: E402
     ReplayEpisodeHandle,
+    ReplayStepDescriptor,
+    ReplayValidationResult,
 )
-from axis_system_a.visualization.snapshot_models import (  # noqa: E402
-    ReplayPhase,
+from axis.visualization.types import (  # noqa: E402
+    AnalysisRow,
+    AnalysisSection,
+    OverlayData,
+    OverlayItem,
+    OverlayTypeDeclaration,
 )
-from axis_system_a.visualization.snapshot_resolver import SnapshotResolver  # noqa: E402
-from axis_system_a.visualization.viewer_state import PlaybackMode  # noqa: E402
-from axis_system_a.visualization.ui.session_controller import (  # noqa: E402
+from axis.visualization.ui.app import wire_signals  # noqa: E402
+from axis.visualization.ui.main_window import (  # noqa: E402
+    VisualizationMainWindow,
+)
+from axis.visualization.ui.session_controller import (  # noqa: E402
     VisualizationSessionController,
 )
+from axis.visualization.viewer_state import PlaybackMode  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# QApplication fixture
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session")
@@ -33,213 +54,286 @@ def qapp():
     yield app
 
 
-@pytest.fixture
-def controller(
-    qapp,
-    replay_episode_handle: ReplayEpisodeHandle,
-    snapshot_resolver: SnapshotResolver,
-) -> VisualizationSessionController:
-    return VisualizationSessionController(replay_episode_handle, snapshot_resolver)
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-def _collect_frames(ctrl):
-    received = []
-    ctrl.frame_changed.connect(lambda f: received.append(f))
-    return received
+def _make_cell(resource: float = 0.0, traversable: bool = True) -> CellView:
+    ct = "obstacle" if not traversable else (
+        "resource" if resource > 0 else "empty")
+    return CellView(cell_type=ct, resource_value=resource)
 
 
-class TestConstruction:
-    def test_initial_coordinate(self, controller):
-        state = controller.current_state
-        assert state.coordinate.step_index == 0
-        assert state.coordinate.phase == ReplayPhase.BEFORE
-
-    def test_initial_playback_mode(self, controller):
-        assert controller.current_state.playback_mode == PlaybackMode.STOPPED
-
-    def test_frame_not_none(self, controller):
-        assert controller.current_frame is not None
-
-    def test_timer_not_running(self, controller):
-        assert not controller._timer.isActive()
-
-
-class TestNavigation:
-    def test_step_forward(self, controller):
-        controller.step_forward()
-        assert controller.current_state.coordinate.phase == ReplayPhase.AFTER_REGEN
-
-    def test_step_backward_at_start_noop(self, controller):
-        frames = _collect_frames(controller)
-        controller.step_backward()
-        assert len(frames) == 0  # identity skip
-
-    def test_step_forward_emits_frame_changed(self, controller):
-        frames = _collect_frames(controller)
-        controller.step_forward()
-        assert len(frames) == 1
-
-    def test_round_trip(self, controller):
-        controller.step_forward()
-        controller.step_backward()
-        state = controller.current_state
-        assert state.coordinate.step_index == 0
-        assert state.coordinate.phase == ReplayPhase.BEFORE
+def _make_snapshot(
+    width: int = 5, height: int = 5,
+    agent_pos: Position | None = None,
+) -> WorldSnapshot:
+    pos = agent_pos or Position(x=1, y=1)
+    rows = []
+    for r in range(height):
+        row = []
+        for c in range(width):
+            if r == 2 and c == 2:
+                row.append(_make_cell(resource=0.5))
+            else:
+                row.append(_make_cell())
+        rows.append(tuple(row))
+    return WorldSnapshot(
+        grid=tuple(rows), agent_position=pos,
+        width=width, height=height,
+    )
 
 
-class TestPlayback:
-    def test_play_sets_playing_and_starts_timer(self, controller):
-        controller.play()
-        assert controller.current_state.playback_mode == PlaybackMode.PLAYING
-        assert controller._timer.isActive()
-
-    def test_pause_sets_paused_and_stops_timer(self, controller):
-        controller.play()
-        controller.pause()
-        assert controller.current_state.playback_mode == PlaybackMode.PAUSED
-        assert not controller._timer.isActive()
-
-    def test_stop_resets_coordinate_and_mode(self, controller):
-        controller.step_forward()
-        controller.step_forward()
-        controller.stop()
-        state = controller.current_state
-        assert state.coordinate.step_index == 0
-        assert state.coordinate.phase == ReplayPhase.BEFORE
-        assert state.playback_mode == PlaybackMode.STOPPED
-
-    def test_stop_stops_timer(self, controller):
-        controller.play()
-        controller.stop()
-        assert not controller._timer.isActive()
-
-    def test_play_then_pause(self, controller):
-        controller.play()
-        controller.pause()
-        assert controller.current_state.playback_mode == PlaybackMode.PAUSED
-
-    def test_play_then_stop(self, controller):
-        controller.play()
-        controller.stop()
-        assert controller.current_state.playback_mode == PlaybackMode.STOPPED
-
-    def test_stop_emits_single_frame_changed(self, controller):
-        controller.step_forward()
-        frames = _collect_frames(controller)
-        controller.stop()
-        assert len(frames) == 1
+def _make_step(
+    timestep: int = 0,
+    agent_pos_before: Position | None = None,
+    agent_pos_after: Position | None = None,
+) -> BaseStepTrace:
+    pos_b = agent_pos_before or Position(x=1, y=1)
+    pos_a = agent_pos_after or Position(x=2, y=1)
+    return BaseStepTrace(
+        timestep=timestep, action="right",
+        world_before=_make_snapshot(agent_pos=pos_b),
+        world_after=_make_snapshot(agent_pos=pos_a),
+        agent_position_before=pos_b,
+        agent_position_after=pos_a,
+        vitality_before=0.8, vitality_after=0.75,
+        terminated=False,
+    )
 
 
-class TestTick:
-    def test_tick_while_playing_advances(self, controller):
-        controller.play()
-        coord_before = controller.current_state.coordinate
-        controller.tick()
-        assert controller.current_state.coordinate != coord_before
-
-    def test_tick_while_stopped_noop(self, controller):
-        frames = _collect_frames(controller)
-        controller.tick()
-        assert len(frames) == 0
-
-    def test_auto_stop_at_final(self, controller):
-        controller.play()
-        # Advance past final — tick auto-stops when at final while PLAYING
-        for _ in range(200):
-            controller.tick()
-            if controller.current_state.playback_mode == PlaybackMode.STOPPED:
-                break
-        assert controller.current_state.playback_mode == PlaybackMode.STOPPED
-
-    def test_timer_stopped_on_auto_stop(self, controller):
-        controller.play()
-        for _ in range(200):
-            controller.tick()
-            if controller.current_state.playback_mode != PlaybackMode.PLAYING:
-                break
-        assert not controller._timer.isActive()
-
-    def test_tick_emits_frame_changed(self, controller):
-        controller.play()
-        frames = _collect_frames(controller)
-        controller.tick()
-        assert len(frames) == 1
+def _sample_episode_handle(num_steps: int = 5) -> ReplayEpisodeHandle:
+    steps = tuple(_make_step(timestep=i) for i in range(num_steps))
+    episode = BaseEpisodeTrace(
+        system_type="test", steps=steps, total_steps=num_steps,
+        termination_reason="max_steps", final_vitality=0.75,
+        final_position=Position(x=0, y=0),
+    )
+    descriptors = tuple(
+        ReplayStepDescriptor(
+            step_index=i, has_world_before=True, has_world_after=True,
+            has_intermediate_snapshots=(), has_agent_position=True,
+            has_vitality=True, has_world_state=True,
+        )
+        for i in range(num_steps)
+    )
+    validation = ReplayValidationResult(
+        valid=True, total_steps=num_steps,
+        grid_width=5, grid_height=5,
+        step_descriptors=descriptors,
+    )
+    return ReplayEpisodeHandle(
+        experiment_id="exp", run_id="run", episode_index=0,
+        episode_trace=episode, validation=validation,
+    )
 
 
-class TestPhase:
-    def test_set_phase_changes_phase(self, controller):
-        controller.set_phase(ReplayPhase.AFTER_ACTION)
-        assert controller.current_state.coordinate.phase == ReplayPhase.AFTER_ACTION
+class MockSystemAdapter:
+    """Satisfies SystemVisualizationAdapter protocol for testing."""
 
-    def test_set_phase_preserves_step(self, controller):
-        controller.step_forward()  # to AFTER_REGEN
-        controller.set_phase(ReplayPhase.AFTER_ACTION)
-        assert controller.current_state.coordinate.step_index == 0
+    def __init__(self, num_phases: int = 3):
+        self._num_phases = num_phases
+
+    def phase_names(self):
+        names = ["BEFORE"]
+        for i in range(1, self._num_phases - 1):
+            names.append(f"INTERMEDIATE_{i}")
+        names.append("AFTER_ACTION")
+        return names
+
+    def vitality_label(self):
+        return "Energy"
+
+    def format_vitality(self, value, system_data):
+        return f"{value * 100:.2f} / 100.00"
+
+    def build_step_analysis(self, step_trace):
+        return [
+            AnalysisSection(
+                title="Test Section",
+                rows=(AnalysisRow(label="Key", value="Val"),),
+            ),
+        ]
+
+    def build_overlays(self, step_trace):
+        return [
+            OverlayData(
+                overlay_type="test_overlay",
+                items=(
+                    OverlayItem(
+                        item_type="direction_arrow",
+                        grid_position=(1, 1),
+                        data={"direction": "up"},
+                    ),
+                ),
+            ),
+        ]
+
+    def available_overlay_types(self):
+        return [
+            OverlayTypeDeclaration(
+                key="test_overlay", label="Test", description="Test overlay",
+            ),
+        ]
 
 
-class TestSelection:
-    def test_select_cell(self, controller):
-        controller.select_cell(1, 1)
-        assert controller.current_state.selected_cell == (1, 1)
-
-    def test_select_agent(self, controller):
-        controller.select_agent()
-        assert controller.current_state.selected_agent is True
-
-    def test_clear_selection(self, controller):
-        controller.select_cell(0, 0)
-        controller.clear_selection()
-        assert controller.current_state.selected_cell is None
-        assert controller.current_state.selected_agent is False
-
-    def test_select_cell_emits_frame_changed(self, controller):
-        frames = _collect_frames(controller)
-        controller.select_cell(0, 0)
-        assert len(frames) == 1
+def _make_controller(qapp, num_phases: int = 2) -> VisualizationSessionController:
+    return VisualizationSessionController(
+        _sample_episode_handle(),
+        DefaultWorldVisualizationAdapter(),
+        MockSystemAdapter(num_phases),
+    )
 
 
-class TestRefreshPipeline:
-    def test_frame_matches_state_after_action(self, controller):
-        controller.step_forward()
-        frame = controller.current_frame
-        assert frame.status.phase == controller.current_state.coordinate.phase
-
-    def test_identity_skip_at_start(self, controller):
-        frames = _collect_frames(controller)
-        controller.step_backward()
-        assert len(frames) == 0
+def _make_window(qapp) -> VisualizationMainWindow:
+    adapter = DefaultWorldVisualizationAdapter()
+    declarations = [
+        OverlayTypeDeclaration(key="test", label="Test", description="Test"),
+        OverlayTypeDeclaration(
+            key="test2", label="Test2", description="Test2"),
+    ]
+    return VisualizationMainWindow(adapter, ["BEFORE", "INTER", "AFTER"], declarations)
 
 
-class TestDebugOverlay:
-    def test_set_master_on(self, controller):
-        controller.set_debug_overlay_master(True)
-        assert controller.current_state.debug_overlay_config.master_enabled is True
+# ---------------------------------------------------------------------------
+# SessionController tests
+# ---------------------------------------------------------------------------
 
-    def test_set_master_off(self, controller):
-        controller.set_debug_overlay_master(True)
-        controller.set_debug_overlay_master(False)
-        assert controller.current_state.debug_overlay_config.master_enabled is False
 
-    def test_set_master_same_value_noop(self, controller):
-        frames = _collect_frames(controller)
-        controller.set_debug_overlay_master(False)  # already False
-        assert len(frames) == 0
+class TestSessionController:
 
-    def test_set_overlay_enabled(self, controller):
-        controller.set_overlay_enabled("action_preference_enabled", True)
-        cfg = controller.current_state.debug_overlay_config
-        assert cfg.action_preference_enabled is True
+    def test_controller_construction(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        assert ctrl.current_state is not None
 
-    def test_set_overlay_emits_frame_changed(self, controller):
-        frames = _collect_frames(controller)
-        controller.set_debug_overlay_master(True)
-        assert len(frames) == 1
+    def test_initial_frame_built(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        assert ctrl.current_frame is not None
+        assert ctrl.current_frame.grid.width == 5
 
-    def test_overlay_in_frame_when_master_enabled(self, controller):
-        controller.set_debug_overlay_master(True)
-        assert controller.current_frame.debug_overlay is not None
+    def test_step_forward_emits_frame(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        received = []
+        ctrl.frame_changed.connect(lambda f: received.append(f))
+        ctrl.step_forward()
+        assert len(received) == 1
 
-    def test_overlay_none_when_master_disabled(self, controller):
-        controller.set_debug_overlay_master(True)
-        controller.set_debug_overlay_master(False)
-        assert controller.current_frame.debug_overlay is None
+    def test_step_backward_emits_frame(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.step_forward()  # move off start
+        received = []
+        ctrl.frame_changed.connect(lambda f: received.append(f))
+        ctrl.step_backward()
+        assert len(received) == 1
+
+    def test_play_starts_timer(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.play()
+        assert ctrl.current_state.playback_mode == PlaybackMode.PLAYING
+        ctrl.pause()  # cleanup
+
+    def test_pause_stops_timer(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.play()
+        ctrl.pause()
+        assert ctrl.current_state.playback_mode == PlaybackMode.PAUSED
+
+    def test_stop_resets(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.play()
+        ctrl.stop()
+        assert ctrl.current_state.playback_mode == PlaybackMode.STOPPED
+
+    def test_set_phase(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.set_phase(1)
+        assert ctrl.current_state.coordinate.phase_index == 1
+
+    def test_select_cell(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.select_cell(2, 3)
+        assert ctrl.current_state.selected_cell == (2, 3)
+
+    def test_select_agent(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.select_agent()
+        assert ctrl.current_state.selected_agent is True
+
+    def test_clear_selection(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.select_cell(2, 3)
+        ctrl.clear_selection()
+        assert ctrl.current_state.selected_cell is None
+        assert ctrl.current_state.selected_agent is False
+
+    def test_overlay_master_toggle(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.set_overlay_master(True)
+        assert ctrl.current_state.overlay_config.master_enabled is True
+        ctrl.set_overlay_master(False)
+        assert ctrl.current_state.overlay_config.master_enabled is False
+
+    def test_overlay_type_toggle(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        ctrl.set_overlay_type_enabled("test_overlay", True)
+        assert "test_overlay" in ctrl.current_state.overlay_config.enabled_overlays
+
+    def test_identity_transition_no_emit(self, qapp) -> None:
+        ctrl = _make_controller(qapp)
+        received = []
+        ctrl.frame_changed.connect(lambda f: received.append(f))
+        # step_backward at step 0 returns same state
+        ctrl.step_backward()
+        assert len(received) == 0
+
+
+# ---------------------------------------------------------------------------
+# MainWindow tests
+# ---------------------------------------------------------------------------
+
+
+class TestMainWindow:
+
+    def test_main_window_construction(self, qapp) -> None:
+        window = _make_window(qapp)
+        assert window.windowTitle() == "AXIS Replay Viewer"
+
+    def test_main_window_set_frame(self, qapp) -> None:
+        window = _make_window(qapp)
+        ctrl = _make_controller(qapp)
+        # Should not crash
+        window.set_frame(ctrl.current_frame)
+
+    def test_main_window_properties(self, qapp) -> None:
+        window = _make_window(qapp)
+        from axis.visualization.ui.canvas_widget import CanvasWidget
+        from axis.visualization.ui.replay_controls_panel import ReplayControlsPanel
+        from axis.visualization.ui.overlay_panel import OverlayPanel
+        assert isinstance(window.canvas, CanvasWidget)
+        assert isinstance(window.replay_controls, ReplayControlsPanel)
+        assert isinstance(window.overlay_panel, OverlayPanel)
+
+
+# ---------------------------------------------------------------------------
+# Wire signals tests
+# ---------------------------------------------------------------------------
+
+
+class TestWireSignals:
+
+    def test_wire_signals_no_crash(self, qapp) -> None:
+        window = _make_window(qapp)
+        ctrl = _make_controller(qapp)
+        wire_signals(window, ctrl)
+
+    def test_wire_signals_forward(self, qapp) -> None:
+        window = _make_window(qapp)
+        ctrl = _make_controller(qapp)
+        wire_signals(window, ctrl)
+
+        received = []
+        ctrl.frame_changed.connect(lambda f: received.append(f))
+        # Simulate clicking forward button
+        window.replay_controls._btn_fwd.click()
+        assert len(received) == 1

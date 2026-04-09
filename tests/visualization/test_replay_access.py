@@ -1,233 +1,315 @@
-"""Tests for the ReplayAccessService."""
+"""Tests for WP-V.3.1: Replay Access Service."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from axis_system_a.experiment import ExperimentConfig
-from axis_system_a.repository import ExperimentMetadata, ExperimentRepository, RunMetadata
-from axis_system_a.results import EpisodeResult
-from axis_system_a.run import RunConfig, RunSummary
-from axis_system_a.visualization.errors import (
+from axis.framework.config import (
+    ExperimentConfig,
+    ExperimentType,
+    ExecutionConfig,
+    GeneralConfig,
+)
+from axis.framework.persistence import ExperimentRepository
+from axis.framework.run import RunConfig, RunSummary
+from axis.sdk.position import Position
+from axis.sdk.snapshot import WorldSnapshot
+from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
+from axis.sdk.world_types import BaseWorldConfig, CellView
+
+from axis.visualization.errors import (
     EpisodeNotFoundError,
     ExperimentNotFoundError,
     MalformedArtifactError,
     ReplayContractViolation,
     RunNotFoundError,
 )
-from axis_system_a.visualization.replay_access import ReplayAccessService
-from axis_system_a.visualization.replay_models import (
-    ReplayEpisodeHandle,
-    ReplayExperimentHandle,
-    ReplayRunHandle,
-    ReplayValidationResult,
-)
+from axis.visualization.replay_access import ReplayAccessService
 
 
 # ---------------------------------------------------------------------------
-# Discovery tests
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_cell() -> CellView:
+    return CellView(cell_type="empty", resource_value=0.0)
+
+
+def _make_snapshot(width: int = 5, height: int = 5) -> WorldSnapshot:
+    grid = tuple(
+        tuple(_make_cell() for _ in range(width))
+        for _ in range(height)
+    )
+    return WorldSnapshot(
+        grid=grid, agent_position=Position(x=0, y=0),
+        width=width, height=height,
+    )
+
+
+def _make_step(timestep: int = 0) -> BaseStepTrace:
+    snap = _make_snapshot()
+    return BaseStepTrace(
+        timestep=timestep,
+        action="stay",
+        world_before=snap,
+        world_after=snap,
+        agent_position_before=Position(x=0, y=0),
+        agent_position_after=Position(x=0, y=0),
+        vitality_before=1.0,
+        vitality_after=0.9,
+        terminated=False,
+    )
+
+
+def _make_episode(num_steps: int = 3) -> BaseEpisodeTrace:
+    steps = tuple(_make_step(timestep=i) for i in range(num_steps))
+    return BaseEpisodeTrace(
+        system_type="test",
+        steps=steps,
+        total_steps=num_steps,
+        termination_reason="max_steps",
+        final_vitality=0.9,
+        final_position=Position(x=0, y=0),
+    )
+
+
+def _make_experiment_config() -> ExperimentConfig:
+    return ExperimentConfig(
+        system_type="test",
+        experiment_type=ExperimentType.SINGLE_RUN,
+        general=GeneralConfig(seed=42),
+        execution=ExecutionConfig(max_steps=100),
+        world=BaseWorldConfig(),
+        system={},
+        num_episodes_per_run=1,
+    )
+
+
+def _framework_config():
+    from axis.framework.config import FrameworkConfig, LoggingConfig
+    return FrameworkConfig(
+        general=GeneralConfig(seed=42),
+        execution=ExecutionConfig(max_steps=100),
+        world=BaseWorldConfig(),
+        logging=LoggingConfig(),
+    )
+
+
+def _make_run_config() -> RunConfig:
+    return RunConfig(
+        system_type="test",
+        system_config={},
+        framework_config=_framework_config(),
+        num_episodes=1,
+    )
+
+
+def _setup_repo(
+    tmp_path: Path,
+    *,
+    experiments: list[str] | None = None,
+    runs: dict[str, list[str]] | None = None,
+    episodes: dict[tuple[str, str], list[int]] | None = None,
+    save_configs: bool = True,
+) -> ExperimentRepository:
+    """Build a populated ExperimentRepository for testing."""
+    repo = ExperimentRepository(tmp_path)
+    experiments = experiments or []
+    runs = runs or {}
+    episodes = episodes or {}
+
+    for exp_id in experiments:
+        repo.create_experiment_dir(exp_id)
+        if save_configs:
+            repo.save_experiment_config(exp_id, _make_experiment_config())
+
+    for exp_id, run_ids in runs.items():
+        for run_id in run_ids:
+            repo.create_run_dir(exp_id, run_id)
+            if save_configs:
+                repo.save_run_config(exp_id, run_id, _make_run_config())
+
+    for (exp_id, run_id), indices in episodes.items():
+        for idx in indices:
+            repo.save_episode_trace(
+                exp_id, run_id, idx, _make_episode(),
+            )
+
+    return repo
+
+
+# ---------------------------------------------------------------------------
+# Tests
 # ---------------------------------------------------------------------------
 
 
 class TestDiscovery:
-    def test_list_experiments_empty(self, tmp_path: Path):
-        repo = ExperimentRepository(tmp_path)
+
+    def test_list_experiments(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path, experiments=["exp_a", "exp_b"],
+        )
         svc = ReplayAccessService(repo)
-        assert svc.list_experiments() == ()
+        assert svc.list_experiments() == ("exp_a", "exp_b")
 
-    def test_list_experiments(self, access_service: ReplayAccessService):
-        exps = access_service.list_experiments()
-        assert "test-exp" in exps
+    def test_list_runs(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1", "run_2"]},
+        )
+        svc = ReplayAccessService(repo)
+        assert svc.list_runs("exp_a") == ("run_1", "run_2")
 
-    def test_list_runs(self, access_service: ReplayAccessService):
-        runs = access_service.list_runs("test-exp")
-        assert "run-0000" in runs
+    def test_list_episode_indices(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+            episodes={("exp_a", "run_1"): [0, 1, 2]},
+        )
+        svc = ReplayAccessService(repo)
+        assert svc.list_episode_indices("exp_a", "run_1") == (0, 1, 2)
 
-    def test_list_runs_missing_experiment(
-        self, access_service: ReplayAccessService,
-    ):
+
+class TestNotFoundErrors:
+
+    def test_experiment_not_found(self, tmp_path: Path) -> None:
+        repo = _setup_repo(tmp_path)
+        svc = ReplayAccessService(repo)
         with pytest.raises(ExperimentNotFoundError):
-            access_service.list_runs("nonexistent")
+            svc.list_runs("nonexistent")
 
-    def test_list_episode_indices(
-        self, access_service: ReplayAccessService,
-    ):
-        indices = access_service.list_episode_indices("test-exp", "run-0000")
-        assert 1 in indices
-
-    def test_list_episode_indices_missing_run(
-        self, access_service: ReplayAccessService,
-    ):
+    def test_run_not_found(self, tmp_path: Path) -> None:
+        repo = _setup_repo(tmp_path, experiments=["exp_a"])
+        svc = ReplayAccessService(repo)
         with pytest.raises(RunNotFoundError):
-            access_service.list_episode_indices("test-exp", "nonexistent")
+            svc.list_episode_indices("exp_a", "nonexistent")
+
+    def test_episode_not_found(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+        )
+        svc = ReplayAccessService(repo)
+        with pytest.raises(EpisodeNotFoundError):
+            svc.load_episode_trace("exp_a", "run_1", 99)
 
 
-# ---------------------------------------------------------------------------
-# Handle tests
-# ---------------------------------------------------------------------------
+class TestLoading:
+
+    def test_load_episode_trace(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+            episodes={("exp_a", "run_1"): [0]},
+        )
+        svc = ReplayAccessService(repo)
+        trace = svc.load_episode_trace("exp_a", "run_1", 0)
+        assert isinstance(trace, BaseEpisodeTrace)
+        assert trace.total_steps == 3
+
+    def test_load_replay_episode_valid(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+            episodes={("exp_a", "run_1"): [0]},
+        )
+        svc = ReplayAccessService(repo)
+        handle = svc.load_replay_episode("exp_a", "run_1", 0)
+        assert handle.validation.valid is True
+        assert handle.episode_index == 0
+        assert handle.experiment_id == "exp_a"
+        assert handle.run_id == "run_1"
+
+    def test_load_replay_episode_invalid(self, tmp_path: Path) -> None:
+        # Create an episode with 0 steps
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+        )
+        empty_episode = BaseEpisodeTrace(
+            system_type="test",
+            steps=(),
+            total_steps=0,
+            termination_reason="empty",
+            final_vitality=1.0,
+            final_position=Position(x=0, y=0),
+        )
+        repo.save_episode_trace("exp_a", "run_1", 0, empty_episode)
+        svc = ReplayAccessService(repo)
+        with pytest.raises(ReplayContractViolation):
+            svc.load_replay_episode("exp_a", "run_1", 0)
+
+    def test_validate_episode_no_raise(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+        )
+        empty_episode = BaseEpisodeTrace(
+            system_type="test",
+            steps=(),
+            total_steps=0,
+            termination_reason="empty",
+            final_vitality=1.0,
+            final_position=Position(x=0, y=0),
+        )
+        repo.save_episode_trace("exp_a", "run_1", 0, empty_episode)
+        svc = ReplayAccessService(repo)
+        result = svc.validate_episode("exp_a", "run_1", 0)
+        assert result.valid is False
+        assert len(result.violations) > 0
 
 
 class TestHandles:
-    def test_experiment_handle(self, access_service: ReplayAccessService):
-        h = access_service.get_experiment_handle("test-exp")
-        assert isinstance(h, ReplayExperimentHandle)
-        assert h.experiment_id == "test-exp"
-        assert isinstance(h.experiment_config, ExperimentConfig)
-        assert isinstance(h.experiment_metadata, ExperimentMetadata)
-        assert "run-0000" in h.available_runs
 
-    def test_experiment_handle_missing(
-        self, access_service: ReplayAccessService,
-    ):
-        with pytest.raises(ExperimentNotFoundError):
-            access_service.get_experiment_handle("missing")
+    def test_get_experiment_handle(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+        )
+        svc = ReplayAccessService(repo)
+        handle = svc.get_experiment_handle("exp_a")
+        assert handle.experiment_id == "exp_a"
+        assert handle.available_runs == ("run_1",)
+        assert handle.experiment_config.system_type == "test"
 
-    def test_run_handle(self, access_service: ReplayAccessService):
-        h = access_service.get_run_handle("test-exp", "run-0000")
-        assert isinstance(h, ReplayRunHandle)
-        assert h.run_id == "run-0000"
-        assert isinstance(h.run_config, RunConfig)
-        assert isinstance(h.run_metadata, RunMetadata)
-        assert isinstance(h.run_summary, RunSummary)
-        assert 1 in h.available_episodes
-
-    def test_run_handle_missing_run(
-        self, access_service: ReplayAccessService,
-    ):
-        with pytest.raises(RunNotFoundError):
-            access_service.get_run_handle("test-exp", "missing")
+    def test_get_run_handle(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+            episodes={("exp_a", "run_1"): [0, 1]},
+        )
+        svc = ReplayAccessService(repo)
+        handle = svc.get_run_handle("exp_a", "run_1")
+        assert handle.experiment_id == "exp_a"
+        assert handle.run_id == "run_1"
+        assert handle.available_episodes == (0, 1)
+        assert handle.run_config.system_type == "test"
 
 
-# ---------------------------------------------------------------------------
-# Artifact loading tests
-# ---------------------------------------------------------------------------
+class TestMalformedArtifact:
 
-
-class TestArtifactLoading:
-    def test_load_experiment_config(
-        self, access_service: ReplayAccessService,
-    ):
-        cfg = access_service.load_experiment_config("test-exp")
-        assert isinstance(cfg, ExperimentConfig)
-
-    def test_load_experiment_config_missing(
-        self, access_service: ReplayAccessService,
-    ):
-        with pytest.raises(ExperimentNotFoundError):
-            access_service.load_experiment_config("missing")
-
-    def test_load_run_config(self, access_service: ReplayAccessService):
-        cfg = access_service.load_run_config("test-exp", "run-0000")
-        assert isinstance(cfg, RunConfig)
-
-    def test_load_run_config_missing_run(
-        self, access_service: ReplayAccessService,
-    ):
-        with pytest.raises(RunNotFoundError):
-            access_service.load_run_config("test-exp", "missing")
-
-    def test_load_episode_result(self, access_service: ReplayAccessService):
-        ep = access_service.load_episode_result("test-exp", "run-0000", 1)
-        assert isinstance(ep, EpisodeResult)
-        assert len(ep.steps) > 0
-
-    def test_load_episode_missing(self, access_service: ReplayAccessService):
-        with pytest.raises(EpisodeNotFoundError):
-            access_service.load_episode_result("test-exp", "run-0000", 999)
-
-
-# ---------------------------------------------------------------------------
-# Replay loading + validation tests
-# ---------------------------------------------------------------------------
-
-
-class TestReplayLoading:
-    def test_load_replay_episode(self, access_service: ReplayAccessService):
-        h = access_service.load_replay_episode("test-exp", "run-0000", 1)
-        assert isinstance(h, ReplayEpisodeHandle)
-        assert h.validation.valid is True
-        assert h.episode_index == 1
-        assert isinstance(h.episode_result, EpisodeResult)
-
-    def test_load_replay_episode_missing(
-        self, access_service: ReplayAccessService,
-    ):
-        with pytest.raises(EpisodeNotFoundError):
-            access_service.load_replay_episode("test-exp", "run-0000", 999)
-
-    def test_validate_episode(self, access_service: ReplayAccessService):
-        result = access_service.validate_episode("test-exp", "run-0000", 1)
-        assert isinstance(result, ReplayValidationResult)
-        assert result.valid is True
-
-
-# ---------------------------------------------------------------------------
-# Repository boundary tests
-# ---------------------------------------------------------------------------
-
-
-class TestRepositoryBoundary:
-    """Verify no Path objects leak through the public API."""
-
-    def test_list_experiments_returns_strings(
-        self, access_service: ReplayAccessService,
-    ):
-        for exp in access_service.list_experiments():
-            assert isinstance(exp, str)
-
-    def test_list_runs_returns_strings(
-        self, access_service: ReplayAccessService,
-    ):
-        for run in access_service.list_runs("test-exp"):
-            assert isinstance(run, str)
-
-    def test_list_episodes_returns_ints(
-        self, access_service: ReplayAccessService,
-    ):
-        for idx in access_service.list_episode_indices("test-exp", "run-0000"):
-            assert isinstance(idx, int)
-
-    def test_exceptions_are_viz_typed(
-        self, access_service: ReplayAccessService,
-    ):
-        """All errors raised are from the visualization error hierarchy."""
-        from axis_system_a.visualization.errors import ReplayError
-
-        with pytest.raises(ReplayError):
-            access_service.load_experiment_config("nonexistent")
-
-        with pytest.raises(ReplayError):
-            access_service.load_run_config("test-exp", "nonexistent")
-
-        with pytest.raises(ReplayError):
-            access_service.load_episode_result("test-exp", "run-0000", 999)
-
-
-# ---------------------------------------------------------------------------
-# Optional metadata tests
-# ---------------------------------------------------------------------------
-
-
-class TestOptionalMetadata:
-    def test_run_handle_without_metadata(
-        self, populated_repo: ExperimentRepository,
-    ):
-        """Run handle works even if optional metadata is missing."""
-        # Remove the metadata file
-        meta_path = populated_repo.run_metadata_path("test-exp", "run-0000")
-        meta_path.unlink()
-        svc = ReplayAccessService(populated_repo)
-        h = svc.get_run_handle("test-exp", "run-0000")
-        assert h.run_metadata is None
-
-    def test_experiment_handle_without_metadata(
-        self, populated_repo: ExperimentRepository,
-    ):
-        """Experiment handle works even if optional metadata is missing."""
-        meta_path = populated_repo.experiment_metadata_path("test-exp")
-        meta_path.unlink()
-        svc = ReplayAccessService(populated_repo)
-        h = svc.get_experiment_handle("test-exp")
-        assert h.experiment_metadata is None
+    def test_malformed_artifact_error(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+        )
+        # Write garbage to episode file
+        episode_path = repo.episode_path("exp_a", "run_1", 0)
+        episode_path.write_text("{invalid json content}")
+        svc = ReplayAccessService(repo)
+        with pytest.raises(MalformedArtifactError):
+            svc.load_episode_trace("exp_a", "run_1", 0)

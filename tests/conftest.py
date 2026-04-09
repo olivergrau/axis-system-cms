@@ -1,8 +1,9 @@
-"""Root conftest — registers shared fixture modules."""
+"""Root conftest -- shared fixtures for all test suites."""
 
-pytest_plugins = [
-    "tests.fixtures.world_fixtures",
-    "tests.fixtures.agent_fixtures",
-    "tests.fixtures.observation_fixtures",
-    "tests.fixtures.scenario_fixtures",
-]
+from tests.fixtures.config_fixtures import (  # noqa: F401
+    experiment_config,
+    experiment_config_dict,
+    framework_config,
+    framework_config_dict,
+    system_a_config_dict,
+)

@@ -1,391 +1,315 @@
-"""Tests for the VWP2 SnapshotResolver."""
+"""Tests for WP-V.3.2: Generalized Snapshot Resolver."""
 
 from __future__ import annotations
 
 import pytest
 
-from axis_system_a.visualization.errors import (
+from axis.sdk.position import Position
+from axis.sdk.snapshot import WorldSnapshot
+from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
+from axis.sdk.world_types import CellView
+
+from axis.visualization.errors import (
     PhaseNotAvailableError,
     StepOutOfBoundsError,
 )
-from axis_system_a.visualization.replay_models import ReplayEpisodeHandle
-from axis_system_a.visualization.snapshot_models import ReplayPhase
-from axis_system_a.visualization.snapshot_resolver import SnapshotResolver
+from axis.visualization.snapshot_models import ReplayCoordinate, ReplaySnapshot
+from axis.visualization.snapshot_resolver import SnapshotResolver
 
 
 # ---------------------------------------------------------------------------
-# Happy-path resolution
+# Helpers
 # ---------------------------------------------------------------------------
 
 
-class TestHappyPath:
-    def test_resolve_first_step_before(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.grid == step.transition_trace.world_before.grid
-
-    def test_resolve_first_step_after_regen(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_REGEN,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.grid == step.transition_trace.world_after_regen.grid
-
-    def test_resolve_first_step_after_action(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_ACTION,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.grid == step.transition_trace.world_after_action.grid
-
-    def test_resolve_last_step(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        last = len(replay_episode_handle.episode_result.steps) - 1
-        for phase in ReplayPhase:
-            snap = snapshot_resolver.resolve(
-                replay_episode_handle, last, phase,
-            )
-            assert snap.step_index == last
+def _make_snapshot(
+    width: int = 5, height: int = 5, marker: float = 0.0,
+) -> WorldSnapshot:
+    cell = CellView(cell_type="empty", resource_value=marker)
+    grid = tuple(
+        tuple(cell for _ in range(width))
+        for _ in range(height)
+    )
+    return WorldSnapshot(
+        grid=grid, agent_position=Position(x=0, y=0),
+        width=width, height=height,
+    )
 
 
-# ---------------------------------------------------------------------------
-# Phase-to-field mapping (critical correctness)
-# ---------------------------------------------------------------------------
+def _make_step(
+    timestep: int = 0,
+    *,
+    world_before: WorldSnapshot | None = None,
+    world_after: WorldSnapshot | None = None,
+    pos_before: Position | None = None,
+    pos_after: Position | None = None,
+    vitality_before: float = 1.0,
+    vitality_after: float = 0.8,
+    intermediate_snapshots: dict[str, WorldSnapshot] | None = None,
+    action: str = "stay",
+    terminated: bool = False,
+    termination_reason: str | None = None,
+) -> BaseStepTrace:
+    return BaseStepTrace(
+        timestep=timestep,
+        action=action,
+        world_before=world_before or _make_snapshot(marker=0.1),
+        world_after=world_after or _make_snapshot(marker=0.9),
+        intermediate_snapshots=intermediate_snapshots or {},
+        agent_position_before=pos_before or Position(x=1, y=1),
+        agent_position_after=pos_after or Position(x=2, y=1),
+        vitality_before=vitality_before,
+        vitality_after=vitality_after,
+        terminated=terminated,
+        termination_reason=termination_reason,
+    )
 
 
-class TestPhaseMapping:
-    def test_before_uses_position_before(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.agent_position == tt.position_before
+def _make_episode(steps: list[BaseStepTrace]) -> BaseEpisodeTrace:
+    return BaseEpisodeTrace(
+        system_type="test",
+        steps=tuple(steps),
+        total_steps=len(steps),
+        termination_reason="max_steps",
+        final_vitality=0.8,
+        final_position=Position(x=0, y=0),
+    )
 
-    def test_before_uses_energy_before(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.agent_energy == step.energy_before
 
-    def test_after_regen_uses_position_before(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_REGEN,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.agent_position == tt.position_before
+def _sample_episode_2phase(num_steps: int = 5) -> BaseEpisodeTrace:
+    """Episode for 2-phase system (System B pattern)."""
+    steps = [_make_step(timestep=i) for i in range(num_steps)]
+    return _make_episode(steps)
 
-    def test_after_regen_uses_energy_before(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_REGEN,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.agent_energy == step.energy_before
 
-    def test_after_action_uses_position_after(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_ACTION,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.agent_position == tt.position_after
+def _sample_episode_3phase(num_steps: int = 5) -> BaseEpisodeTrace:
+    """Episode for 3-phase system (System A pattern) with intermediates."""
+    steps = []
+    for i in range(num_steps):
+        intermediate = _make_snapshot(marker=0.5)
+        steps.append(_make_step(
+            timestep=i,
+            intermediate_snapshots={"AFTER_REGEN": intermediate},
+        ))
+    return _make_episode(steps)
 
-    def test_after_action_uses_energy_after(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_ACTION,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.agent_energy == step.energy_after
+
+PHASES_2 = ["BEFORE", "AFTER_ACTION"]
+PHASES_3 = ["BEFORE", "AFTER_REGEN", "AFTER_ACTION"]
 
 
 # ---------------------------------------------------------------------------
-# Action context
+# Coordinate model tests
+# ---------------------------------------------------------------------------
+
+
+class TestReplayCoordinate:
+
+    def test_creation(self) -> None:
+        coord = ReplayCoordinate(step_index=0, phase_index=0)
+        assert coord.step_index == 0
+        assert coord.phase_index == 0
+
+    def test_frozen(self) -> None:
+        coord = ReplayCoordinate(step_index=0, phase_index=0)
+        with pytest.raises(Exception):
+            coord.step_index = 1  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Snapshot model tests
+# ---------------------------------------------------------------------------
+
+
+class TestReplaySnapshot:
+
+    def test_fields(self) -> None:
+        snap = ReplaySnapshot(
+            step_index=2,
+            phase_index=1,
+            phase_name="AFTER_REGEN",
+            timestep=2,
+            world_snapshot=_make_snapshot(),
+            agent_position=Position(x=1, y=1),
+            vitality=0.9,
+            action="right",
+            terminated=False,
+            termination_reason=None,
+        )
+        assert snap.step_index == 2
+        assert snap.phase_index == 1
+        assert snap.phase_name == "AFTER_REGEN"
+        assert snap.agent_position == Position(x=1, y=1)
+        assert snap.vitality == 0.9
+
+    def test_has_phase_name(self) -> None:
+        snap = ReplaySnapshot(
+            step_index=0,
+            phase_index=0,
+            phase_name="BEFORE",
+            timestep=0,
+            world_snapshot=_make_snapshot(),
+            agent_position=Position(x=0, y=0),
+            vitality=1.0,
+            action="stay",
+            terminated=False,
+            termination_reason=None,
+        )
+        assert snap.phase_name == "BEFORE"
+
+
+# ---------------------------------------------------------------------------
+# 2-phase resolver tests (System B pattern)
+# ---------------------------------------------------------------------------
+
+
+class TestResolver2Phase:
+
+    def test_resolve_before(self) -> None:
+        episode = _sample_episode_2phase()
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 0, PHASES_2)
+        # Phase 0 → world_before, position_before, vitality_before
+        assert snap.world_snapshot == episode.steps[0].world_before
+        assert snap.agent_position == episode.steps[0].agent_position_before
+        assert snap.vitality == episode.steps[0].vitality_before
+
+    def test_resolve_after_action(self) -> None:
+        episode = _sample_episode_2phase()
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 1, PHASES_2)
+        # Phase 1 (N-1) → world_after, position_after, vitality_after
+        assert snap.world_snapshot == episode.steps[0].world_after
+        assert snap.agent_position == episode.steps[0].agent_position_after
+        assert snap.vitality == episode.steps[0].vitality_after
+
+    def test_resolve_invalid_phase(self) -> None:
+        episode = _sample_episode_2phase()
+        resolver = SnapshotResolver()
+        with pytest.raises(PhaseNotAvailableError):
+            resolver.resolve(episode, 0, 2, PHASES_2)
+
+
+# ---------------------------------------------------------------------------
+# 3-phase resolver tests (System A pattern)
+# ---------------------------------------------------------------------------
+
+
+class TestResolver3Phase:
+
+    def test_resolve_before(self) -> None:
+        episode = _sample_episode_3phase()
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 0, PHASES_3)
+        assert snap.world_snapshot == episode.steps[0].world_before
+        assert snap.agent_position == episode.steps[0].agent_position_before
+
+    def test_resolve_intermediate(self) -> None:
+        episode = _sample_episode_3phase()
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 1, PHASES_3)
+        # Intermediate → intermediate_snapshots["AFTER_REGEN"]
+        expected = episode.steps[0].intermediate_snapshots["AFTER_REGEN"]
+        assert snap.world_snapshot == expected
+        # Intermediate uses "before" agent state
+        assert snap.agent_position == episode.steps[0].agent_position_before
+        assert snap.vitality == episode.steps[0].vitality_before
+
+    def test_resolve_after_action(self) -> None:
+        episode = _sample_episode_3phase()
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 2, PHASES_3)
+        assert snap.world_snapshot == episode.steps[0].world_after
+        assert snap.agent_position == episode.steps[0].agent_position_after
+
+    def test_missing_intermediate(self) -> None:
+        # Episode without intermediate snapshots
+        episode = _sample_episode_2phase()  # no intermediates in these steps
+        resolver = SnapshotResolver()
+        with pytest.raises(PhaseNotAvailableError):
+            resolver.resolve(episode, 0, 1, PHASES_3)
+
+
+# ---------------------------------------------------------------------------
+# Boundary tests
+# ---------------------------------------------------------------------------
+
+
+class TestBoundary:
+
+    def test_step_out_of_bounds_negative(self) -> None:
+        resolver = SnapshotResolver()
+        with pytest.raises(StepOutOfBoundsError):
+            resolver.resolve(_sample_episode_2phase(), -1, 0, PHASES_2)
+
+    def test_step_out_of_bounds_too_large(self) -> None:
+        episode = _sample_episode_2phase(num_steps=5)
+        resolver = SnapshotResolver()
+        with pytest.raises(StepOutOfBoundsError):
+            resolver.resolve(episode, 5, 0, PHASES_2)
+
+    def test_resolve_first_step(self) -> None:
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(_sample_episode_2phase(), 0, 0, PHASES_2)
+        assert snap.step_index == 0
+
+    def test_resolve_last_step(self) -> None:
+        episode = _sample_episode_2phase(num_steps=5)
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 4, 0, PHASES_2)
+        assert snap.step_index == 4
+
+
+# ---------------------------------------------------------------------------
+# Phase name passthrough tests
+# ---------------------------------------------------------------------------
+
+
+class TestPhaseNamePassthrough:
+
+    def test_phase_name_before(self) -> None:
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(_sample_episode_3phase(), 0, 0, PHASES_3)
+        assert snap.phase_name == "BEFORE"
+
+    def test_phase_name_intermediate(self) -> None:
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(_sample_episode_3phase(), 0, 1, PHASES_3)
+        assert snap.phase_name == "AFTER_REGEN"
+
+    def test_phase_name_after_action(self) -> None:
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(_sample_episode_3phase(), 0, 2, PHASES_3)
+        assert snap.phase_name == "AFTER_ACTION"
+
+
+# ---------------------------------------------------------------------------
+# Action context tests
 # ---------------------------------------------------------------------------
 
 
 class TestActionContext:
-    def test_action_matches_step(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.action == tt.action
 
-    def test_moved_flag_matches(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.moved == tt.moved
+    def test_action_from_step(self) -> None:
+        steps = [_make_step(timestep=0, action="right")]
+        episode = _make_episode(steps)
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 0, PHASES_2)
+        assert snap.action == "right"
 
-    def test_consumed_flag_matches(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.consumed == tt.consumed
+    def test_terminated_from_step(self) -> None:
+        steps = [_make_step(timestep=0, terminated=True)]
+        episode = _make_episode(steps)
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 0, PHASES_2)
+        assert snap.terminated is True
 
-    def test_energy_delta_matches(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.energy_delta == tt.energy_delta
-
-    def test_terminated_matches(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.terminated == step.terminated
-
-    def test_termination_reason_matches(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        tt = replay_episode_handle.episode_result.steps[0].transition_trace
-        assert snap.termination_reason == tt.termination_reason
-
-
-# ---------------------------------------------------------------------------
-# Boundary conditions
-# ---------------------------------------------------------------------------
-
-
-class TestBoundaryConditions:
-    def test_step_negative_raises(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        with pytest.raises(StepOutOfBoundsError):
-            snapshot_resolver.resolve(
-                replay_episode_handle, -1, ReplayPhase.BEFORE,
-            )
-
-    def test_step_equal_total_raises(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        total = len(replay_episode_handle.episode_result.steps)
-        with pytest.raises(StepOutOfBoundsError):
-            snapshot_resolver.resolve(
-                replay_episode_handle, total, ReplayPhase.BEFORE,
-            )
-
-    def test_step_far_out_of_range_raises(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        with pytest.raises(StepOutOfBoundsError):
-            snapshot_resolver.resolve(
-                replay_episode_handle, 9999, ReplayPhase.BEFORE,
-            )
-
-    def test_error_carries_context(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        total = len(replay_episode_handle.episode_result.steps)
-        with pytest.raises(StepOutOfBoundsError) as exc_info:
-            snapshot_resolver.resolve(
-                replay_episode_handle, total, ReplayPhase.BEFORE,
-            )
-        assert exc_info.value.step_index == total
-        assert exc_info.value.total_steps == total
-
-
-# ---------------------------------------------------------------------------
-# Phase not available
-# ---------------------------------------------------------------------------
-
-
-class TestPhaseNotAvailable:
-    def test_broken_phase_raises(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        """Corrupt a world snapshot, then resolve — must raise."""
-        episode = replay_episode_handle.episode_result
-        steps = list(episode.steps)
-        tt = steps[0].transition_trace
-        broken = tt.world_before.model_copy(
-            update={"grid": (), "width": 0, "height": 0},
-        )
-        bad_tt = tt.model_copy(update={"world_before": broken})
-        steps[0] = steps[0].model_copy(update={"transition_trace": bad_tt})
-        bad_episode = episode.model_copy(update={"steps": tuple(steps)})
-
-        from axis_system_a.visualization.replay_validation import (
-            validate_episode_for_replay,
-        )
-        bad_handle = ReplayEpisodeHandle(
-            experiment_id=replay_episode_handle.experiment_id,
-            run_id=replay_episode_handle.run_id,
-            episode_index=replay_episode_handle.episode_index,
-            episode_result=bad_episode,
-            validation=validate_episode_for_replay(bad_episode),
-        )
-        with pytest.raises(PhaseNotAvailableError):
-            snapshot_resolver.resolve(bad_handle, 0, ReplayPhase.BEFORE)
-
-    def test_error_carries_context(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        episode = replay_episode_handle.episode_result
-        steps = list(episode.steps)
-        tt = steps[0].transition_trace
-        broken = tt.world_after_regen.model_copy(
-            update={"grid": (), "width": 0, "height": 0},
-        )
-        bad_tt = tt.model_copy(update={"world_after_regen": broken})
-        steps[0] = steps[0].model_copy(update={"transition_trace": bad_tt})
-        bad_episode = episode.model_copy(update={"steps": tuple(steps)})
-
-        from axis_system_a.visualization.replay_validation import (
-            validate_episode_for_replay,
-        )
-        bad_handle = ReplayEpisodeHandle(
-            experiment_id=replay_episode_handle.experiment_id,
-            run_id=replay_episode_handle.run_id,
-            episode_index=replay_episode_handle.episode_index,
-            episode_result=bad_episode,
-            validation=validate_episode_for_replay(bad_episode),
-        )
-        with pytest.raises(PhaseNotAvailableError) as exc_info:
-            snapshot_resolver.resolve(
-                bad_handle, 0, ReplayPhase.AFTER_REGEN,
-            )
-        assert exc_info.value.step_index == 0
-        assert exc_info.value.phase is ReplayPhase.AFTER_REGEN
-
-
-# ---------------------------------------------------------------------------
-# Determinism
-# ---------------------------------------------------------------------------
-
-
-class TestDeterminism:
-    def test_identical_output_on_repeated_calls(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        a = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        b = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        assert a == b
-
-
-# ---------------------------------------------------------------------------
-# Integrity — no transformation drift
-# ---------------------------------------------------------------------------
-
-
-class TestIntegrity:
-    def test_grid_exact_match(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        source_grid = (
-            replay_episode_handle
-            .episode_result.steps[0]
-            .transition_trace.world_before.grid
-        )
-        assert snap.grid == source_grid
-
-    def test_dimensions_match_source(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        ws = (
-            replay_episode_handle
-            .episode_result.steps[0]
-            .transition_trace.world_before
-        )
-        assert snap.grid_width == ws.width
-        assert snap.grid_height == ws.height
-
-    def test_step_index_matches_request(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_ACTION,
-        )
-        assert snap.step_index == 0
-
-    def test_phase_matches_request(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.AFTER_ACTION,
-        )
-        assert snap.phase is ReplayPhase.AFTER_ACTION
-
-    def test_timestep_matches_step_result(
-        self, snapshot_resolver: SnapshotResolver,
-        replay_episode_handle: ReplayEpisodeHandle,
-    ):
-        snap = snapshot_resolver.resolve(
-            replay_episode_handle, 0, ReplayPhase.BEFORE,
-        )
-        step = replay_episode_handle.episode_result.steps[0]
-        assert snap.timestep == step.timestep
+    def test_termination_reason_from_step(self) -> None:
+        steps = [_make_step(
+            timestep=0, terminated=True,
+            termination_reason="starvation",
+        )]
+        episode = _make_episode(steps)
+        resolver = SnapshotResolver()
+        snap = resolver.resolve(episode, 0, 0, PHASES_2)
+        assert snap.termination_reason == "starvation"
