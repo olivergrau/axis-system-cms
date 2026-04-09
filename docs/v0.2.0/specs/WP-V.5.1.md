@@ -245,7 +245,7 @@ across all implementations.
    - Assert `canvas_width == 500`, `canvas_height == 500`
 3. **`test_cell_layout_centers_within_canvas`**: All centers have `0 <= x <= canvas_width` and `0 <= y <= canvas_height`
 4. **`test_cell_layout_bounding_boxes_positive_area`**: All bounding boxes have `w > 0, h > 0`
-5. **`test_cell_color_config_has_all_fields`**: Assert all required fields: `obstacle_color`, `empty_color`, `resource_color_min`, `resource_color_max`, `agent_color`, `selection_border_color`, `grid_line_color`
+5. **`test_cell_color_config_has_all_fields`**: Assert all required fields: `obstacle_color`, `empty_color`, `resource_color_min`, `resource_color_max`, `agent_color`, `agent_selected_color`, `selection_border_color`, `grid_line_color`
 6. **`test_cell_color_config_rgb_values_valid`**: All color tuples have 3 ints in `[0, 255]`
 7. **`test_topology_indicators_returns_list`**: Assert `topology_indicators()` returns a list of `TopologyIndicator`
 8. **`test_pixel_to_grid_center_of_cell`**: Compute layout, read center of cell `(2, 2)`, assert `pixel_to_grid(cx, cy, layout)` returns `Position(x=2, y=2)`

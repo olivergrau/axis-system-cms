@@ -210,3 +210,12 @@ class SignalLandscapeWorld:
             width=self._width,
             height=self._height,
         )
+
+    def world_metadata(self) -> dict[str, Any]:
+        """Return per-step metadata for replay visualization."""
+        return {
+            "hotspots": [
+                {"cx": h.cx, "cy": h.cy, "radius": h.radius, "intensity": h.intensity}
+                for h in self._hotspots
+            ],
+        }

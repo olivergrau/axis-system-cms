@@ -54,10 +54,11 @@ def _run_default_episode(
 ) -> BaseEpisodeTrace:
     """Run an episode with default settings via the framework runner."""
     cfg = config_dict or _default_config_dict()
+    wc = _world_config()
     system = create_system("system_a", cfg)
     world, registry = setup_episode(
         system,
-        _world_config(),
+        wc,
         Position(x=0, y=0),
         seed=seed,
     )
@@ -65,6 +66,7 @@ def _run_default_episode(
         system, world, registry,
         max_steps=max_steps,
         seed=seed,
+        world_config=wc,
     )
 
 
@@ -278,3 +280,31 @@ class TestEquivalenceWithManualOrchestration:
             assert mv == pytest.approx(rv), (
                 f"Vitality mismatch at step {i}: manual={mv}, runner={rv}"
             )
+
+
+# ---------------------------------------------------------------------------
+# World metadata wiring (WP-V.0.3)
+# ---------------------------------------------------------------------------
+
+
+class TestWorldMetadataWiring:
+    """Verify that world_metadata() is captured in step traces."""
+
+    def test_world_data_present_in_step_trace(self) -> None:
+        trace = _run_default_episode(max_steps=3)
+        for step in trace.steps:
+            assert isinstance(step.world_data, dict)
+
+    def test_grid_2d_world_data_is_empty(self) -> None:
+        trace = _run_default_episode(max_steps=3)
+        for step in trace.steps:
+            assert step.world_data == {}
+
+    def test_episode_world_type_from_config(self) -> None:
+        trace = _run_default_episode(max_steps=3)
+        assert trace.world_type == "grid_2d"
+
+    def test_episode_world_config_from_config(self) -> None:
+        trace = _run_default_episode(max_steps=3)
+        assert "world_type" in trace.world_config
+        assert trace.world_config["world_type"] == "grid_2d"

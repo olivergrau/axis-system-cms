@@ -190,7 +190,7 @@ class SnapshotResolver:
 
         # Phase mapping (Section 13.2 of architecture spec)
         world_snapshot, position, vitality = self._resolve_phase(
-            step, phase_index, num_phases, phase_names,
+            step, phase_index, num_phases, phase_names, step_index,
         )
 
         return ReplaySnapshot(
@@ -212,6 +212,7 @@ class SnapshotResolver:
         phase_index: int,
         num_phases: int,
         phase_names: list[str],
+        step_index: int,
     ) -> tuple:
         """Map phase_index to (WorldSnapshot, Position, vitality).
 
@@ -240,7 +241,7 @@ class SnapshotResolver:
         name = phase_names[phase_index]
         snapshot = step.intermediate_snapshots.get(name)
         if snapshot is None:
-            raise PhaseNotAvailableError(step.timestep, phase_index)
+            raise PhaseNotAvailableError(step_index, phase_index)
 
         return (
             snapshot,

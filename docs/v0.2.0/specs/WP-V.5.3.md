@@ -185,6 +185,49 @@ Tests the most visually distinct combination: heatmap colors, hotspot markers, a
 11. **`test_frame_action_weights_overlay`**: Assert `direction_arrow` items in overlays
 12. **`test_full_traversal`**: All steps × 2 phases produce valid frames
 
+### 4a. System B on Grid2D E2E
+
+**File**: `tests/v02/visualization/test_e2e_system_b_grid2d.py` (new)
+
+Validates that System B works correctly on the baseline grid_2d world.
+
+1. **`test_run_and_persist`**: Run System B on grid_2d, persist
+2. **`test_load_types`**: Assert `system_type == "system_b"`, `world_type == "grid_2d"`
+3. **`test_validate_episode`**: Validation passes
+4. **`test_frame_2_phases`**: Assert 2-phase lifecycle
+5. **`test_frame_no_topology_indicators`**: Assert empty topology indicators (grid_2d is bounded)
+6. **`test_frame_analysis_titles`**: Assert System B analysis section titles
+7. **`test_full_traversal`**: All steps × 2 phases produce valid frames
+
+### 4b. System B on Toroidal E2E
+
+**File**: `tests/v02/visualization/test_e2e_system_b_toroidal.py` (new)
+
+Validates System B on toroidal world -- 2-phase lifecycle with wrap-edge indicators.
+
+1. **`test_run_and_persist`**: Run System B on toroidal, persist
+2. **`test_load_types`**: Assert `system_type == "system_b"`, `world_type == "toroidal"`
+3. **`test_validate_episode`**: Validation passes
+4. **`test_frame_2_phases`**: Assert 2-phase lifecycle
+5. **`test_frame_topology_indicators_wrap_edges`**: Assert 4 wrap-edge indicators
+6. **`test_frame_analysis_titles`**: Assert System B analysis section titles (world doesn't affect system analysis)
+7. **`test_full_traversal`**: All steps × 2 phases produce valid frames
+
+### 4c. System A on Signal Landscape E2E
+
+**File**: `tests/v02/visualization/test_e2e_system_a_signal.py` (new)
+
+Validates System A on signal landscape -- 3-phase lifecycle with heatmap colors and hotspot indicators.
+
+1. **`test_run_and_persist`**: Run System A on signal landscape, persist
+2. **`test_load_types`**: Assert `system_type == "system_a"`, `world_type == "signal_landscape"`
+3. **`test_validate_episode`**: Validation passes
+4. **`test_frame_3_phases`**: Assert 3-phase lifecycle
+5. **`test_frame_hotspot_indicators`**: Assert hotspot topology indicators
+6. **`test_frame_analysis_titles`**: Assert System A's 5 analysis section titles
+7. **`test_frame_overlays`**: Assert 3 System A overlay types
+8. **`test_full_traversal`**: All steps × 3 phases produce valid frames
+
 ### 5. System A Regression Test
 
 **File**: `tests/v02/visualization/test_system_a_regression.py` (new)
@@ -258,6 +301,9 @@ Each E2E test uses a minimal experiment configuration:
 |---|---|---|---|
 | System A + grid_2d | 5×5 | 10 | 1 |
 | System A + toroidal | 5×5 | 10 | 1 |
+| System A + signal_landscape | 8×8 | 10 | 1 |
+| System B + grid_2d | 5×5 | 10 | 1 |
+| System B + toroidal | 5×5 | 10 | 1 |
 | System B + signal_landscape | 8×8 | 10 | 1 |
 
 These are small enough to run quickly but large enough to exercise the pipeline meaningfully.
@@ -273,9 +319,12 @@ This WP is itself a test suite. Total test count:
 | `test_e2e_system_a_grid2d.py` | 20 |
 | `test_e2e_system_a_toroidal.py` | 9 |
 | `test_e2e_system_b_signal.py` | 12 |
+| `test_e2e_system_b_grid2d.py` | 7 |
+| `test_e2e_system_b_toroidal.py` | 7 |
+| `test_e2e_system_a_signal.py` | 8 |
 | `test_system_a_regression.py` | 10 |
 | `test_cli_smoke.py` | 5 |
-| **Total** | **56** |
+| **Total** | **78** |
 
 All existing tests from prior WPs must continue to pass.
 
@@ -286,10 +335,13 @@ All existing tests from prior WPs must continue to pass.
 1. `tests/v02/visualization/e2e_helpers.py` (shared helper module)
 2. `tests/v02/visualization/test_e2e_system_a_grid2d.py`
 3. `tests/v02/visualization/test_e2e_system_a_toroidal.py`
-4. `tests/v02/visualization/test_e2e_system_b_signal.py`
-5. `tests/v02/visualization/test_system_a_regression.py`
-6. `tests/v02/visualization/test_cli_smoke.py`
-7. Confirmation that all tests pass (new + existing)
+4. `tests/v02/visualization/test_e2e_system_a_signal.py`
+5. `tests/v02/visualization/test_e2e_system_b_signal.py`
+6. `tests/v02/visualization/test_e2e_system_b_grid2d.py`
+7. `tests/v02/visualization/test_e2e_system_b_toroidal.py`
+8. `tests/v02/visualization/test_system_a_regression.py`
+9. `tests/v02/visualization/test_cli_smoke.py`
+10. Confirmation that all tests pass (new + existing)
 
 ---
 
@@ -300,7 +352,10 @@ tests/v02/visualization/
     e2e_helpers.py                       # NEW (shared helpers)
     test_e2e_system_a_grid2d.py          # NEW
     test_e2e_system_a_toroidal.py        # NEW
+    test_e2e_system_a_signal.py          # NEW
     test_e2e_system_b_signal.py          # NEW
+    test_e2e_system_b_grid2d.py          # NEW
+    test_e2e_system_b_toroidal.py        # NEW
     test_system_a_regression.py          # NEW
     test_cli_smoke.py                    # NEW
     adapter_fixtures.py                  # UNCHANGED (WP-V.5.1)

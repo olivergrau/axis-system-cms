@@ -32,7 +32,8 @@ class BaseStepTrace(BaseModel):
     world_after: WorldSnapshot
 
     # ── World snapshots (optional, system-declared) ──
-    intermediate_snapshots: dict[str, WorldSnapshot] = Field(default_factory=dict)
+    intermediate_snapshots: dict[str, WorldSnapshot] = Field(
+        default_factory=dict)
 
     # ── Agent position ──
     agent_position_before: Position
@@ -48,6 +49,9 @@ class BaseStepTrace(BaseModel):
 
     # ── System-specific trace data ──
     system_data: dict[str, Any] = Field(default_factory=dict)
+
+    # ── World-specific trace data ──
+    world_data: dict[str, Any] = Field(default_factory=dict)
 
 
 class BaseEpisodeTrace(BaseModel):
@@ -65,3 +69,7 @@ class BaseEpisodeTrace(BaseModel):
     termination_reason: str
     final_vitality: float = Field(..., ge=0.0, le=1.0)
     final_position: Position
+
+    # ── World identity (visualization pipeline) ──
+    world_type: str = "grid_2d"
+    world_config: dict[str, Any] = Field(default_factory=dict)

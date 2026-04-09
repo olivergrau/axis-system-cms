@@ -107,6 +107,10 @@ class MutableWorldProtocol(WorldView, Protocol):
         """Create an immutable snapshot of the current world state."""
         ...
 
+    def world_metadata(self) -> dict[str, Any]:
+        """Return per-step metadata for replay visualization."""
+        ...
+
 
 class ActionOutcome(BaseModel):
     """Result of applying an action to the world.

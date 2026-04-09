@@ -39,14 +39,14 @@ from __future__ import annotations
 from typing import Any
 
 from axis.sdk.snapshot import WorldSnapshot
-from axis.visualization.adapters.default_world import DefaultWorldVisualizationAdapter
+from axis.world.grid_2d.visualization import Grid2DWorldVisualizationAdapter
 from axis.visualization.types import CellLayout, TopologyIndicator
 
 
-class ToroidalWorldVisualizationAdapter(DefaultWorldVisualizationAdapter):
+class ToroidalWorldVisualizationAdapter(Grid2DWorldVisualizationAdapter):
     """Visualization adapter for the toroidal world type.
 
-    Inherits rectangular grid layout and colors from the default adapter.
+    Inherits rectangular grid layout and colors from the Grid2D adapter.
     Overrides topology_indicators() to show wrap edges and
     format_world_info() to display topology status.
     """
@@ -97,7 +97,7 @@ class ToroidalWorldVisualizationAdapter(DefaultWorldVisualizationAdapter):
 
 **Design notes**:
 
-- Inherits from `DefaultWorldVisualizationAdapter` (same as `Grid2DWorldVisualizationAdapter`)
+- Inherits from `Grid2DWorldVisualizationAdapter` (per architecture spec Section 11.1)
 - Only two methods overridden: `topology_indicators()` and `format_world_info()`
 - Wrap-edge indicator positions are at edge midpoints in pixel coordinates
 - The `data["style"]` is `"dashed"` -- the CanvasWidget renderer (WP-V.4.1) will draw dashed lines along the grid edges

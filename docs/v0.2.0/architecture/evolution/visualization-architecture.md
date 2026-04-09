@@ -73,7 +73,7 @@ WorldVisualizationAdapter is new.
 │  UI components (PySide6):                                       │
 │    CanvasWidget, OverlayRenderer, StatusPanel,                  │
 │    StepAnalysisPanel, DetailPanel, ReplayControlsPanel,         │
-│    DebugOverlayPanel, MainWindow                                │
+│    OverlayPanel, MainWindow                                │
 │                                                                 │
 │  ViewModelBuilder (delegates to both adapters)                  │
 │  ViewerFrameViewModel (composite output)                        │
@@ -185,7 +185,7 @@ Widgets (PySide6 rendering)
       ├── StepAnalysisPanel: renders list[AnalysisSection] as formatted text
       ├── StatusPanel: vitality with adapter label, world info line
       ├── DetailPanel: cell info + world metadata sections
-      └── DebugOverlayPanel: checkboxes from OverlayTypeDeclaration list
+      └── OverlayPanel: checkboxes from OverlayTypeDeclaration list
 ```
 
 ---
@@ -341,7 +341,7 @@ class SystemVisualizationAdapter(Protocol):
 
     def available_overlay_types(self) -> list[OverlayTypeDeclaration]:
         """Declare available overlay types for the control panel.
-        Each declaration becomes a checkbox in DebugOverlayPanel."""
+        Each declaration becomes a checkbox in OverlayPanel."""
         ...
 ```
 
@@ -829,8 +829,8 @@ Reads `system_data` which has the shape:
 3. **Drive Output**: activation scalar, per-action contributions
 4. **Decision Pipeline**: temperature, selection mode, per-action
    table (raw, admissibility, masked, probabilities), selected action
-5. **Outcome**: moved, position change, consumed, resource eaten,
-   terminated
+5. **Outcome**: moved, position change, action cost, energy gain,
+   terminated, termination reason
 
 `build_overlays()` produces 3 overlay types:
 
@@ -1008,7 +1008,7 @@ naturally adapts to any system's phase count.
 | `ui/step_analysis_panel.py` | `axis/visualization/ui/step_analysis_panel.py` | Renders `list[AnalysisSection]` instead of `StepAnalysisViewModel` |
 | `ui/detail_panel.py` | `axis/visualization/ui/detail_panel.py` | Adds world metadata sections |
 | `ui/replay_controls_panel.py` | `axis/visualization/ui/replay_controls_panel.py` | Dynamic phase names in combo box |
-| `ui/debug_overlay_panel.py` | `axis/visualization/ui/debug_overlay_panel.py` | Dynamic checkboxes from `OverlayTypeDeclaration` |
+| `ui/debug_overlay_panel.py` | `axis/visualization/ui/overlay_panel.py` | Dynamic checkboxes from `OverlayTypeDeclaration` |
 | `ui/session_controller.py` | `axis/visualization/ui/session_controller.py` | Injects both adapters |
 | `ui/app.py` | `axis/visualization/ui/app.py` | Updated signal wiring |
 
@@ -1016,7 +1016,7 @@ naturally adapts to any system's phase count.
 
 | New file | Purpose |
 |----------|---------|
-| `axis/visualization/overlay_renderer.py` | Extracted from `GridWidget._draw_overlay_*` methods; data-driven |
+| `axis/visualization/ui/overlay_renderer.py` | Extracted from `GridWidget._draw_overlay_*` methods; data-driven |
 | `axis/visualization/registry.py` | World and system visualization registries |
 | `axis/visualization/types.py` | Supporting types (Section 6) |
 | `axis/world/grid_2d/visualization.py` | Grid2D world adapter |
@@ -1124,7 +1124,7 @@ and full test suite.
 - `CanvasWidget` (world-adapter-aware, replaces `GridWidget`)
 - `OverlayRenderer` (structured data to `QPainter`, data-driven)
 - Generalized `StepAnalysisPanel` (renders `list[AnalysisSection]`)
-- Generalized `DebugOverlayPanel` (uses `OverlayTypeDeclaration` list)
+- Generalized `OverlayPanel` (uses `OverlayTypeDeclaration` list)
 - Generalized `StatusPanel` (adapter vitality label + world info)
 - `MainWindow`, `SessionController`, launch flow
 - Test suite:

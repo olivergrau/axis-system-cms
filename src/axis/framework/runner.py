@@ -39,6 +39,12 @@ def _run_step(
     # 3. World advances its own dynamics (e.g. regeneration)
     world.tick()
 
+    # 3a. Capture AFTER_REGEN intermediate snapshot
+    world_after_regen = world.snapshot()
+
+    # 3b. Capture world metadata for replay visualization
+    world_data = world.world_metadata()
+
     # 4. Framework applies action
     outcome = registry.apply(
         world, decide_result.action, context=action_context)
@@ -62,7 +68,7 @@ def _run_step(
         action=decide_result.action,
         world_before=world_before,
         world_after=world_after,
-        intermediate_snapshots={},
+        intermediate_snapshots={"AFTER_REGEN": world_after_regen},
         agent_position_before=position_before,
         agent_position_after=position_after,
         vitality_before=vitality_before,
@@ -73,6 +79,7 @@ def _run_step(
             "decision_data": decide_result.decision_data,
             "trace_data": transition_result.trace_data,
         },
+        world_data=world_data,
     )
 
     return new_state, step_trace
@@ -85,6 +92,7 @@ def run_episode(
     *,
     max_steps: int,
     seed: int,
+    world_config: BaseWorldConfig | None = None,
 ) -> BaseEpisodeTrace:
     """Run a complete episode from initialization to termination.
 
@@ -125,6 +133,8 @@ def run_episode(
         termination_reason=termination_reason,
         final_vitality=system.vitality(agent_state),
         final_position=world.agent_position,
+        world_type=world_config.world_type if world_config else "grid_2d",
+        world_config=world_config.model_dump() if world_config else {},
     )
 
 

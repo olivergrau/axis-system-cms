@@ -61,7 +61,6 @@ examples:
   axis runs show <run_id> --experiment <eid>    Inspect a specific run
 
   axis visualize --experiment <eid> --run <rid> --episode 1
-                                                 (stub -- Phase 4)
 
   Use --output json on any command for machine-readable output.
   Use --root <path> to point to a non-default repository location.
@@ -130,7 +129,7 @@ examples:
     # -- visualize -----------------------------------------------------------
     viz_parser = entity_sub.add_parser(
         "visualize", parents=[common],
-        help="Launch interactive episode viewer (stub -- Phase 4)",
+        help="Launch interactive episode viewer",
     )
     viz_parser.add_argument(
         "--experiment", required=True, help="Experiment ID")
@@ -138,6 +137,12 @@ examples:
         "--run", required=True, help="Run ID within the experiment")
     viz_parser.add_argument(
         "--episode", type=int, required=True, help="Episode index (1-based)",
+    )
+    viz_parser.add_argument(
+        "--step", type=int, default=None, help="Initial step (0-based)",
+    )
+    viz_parser.add_argument(
+        "--phase", type=int, default=None, help="Initial phase index",
     )
 
     return parser
@@ -436,15 +441,15 @@ def _cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
             )
 
 
-def _cmd_visualize(args: argparse.Namespace) -> None:
-    """Visualize command -- stub until Phase 4."""
-    print(
-        "Visualization is not yet available in the v0.2.0 framework.\n"
-        "It will be implemented in Phase 4 (WP-4.1 through WP-4.3).\n"
-        f"  Experiment: {args.experiment}\n"
-        f"  Run: {args.run}\n"
-        f"  Episode: {args.episode}"
-    )
+def _cmd_visualize(args: argparse.Namespace, repo) -> None:
+    """Launch the interactive visualization viewer."""
+    from axis.visualization.launch import launch_visualization
+
+    episode_index = args.episode
+    sys.exit(launch_visualization(
+        repo, args.experiment, args.run, episode_index,
+        start_step=args.step, start_phase=args.phase,
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -467,7 +472,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.entity == "visualize":
-            _cmd_visualize(args)
+            _cmd_visualize(args, repo)
             return 0
 
         if not getattr(args, "action", None):

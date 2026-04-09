@@ -511,3 +511,25 @@ class TestImports:
         grid = _make_empty_grid(2, 2)
         world = World(grid=grid, agent_position=Position(x=0, y=0))
         assert isinstance(world, WorldView)
+
+
+# ---------------------------------------------------------------------------
+# world_metadata (WP-V.0.2)
+# ---------------------------------------------------------------------------
+
+
+class TestWorldMetadata:
+    """Tests for grid_2d World.world_metadata()."""
+
+    def test_world_metadata_returns_empty_dict(self) -> None:
+        grid = _make_empty_grid(3, 3)
+        world = World(grid=grid, agent_position=Position(x=0, y=0))
+        assert world.world_metadata() == {}
+
+    def test_world_metadata_stable_across_ticks(self) -> None:
+        grid = _make_empty_grid(3, 3)
+        world = World(grid=grid, agent_position=Position(x=0, y=0))
+        m1 = world.world_metadata()
+        world.tick()
+        m2 = world.world_metadata()
+        assert m1 == m2 == {}

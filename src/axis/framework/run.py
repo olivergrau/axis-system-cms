@@ -167,4 +167,5 @@ class RunExecutor:
             registry,
             max_steps=config.framework_config.execution.max_steps,
             seed=episode_seed,
+            world_config=world_config,
         )

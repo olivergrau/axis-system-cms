@@ -664,3 +664,39 @@ class TestImports:
     def test_import_factory(self) -> None:
         from axis.world.signal_landscape import create_signal_landscape
         assert create_signal_landscape is not None
+
+
+# ---------------------------------------------------------------------------
+# 14. world_metadata (WP-V.0.2)
+# ---------------------------------------------------------------------------
+
+
+class TestSignalLandscapeWorldMetadata:
+    """Tests for SignalLandscapeWorld.world_metadata()."""
+
+    def test_world_metadata_contains_hotspots(self) -> None:
+        world = _make_world(num_hotspots=2)
+        meta = world.world_metadata()
+        assert "hotspots" in meta
+        assert len(meta["hotspots"]) == 2
+
+    def test_world_metadata_hotspot_keys(self) -> None:
+        world = _make_world(num_hotspots=1)
+        meta = world.world_metadata()
+        hotspot = meta["hotspots"][0]
+        assert set(hotspot.keys()) == {"cx", "cy", "radius", "intensity"}
+
+    def test_world_metadata_hotspot_values_are_float(self) -> None:
+        world = _make_world(num_hotspots=1)
+        meta = world.world_metadata()
+        hotspot = meta["hotspots"][0]
+        for key in ("cx", "cy", "radius", "intensity"):
+            assert isinstance(hotspot[key], float)
+
+    def test_world_metadata_hotspots_drift_after_tick(self) -> None:
+        world = _make_world(num_hotspots=1, drift_speed=1.0)
+        m1 = world.world_metadata()
+        world.tick()
+        m2 = world.world_metadata()
+        h1, h2 = m1["hotspots"][0], m2["hotspots"][0]
+        assert h1["cx"] != h2["cx"] or h1["cy"] != h2["cy"]

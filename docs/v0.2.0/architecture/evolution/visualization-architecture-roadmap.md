@@ -402,10 +402,12 @@ for visualization readiness.
 
 **Key work**:
 - `ReplayAccessService`: loads episode trace from repository, reads
-  `system_type` and `world_type`, triggers adapter resolution
+  `system_type` and `world_type`
 - `ReplayValidation`: checks that episodes have steps, snapshots are
   present, world dimensions are positive
-- Error types: `ReplayLoadError`, `ReplayValidationError`
+- Error types: `ReplayError` hierarchy (ported from v0.1.0:
+  `StepOutOfBoundsError`, `PhaseNotAvailableError`, `CellOutOfBoundsError`,
+  etc.)
 - Migrate and generalize from v0.1.0 `replay_access.py`,
   `replay_validation.py`, `replay_models.py`
 - Tests with mock repository data
@@ -541,7 +543,7 @@ world adapter for testing).
 `GridWidget._draw_overlay_*` methods.
 
 **Touches**:
-- `src/axis/visualization/overlay_renderer.py` (new)
+- `src/axis/visualization/ui/overlay_renderer.py` (new)
 
 **Key work**:
 - `OverlayRenderer.render(painter, overlay_data_list, cell_layout,
@@ -571,7 +573,7 @@ replay control panels for multi-system/multi-world use.
 - `src/axis/visualization/ui/step_analysis_panel.py` (new)
 - `src/axis/visualization/ui/status_panel.py` (new)
 - `src/axis/visualization/ui/detail_panel.py` (new)
-- `src/axis/visualization/ui/debug_overlay_panel.py` (new)
+- `src/axis/visualization/ui/overlay_panel.py` (new)
 - `src/axis/visualization/ui/replay_controls_panel.py` (new)
 
 **Key work**:
@@ -581,7 +583,7 @@ replay control panels for multi-system/multi-world use.
   format, plus optional world info line from world adapter
 - `DetailPanel`: cell info from `CellView` + world metadata sections
   from world adapter
-- `DebugOverlayPanel`: builds checkboxes dynamically from
+- `OverlayPanel`: builds checkboxes dynamically from
   `OverlayTypeDeclaration` list (not hard-coded overlay names)
 - `ReplayControlsPanel`: phase combo box populated from
   `system_adapter.phase_names()` (variable count)
@@ -653,6 +655,10 @@ system adapters.
 
 **Dependencies**: WP-V.2.1 through WP-V.2.5, WP-V.3.4.
 
+**Note**: The dependency graph serializes V.5.1 after V.4.4 for
+implementation ordering, but the adapter tests have no actual dependency
+on Phase V-4 UI code.
+
 ---
 
 ### WP-V.5.2: Replay Infrastructure Test Suite
@@ -678,7 +684,11 @@ control, and viewer state.
 
 **Deliverable**: Replay infrastructure tests.
 
-**Dependencies**: WP-V.3.1 through WP-V.3.4.
+**Dependencies**: WP-V.3.1 through WP-V.3.4, WP-V.4.2.
+
+**Note**: The dependency graph serializes V.5.2 after V.4.4 for
+implementation ordering. The overlay rendering tests depend on WP-V.4.2
+but the remaining infrastructure tests have no Phase V-4 dependency.
 
 ---
 

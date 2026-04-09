@@ -95,7 +95,8 @@ class TestExperimentsList:
     def test_after_execution(self, tmp_path, capsys):
         root, eid = _run_experiment(tmp_path)
         capsys.readouterr()
-        code, out, _ = _run_cli(capsys, ["--root", root, "experiments", "list"])
+        code, out, _ = _run_cli(
+            capsys, ["--root", root, "experiments", "list"])
         assert code == 0
         assert eid in out
         assert "completed" in out
@@ -118,7 +119,8 @@ class TestExperimentsRun:
         repo = ExperimentRepository(Path(root))
         eids = repo.list_experiments()
         assert len(eids) == 1
-        assert repo.load_experiment_status(eids[0]) == ExperimentStatus.COMPLETED
+        assert repo.load_experiment_status(
+            eids[0]) == ExperimentStatus.COMPLETED
 
     def test_ofat(self, tmp_path, capsys):
         config_path = _write_json_config(tmp_path, _ofat_config_dict())
@@ -143,7 +145,8 @@ class TestExperimentsRun:
         bad_file = tmp_path / "bad.json"
         bad_file.write_text("{not valid json!!}")
         code, _, err = _run_cli(capsys, [
-            "--root", str(tmp_path / "repo"), "experiments", "run", str(bad_file),
+            "--root", str(tmp_path /
+                          "repo"), "experiments", "run", str(bad_file),
         ])
         assert code == 1
         assert "error" in err.lower()
@@ -288,8 +291,10 @@ class TestVisualize:
             "--root", str(tmp_path / "repo"),
             "visualize", "--experiment", "exp", "--run", "run", "--episode", "1",
         ])
-        assert code == 0
-        assert "not yet available" in out.lower() or "phase 4" in out.lower()
+        # With Phase V-4 implemented, the visualize command now attempts
+        # to launch a real session. With an invalid experiment path, it
+        # should return error code 1.
+        assert code == 1
 
 
 # ---------------------------------------------------------------------------

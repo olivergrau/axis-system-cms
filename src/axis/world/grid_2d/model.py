@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -239,3 +240,7 @@ class World:
             width=self._width,
             height=self._height,
         )
+
+    def world_metadata(self) -> dict[str, Any]:
+        """Return per-step metadata for replay visualization."""
+        return {}

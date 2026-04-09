@@ -53,6 +53,7 @@ def _make_step_trace(
     vitality_after: float = 0.9,
     intermediate_snapshots: dict[str, WorldSnapshot] | None = None,
     system_data: dict[str, Any] | None = None,
+    world_data: dict[str, Any] | None = None,
 ) -> BaseStepTrace:
     snap = _make_snapshot()
     return BaseStepTrace(
@@ -68,6 +69,7 @@ def _make_step_trace(
         terminated=terminated,
         termination_reason=termination_reason,
         system_data=system_data or {},
+        world_data=world_data or {},
     )
 
 
@@ -323,11 +325,14 @@ class TestIntermediateSnapshots:
         snap1 = _make_snapshot(agent_pos=Position(x=0, y=0))
         snap2 = _make_snapshot(agent_pos=Position(x=1, y=1))
         trace = _make_step_trace(
-            intermediate_snapshots={"after_regen": snap1, "after_dynamics": snap2}
+            intermediate_snapshots={
+                "after_regen": snap1, "after_dynamics": snap2}
         )
         assert len(trace.intermediate_snapshots) == 2
-        assert trace.intermediate_snapshots["after_regen"].agent_position == Position(x=0, y=0)
-        assert trace.intermediate_snapshots["after_dynamics"].agent_position == Position(x=1, y=1)
+        assert trace.intermediate_snapshots["after_regen"].agent_position == Position(
+            x=0, y=0)
+        assert trace.intermediate_snapshots["after_dynamics"].agent_position == Position(
+            x=1, y=1)
 
 
 # ---------------------------------------------------------------------------
@@ -424,3 +429,105 @@ class TestImports:
 
     def test_import_from_trace_module(self) -> None:
         from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace  # noqa: F401
+
+
+# ---------------------------------------------------------------------------
+# BaseStepTrace -- world_data (WP-V.0.1)
+# ---------------------------------------------------------------------------
+
+
+class TestWorldData:
+    """Tests for world_data field on BaseStepTrace."""
+
+    def test_world_data_default_empty(self) -> None:
+        trace = _make_step_trace()
+        assert trace.world_data == {}
+
+    def test_world_data_round_trip(self) -> None:
+        data = {"topology": "toroidal", "hotspots": [{"cx": 3, "cy": 4}]}
+        trace = _make_step_trace(world_data=data)
+        dumped = trace.model_dump()
+        reconstructed = BaseStepTrace(**dumped)
+        assert reconstructed.world_data == data
+
+    def test_world_data_json_round_trip(self) -> None:
+        data = {"hotspots": [
+            {"cx": 1, "cy": 2, "radius": 3.0, "intensity": 0.8}]}
+        trace = _make_step_trace(world_data=data)
+        dumped = trace.model_dump(mode="json")
+        reconstructed = BaseStepTrace(**dumped)
+        assert reconstructed.world_data == data
+
+    def test_world_data_coexists_with_system_data(self) -> None:
+        trace = _make_step_trace(
+            system_data={"decision": {"temp": 1.0}},
+            world_data={"topology": "toroidal"},
+        )
+        assert trace.system_data["decision"]["temp"] == 1.0
+        assert trace.world_data["topology"] == "toroidal"
+
+
+# ---------------------------------------------------------------------------
+# BaseEpisodeTrace -- world_type / world_config (WP-V.0.1)
+# ---------------------------------------------------------------------------
+
+
+class TestEpisodeWorldIdentity:
+    """Tests for world_type and world_config on BaseEpisodeTrace."""
+
+    def test_world_type_defaults_to_grid_2d(self) -> None:
+        step = _make_step_trace()
+        episode = BaseEpisodeTrace(
+            system_type="system_a",
+            steps=(step,),
+            total_steps=1,
+            termination_reason="max_steps_reached",
+            final_vitality=0.9,
+            final_position=Position(x=0, y=0),
+        )
+        assert episode.world_type == "grid_2d"
+
+    def test_world_config_defaults_to_empty(self) -> None:
+        step = _make_step_trace()
+        episode = BaseEpisodeTrace(
+            system_type="system_a",
+            steps=(step,),
+            total_steps=1,
+            termination_reason="max_steps_reached",
+            final_vitality=0.9,
+            final_position=Position(x=0, y=0),
+        )
+        assert episode.world_config == {}
+
+    def test_world_type_explicit(self) -> None:
+        step = _make_step_trace()
+        episode = BaseEpisodeTrace(
+            system_type="system_a",
+            steps=(step,),
+            total_steps=1,
+            termination_reason="max_steps_reached",
+            final_vitality=0.9,
+            final_position=Position(x=0, y=0),
+            world_type="toroidal",
+            world_config={"topology": "toroidal"},
+        )
+        assert episode.world_type == "toroidal"
+        assert episode.world_config["topology"] == "toroidal"
+
+    def test_episode_world_identity_round_trip(self) -> None:
+        step = _make_step_trace()
+        episode = BaseEpisodeTrace(
+            system_type="system_b",
+            steps=(step,),
+            total_steps=1,
+            termination_reason="max_steps_reached",
+            final_vitality=0.5,
+            final_position=Position(x=0, y=0),
+            world_type="signal_landscape",
+            world_config={"num_hotspots": 3, "decay_rate": 0.01},
+        )
+        dumped = episode.model_dump()
+        reconstructed = BaseEpisodeTrace(**dumped)
+        assert reconstructed.world_type == "signal_landscape"
+        assert reconstructed.world_config == {
+            "num_hotspots": 3, "decay_rate": 0.01}

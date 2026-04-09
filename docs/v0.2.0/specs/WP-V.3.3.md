@@ -161,7 +161,6 @@ class ViewerState(BaseModel):
 def create_initial_state(
     episode_handle: ReplayEpisodeHandle,
     num_phases: int,
-    available_overlay_keys: frozenset[str] | None = None,
 ) -> ViewerState:
     """Create the initial ViewerState for a loaded episode.
 
@@ -183,7 +182,7 @@ def create_initial_state(
 - `coordinate: ReplayCoordinate` now uses `phase_index: int` (not `phase: ReplayPhase`)
 - `num_phases: int` added -- the ViewerState knows how many phases exist for validation
 - `debug_overlay_config: DebugOverlayConfig` replaced by `overlay_config: OverlayConfig` with dynamic `enabled_overlays: frozenset[str]`
-- `create_initial_state()` takes `num_phases` and optional `available_overlay_keys` (for future use when initializing with all overlays enabled)
+- `create_initial_state()` takes `num_phases` parameter
 - Phase index validation added to `_validate_invariants`
 
 ### 3. State Transitions
@@ -559,7 +558,7 @@ Create a fixture `_sample_episode_handle()` that returns a `ReplayEpisodeHandle`
 ### ViewerState tests (`test_viewer_state.py`)
 
 1. **`test_create_initial_state`**: Assert coordinate is (0, 0), mode is STOPPED, no selection
-2. **`test_initial_state_with_overlay_keys`**: Create with overlay keys, assert `overlay_config.enabled_overlays` is empty (all start disabled)
+2. **`test_initial_state_num_phases`**: Create with `num_phases=3`, assert `state.num_phases == 3`
 3. **`test_step_index_out_of_bounds`**: Assert `ValueError` when step_index >= total_steps
 4. **`test_phase_index_out_of_bounds`**: Assert `ValueError` when phase_index >= num_phases
 5. **`test_selected_cell_out_of_bounds`**: Assert `ValueError` for invalid cell

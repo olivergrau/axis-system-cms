@@ -393,3 +393,23 @@ class TestImports:
     def test_import_factory(self) -> None:
         from axis.world.toroidal import create_toroidal_world
         assert create_toroidal_world is not None
+
+
+# ---------------------------------------------------------------------------
+# 11. world_metadata (WP-V.0.2)
+# ---------------------------------------------------------------------------
+
+
+class TestToroidalWorldMetadata:
+    """Tests for ToroidalWorld.world_metadata()."""
+
+    def test_world_metadata_returns_topology(self) -> None:
+        world = _make_world()
+        assert world.world_metadata() == {"topology": "toroidal"}
+
+    def test_world_metadata_stable_across_ticks(self) -> None:
+        world = _make_world()
+        m1 = world.world_metadata()
+        world.tick()
+        m2 = world.world_metadata()
+        assert m1 == m2 == {"topology": "toroidal"}

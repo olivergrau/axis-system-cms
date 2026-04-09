@@ -118,7 +118,7 @@ class SystemBVisualizationAdapter:
         dd = step_trace.system_data.get("decision_data", {})
         pos = (step_trace.agent_position_before.x, step_trace.agent_position_before.y)
         return [
-            self._overlay_action_weights(dd, pos),
+            self._overlay_action_weights(dd, pos, step_trace.action),
             self._overlay_scan_result(dd, td=step_trace.system_data.get("trace_data", {}), agent_pos=pos),
         ]
 
@@ -199,7 +199,7 @@ Rows:
 
 ### 3. Overlay Helpers
 
-#### `_overlay_action_weights(decision_data, agent_pos)`
+#### `_overlay_action_weights(decision_data, agent_pos, selected_action)`
 
 ```
 overlay_type: "action_weights"
@@ -211,13 +211,13 @@ items:
         data={
             "direction": action,
             "length": probabilities[i],
-            "is_selected": action == step_trace.action,
+            "is_selected": action == selected_action,
             "color": "selected" if selected else "default",
         },
     )
 ```
 
-**Note**: Uses `probabilities` (not raw weights) for arrow length, since probabilities are normalized and produce consistent visual sizing. The selected action is determined by comparing to `decision_data["policy"]["selected_action"]` -- but System B stores it differently. Check: the selected action is available from `step_trace.action`.
+**Note**: Uses `probabilities` (not raw weights) for arrow length, since probabilities are normalized and produce consistent visual sizing. The selected action is passed explicitly from `step_trace.action`.
 
 #### `_overlay_scan_result(decision_data, trace_data, agent_pos)`
 

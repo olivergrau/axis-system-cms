@@ -13,6 +13,8 @@ Registered as world type ``"toroidal"``.
 
 from __future__ import annotations
 
+from typing import Any
+
 from axis.sdk.position import Position
 from axis.sdk.snapshot import WorldSnapshot
 from axis.sdk.world_types import CellView
@@ -158,3 +160,7 @@ class ToroidalWorld:
             grid=grid, agent_position=self._agent_position,
             width=self._width, height=self._height,
         )
+
+    def world_metadata(self) -> dict[str, Any]:
+        """Return per-step metadata for replay visualization."""
+        return {"topology": "toroidal"}
