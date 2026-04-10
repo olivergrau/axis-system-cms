@@ -98,6 +98,10 @@ class SystemAWTransition:
             "visit_count_at_current": dict(new_world_model.visit_counts).get(
                 new_world_model.relative_position, 0,
             ),
+            "visit_counts_map": [
+                [[x, y], count]
+                for (x, y), count in new_world_model.visit_counts
+            ],
         }
 
         return TransitionResult(

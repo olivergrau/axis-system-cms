@@ -72,6 +72,9 @@ def _sample_system_data() -> dict[str, Any]:
             "memory_entries_after": 3,
             "relative_position": (3, 1),
             "visit_count_at_current": 2,
+            "visit_counts_map": [
+                [[0, 0], 3], [[1, 0], 2], [[2, 0], 1], [[3, 1], 2],
+            ],
         },
     }
 
@@ -160,9 +163,9 @@ def _adapter():
 
 class TestAnalysisSections:
 
-    def test_build_step_analysis_returns_7_sections(self) -> None:
+    def test_build_step_analysis_returns_8_sections(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        assert len(sections) == 7
+        assert len(sections) == 8
 
     def test_section_titles(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
@@ -174,6 +177,7 @@ class TestAnalysisSections:
             "Curiosity Drive",
             "Drive Arbitration",
             "Decision Pipeline",
+            "World Model",
             "Outcome",
         ]
 
@@ -206,7 +210,7 @@ class TestAnalysisSections:
 
     def test_outcome_has_world_model_info(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        outcome = sections[6]
+        outcome = sections[7]
         labels = [r.label for r in outcome.rows]
         assert "Relative Position" in labels
 
@@ -247,9 +251,8 @@ class TestOverlays:
     def test_visit_count_heatmap_items(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
         hm = [o for o in overlays if o.overlay_type == "visit_count_heatmap"][0]
-        assert len(hm.items) >= 1
-        assert hm.items[0].item_type == "heatmap_cell"
-        assert hm.items[0].data["visit_count"] == 2
+        assert len(hm.items) == 4
+        assert all(item.item_type == "heatmap_cell" for item in hm.items)
 
     def test_novelty_field_has_4_directions(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
@@ -297,7 +300,7 @@ class TestDegradation:
         )
         adapter = _adapter()
         sections = adapter.build_step_analysis(step_trace)
-        assert len(sections) == 7
+        assert len(sections) == 8
         overlays = adapter.build_overlays(step_trace)
         assert len(overlays) == 5
 
@@ -305,6 +308,7 @@ class TestDegradation:
         """Single visit at origin: heatmap has 1 item."""
         data = _curiosity_zero_system_data()
         data["trace_data"]["visit_count_at_current"] = 1
+        data["trace_data"]["visit_counts_map"] = [[[0, 0], 1]]
         snap = _make_snapshot()
         step_trace = BaseStepTrace(
             timestep=0,
@@ -323,3 +327,112 @@ class TestDegradation:
         hm = [o for o in overlays if o.overlay_type == "visit_count_heatmap"][0]
         assert len(hm.items) == 1
         assert hm.items[0].data["visit_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# World Model section tests
+# ---------------------------------------------------------------------------
+
+
+class TestWorldModelSection:
+
+    def test_world_model_section_present(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        titles = [s.title for s in sections]
+        assert "World Model" in titles
+
+    def test_world_model_section_position(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        titles = [s.title for s in sections]
+        assert titles.index("World Model") == 6
+        assert titles.index("Outcome") == 7
+
+    def test_world_model_stats_rows(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        wm = [s for s in sections if s.title == "World Model"][0]
+        labels = [r.label for r in wm.rows]
+        assert "Position (rel)" in labels
+        assert "Visits Here" in labels
+        assert "Cells Visited" in labels
+        assert "Total Visits" in labels
+        assert "Max Visits" in labels
+
+    def test_world_model_cells_visited_value(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        wm = [s for s in sections if s.title == "World Model"][0]
+        by_label = {r.label: r.value for r in wm.rows}
+        assert by_label["Cells Visited"] == "4"
+        assert by_label["Total Visits"] == "8"
+
+    def test_world_model_text_map_present(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        wm = [s for s in sections if s.title == "World Model"][0]
+        map_rows = [r for r in wm.rows if r.label == "Map"]
+        assert len(map_rows) == 1
+        assert map_rows[0].sub_rows is not None
+        assert len(map_rows[0].sub_rows) > 0
+
+    def test_world_model_no_map_key_graceful(self) -> None:
+        """Without visit_counts_map, section still renders with stats."""
+        data = _curiosity_zero_system_data()
+        # No visit_counts_map key
+        snap = _make_snapshot()
+        step_trace = BaseStepTrace(
+            timestep=0, action="stay",
+            world_before=snap, world_after=snap,
+            agent_position_before=Position(x=2, y=2),
+            agent_position_after=Position(x=2, y=2),
+            vitality_before=0.50, vitality_after=0.495,
+            terminated=False, system_data=data,
+        )
+        sections = _adapter().build_step_analysis(step_trace)
+        wm = [s for s in sections if s.title == "World Model"][0]
+        by_label = {r.label: r.value for r in wm.rows}
+        assert by_label["Cells Visited"] == "0"
+        # No "Map" row when map is empty
+        map_rows = [r for r in wm.rows if r.label == "Map"]
+        assert len(map_rows) == 0
+
+
+# ---------------------------------------------------------------------------
+# Full-map heatmap tests
+# ---------------------------------------------------------------------------
+
+
+class TestHeatmapFullMap:
+
+    def test_heatmap_coordinate_conversion(self) -> None:
+        """Verify relative→absolute coordinate conversion with y-flip.
+
+        Sample data: agent_position_after=(3,2), relative_position=(3,1).
+        Relative (0,0) → abs (3+(0-3), 2-(0-1)) = (0, 3)
+        Relative (1,0) → abs (3+(1-3), 2-(0-1)) = (1, 3)
+        Relative (2,0) → abs (3+(2-3), 2-(0-1)) = (2, 3)
+        Relative (3,1) → abs (3+(3-3), 2-(1-1)) = (3, 2)  # agent pos after
+        """
+        overlays = _adapter().build_overlays(_sample_step_trace())
+        hm = [o for o in overlays if o.overlay_type == "visit_count_heatmap"][0]
+        positions = {item.grid_position for item in hm.items}
+        assert (0, 3) in positions
+        assert (1, 3) in positions
+        assert (2, 3) in positions
+        assert (3, 2) in positions
+
+    def test_heatmap_fallback_no_map(self) -> None:
+        """Without visit_counts_map key, falls back to single cell at pos_after."""
+        data = _curiosity_zero_system_data()
+        # No visit_counts_map key — fallback
+        snap = _make_snapshot()
+        step_trace = BaseStepTrace(
+            timestep=0, action="stay",
+            world_before=snap, world_after=snap,
+            agent_position_before=Position(x=2, y=2),
+            agent_position_after=Position(x=2, y=2),
+            vitality_before=0.50, vitality_after=0.495,
+            terminated=False, system_data=data,
+        )
+        adapter = _adapter()
+        overlays = adapter.build_overlays(step_trace)
+        hm = [o for o in overlays if o.overlay_type == "visit_count_heatmap"][0]
+        assert len(hm.items) == 1
+        assert hm.items[0].grid_position == (2, 2)

@@ -97,25 +97,30 @@ def get_neighbor_position(
 def spatial_novelty(
     state: WorldModelState,
     direction: str,
+    k: float = 1.0,
 ) -> float:
     """Spatial novelty for a neighbor direction.
 
-    nu^spatial_dir = 1 / (1 + w_t(p_hat_t + delta(dir)))
+    nu^spatial_dir = 1 / (1 + w_t(p_hat_t + delta(dir)))^k
+
+    k controls decay sharpness: k=1 is standard, k>1 steepens
+    the contrast between visited and unvisited cells.
 
     Model reference: Section 5.2.4.
     """
     neighbor = get_neighbor_position(state, direction)
     w = get_visit_count(state, neighbor)
-    return 1.0 / (1.0 + w)
+    return 1.0 / (1.0 + w) ** k
 
 
 def all_spatial_novelties(
     state: WorldModelState,
+    k: float = 1.0,
 ) -> tuple[float, float, float, float]:
     """Spatial novelty for all four cardinal directions.
 
     Returns: (nu_up, nu_down, nu_left, nu_right)
     """
     return tuple(  # type: ignore[return-value]
-        spatial_novelty(state, d) for d in _CARDINAL_DIRECTIONS
+        spatial_novelty(state, d, k) for d in _CARDINAL_DIRECTIONS
     )

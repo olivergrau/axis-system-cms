@@ -257,6 +257,17 @@ class TestOutputStructure:
             _make_state(), _make_outcome(), _make_observation())
         assert "visit_count_at_current" in result.trace_data
 
+    def test_trace_data_contains_visit_counts_map(self) -> None:
+        trans = _make_transition()
+        result = trans.transition(
+            _make_state(), _make_outcome(), _make_observation())
+        assert "visit_counts_map" in result.trace_data
+        vcm = result.trace_data["visit_counts_map"]
+        assert isinstance(vcm, list)
+        assert len(vcm) >= 1
+        assert vcm[0][0] == [0, 0]
+        assert vcm[0][1] >= 1
+
 
 class TestWorkedExampleD1:
     """Worked example D1: forage-explore cycle."""

@@ -45,6 +45,7 @@ class SystemAW:
             base_curiosity=config.curiosity.base_curiosity,
             spatial_sensory_balance=config.curiosity.spatial_sensory_balance,
             explore_suppression=config.curiosity.explore_suppression,
+            novelty_sharpness=config.curiosity.novelty_sharpness,
         )
         self._policy = SystemAWPolicy(
             temperature=config.policy.temperature,

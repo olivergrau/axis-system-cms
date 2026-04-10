@@ -17,6 +17,10 @@ world:
   regeneration_mode: "sparse_fixed_ratio"
   regen_eligible_ratio: 0.10
 
+agent_start_position:
+  x: 10
+  y: 10
+
 system:
   agent:
     initial_energy: 100.0
@@ -24,7 +28,7 @@ system:
     memory_capacity: 20
   policy:
     selection_mode: "sample"
-    temperature: 0.5
+    temperature: 1.5
     stay_suppression: 0.1
     consume_weight: 2.5
   transition:
@@ -37,6 +41,7 @@ system:
     base_curiosity: 1.0
     spatial_sensory_balance: 0.7
     explore_suppression: 0.5
+    novelty_sharpness: 2.0
   arbitration:
     hunger_weight_base: 0.2
     curiosity_weight_base: 1.5

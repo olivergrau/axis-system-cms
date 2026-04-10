@@ -65,6 +65,7 @@ class SystemAWVisualizationAdapter:
             self._section_curiosity_drive(dd),
             self._section_drive_arbitration(dd),
             self._section_decision_pipeline(dd),
+            self._section_world_model(td),
             self._section_outcome(step_trace, td),
         ]
 
@@ -77,11 +78,15 @@ class SystemAWVisualizationAdapter:
         td = step_trace.system_data.get("trace_data", {})
         pos = (step_trace.agent_position_before.x,
                step_trace.agent_position_before.y)
+        # Heatmap uses position_after: the visit_counts_map and
+        # relative_position in trace_data are post-transition values.
+        pos_after = (step_trace.agent_position_after.x,
+                     step_trace.agent_position_after.y)
         return [
             self._overlay_action_preference(dd, pos),
             self._overlay_drive_contribution(dd, pos),
             self._overlay_consumption_opportunity(dd, pos),
-            self._overlay_visit_count_heatmap(td, pos),
+            self._overlay_visit_count_heatmap(td, pos_after),
             self._overlay_novelty_field(dd, pos),
         ]
 
@@ -125,10 +130,10 @@ class SystemAWVisualizationAdapter:
             OverlayTypeDeclaration(
                 key="visit_count_heatmap",
                 label="Visit Count Map",
-                description="Heatmap showing visit count at the "
-                            "agent's current position.",
+                description="Heatmap showing visit counts across all "
+                            "cells the agent has visited.",
                 legend_html=(
-                    "intensity=visit count"
+                    "cold=few visits warm=many visits"
                 ),
             ),
             OverlayTypeDeclaration(
@@ -339,6 +344,100 @@ class SystemAWVisualizationAdapter:
 
         return AnalysisSection(title="Decision Pipeline", rows=tuple(rows))
 
+    _TEXT_MAP_MAX_WIDTH = 14
+
+    def _section_world_model(
+        self, trace_data: dict[str, Any],
+    ) -> AnalysisSection:
+        rel_pos = trace_data.get("relative_position", (0, 0))
+        visit_at_current = trace_data.get("visit_count_at_current", 0)
+        visit_map = trace_data.get("visit_counts_map", [])
+
+        total_cells = len(visit_map)
+        total_visits = sum(e[1] for e in visit_map) if visit_map else 0
+
+        if visit_map:
+            max_entry = max(visit_map, key=lambda e: e[1])
+            max_count = max_entry[1]
+            max_pos = max_entry[0]
+            max_label = f"{max_count} at ({max_pos[0]}, {max_pos[1]})"
+        else:
+            max_label = "0"
+
+        rows: list[AnalysisRow] = [
+            AnalysisRow(
+                label="Position (rel)",
+                value=f"({rel_pos[0]}, {rel_pos[1]})"),
+            AnalysisRow(
+                label="Visits Here",
+                value=str(visit_at_current)),
+            AnalysisRow(
+                label="Cells Visited",
+                value=str(total_cells)),
+            AnalysisRow(
+                label="Total Visits",
+                value=str(total_visits)),
+            AnalysisRow(
+                label="Max Visits",
+                value=max_label),
+        ]
+
+        text_rows = self._render_text_map(visit_map, rel_pos)
+        if text_rows:
+            map_sub_rows = tuple(
+                AnalysisRow(label="|", value=line)
+                for line in text_rows
+            )
+            rows.append(AnalysisRow(
+                label="Map", value="", sub_rows=map_sub_rows))
+
+        return AnalysisSection(title="World Model", rows=tuple(rows))
+
+    def _render_text_map(
+        self,
+        visit_map: list,
+        current_pos: tuple | list = (0, 0),
+    ) -> list[str]:
+        if not visit_map:
+            return []
+
+        xs = [e[0][0] for e in visit_map]
+        ys = [e[0][1] for e in visit_map]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
+
+        if width > self._TEXT_MAP_MAX_WIDTH \
+                or height > self._TEXT_MAP_MAX_WIDTH:
+            return ["(too large)"]
+
+        counts: dict[tuple[int, int], int] = {
+            (e[0][0], e[0][1]): e[1] for e in visit_map
+        }
+
+        cur = (int(current_pos[0]), int(current_pos[1]))
+
+        # Highest y at top (world model y+ is up)
+        lines: list[str] = []
+        for y in range(max_y, min_y - 1, -1):
+            row_chars: list[str] = []
+            for x in range(min_x, max_x + 1):
+                c = counts.get((x, y), 0)
+                is_agent = (x, y) == cur
+                if c == 0:
+                    row_chars.append(" .")
+                elif is_agent and c < 10:
+                    row_chars.append(f"*{c}")
+                elif c < 10:
+                    row_chars.append(f" {c}")
+                else:
+                    row_chars.append(" #")
+            lines.append("".join(row_chars))
+
+        return lines
+
     def _section_outcome(
         self, step_trace: BaseStepTrace, trace_data: dict[str, Any],
     ) -> AnalysisSection:
@@ -495,20 +594,42 @@ class SystemAWVisualizationAdapter:
         self, trace_data: dict[str, Any],
         agent_pos: tuple[int, int],
     ) -> OverlayData:
-        visit_count = trace_data.get("visit_count_at_current", 0)
+        visit_counts_map = trace_data.get("visit_counts_map")
+
+        # Fallback for old traces without the full map
+        if not visit_counts_map:
+            visit_count = trace_data.get("visit_count_at_current", 0)
+            return OverlayData(
+                overlay_type="visit_count_heatmap",
+                items=(
+                    OverlayItem(
+                        item_type="heatmap_cell",
+                        grid_position=agent_pos,
+                        data={"visit_count": visit_count},
+                    ),
+                ),
+            )
+
+        current_rel = trace_data.get("relative_position", (0, 0))
+        crx, cry = current_rel[0], current_rel[1]
+        ax, ay = agent_pos
+
+        items: list[OverlayItem] = []
+        for entry in visit_counts_map:
+            rx, ry = entry[0][0], entry[0][1]
+            count = entry[1]
+            # Relative → absolute (y-axis flip)
+            abs_x = ax + (rx - crx)
+            abs_y = ay - (ry - cry)
+            items.append(OverlayItem(
+                item_type="heatmap_cell",
+                grid_position=(abs_x, abs_y),
+                data={"visit_count": count},
+            ))
+
         return OverlayData(
             overlay_type="visit_count_heatmap",
-            items=(
-                OverlayItem(
-                    item_type="heatmap_cell",
-                    grid_position=agent_pos,
-                    data={
-                        "visit_count": visit_count,
-                        "intensity": 1.0 / (1 + visit_count)
-                        if visit_count > 0 else 1.0,
-                    },
-                ),
-            ),
+            items=tuple(items),
         )
 
     def _overlay_novelty_field(

@@ -9,16 +9,17 @@ from axis.systems.system_aw.world_model import all_spatial_novelties
 
 def compute_spatial_novelty(
     world_model: WorldModelState,
+    k: float = 1.0,
 ) -> tuple[float, float, float, float]:
     """Per-direction spatial novelty from the visit-count map.
 
     Returns: (nu_up, nu_down, nu_left, nu_right)
 
-    nu^spatial_dir = 1 / (1 + w_t(p_hat_t + delta(dir)))
+    nu^spatial_dir = 1 / (1 + w_t(p_hat_t + delta(dir)))^k
 
     Model reference: Section 5.2.4.
     """
-    return all_spatial_novelties(world_model)
+    return all_spatial_novelties(world_model, k)
 
 
 def compute_sensory_novelty(
@@ -153,10 +154,12 @@ class SystemAWCuriosityDrive:
         base_curiosity: float,
         spatial_sensory_balance: float,
         explore_suppression: float,
+        novelty_sharpness: float = 1.0,
     ) -> None:
         self._mu_c = base_curiosity
         self._alpha = spatial_sensory_balance
         self._lambda_explore = explore_suppression
+        self._k = novelty_sharpness
 
     def compute(
         self,
@@ -174,7 +177,7 @@ class SystemAWCuriosityDrive:
         5. Drive activation
         6. Action contributions
         """
-        spatial = compute_spatial_novelty(world_model)
+        spatial = compute_spatial_novelty(world_model, self._k)
         sensory = compute_sensory_novelty(observation, memory)
         composite = compute_composite_novelty(spatial, sensory, self._alpha)
 

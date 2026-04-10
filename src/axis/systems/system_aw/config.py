@@ -15,6 +15,7 @@ class CuriosityConfig(BaseModel):
     base_curiosity: float = Field(default=1.0, ge=0, le=1)
     spatial_sensory_balance: float = Field(default=0.5, ge=0, le=1)
     explore_suppression: float = Field(default=0.3, ge=0)
+    novelty_sharpness: float = Field(default=1.0, gt=0)
 
 
 class ArbitrationConfig(BaseModel):

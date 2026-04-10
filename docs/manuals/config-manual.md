@@ -236,6 +236,12 @@ system:
 If you register a custom system type, the `system` dict can contain
 whatever fields your system factory expects.
 
+> **System A+W:** When `system_type` is `"system_aw"`, the system
+> section includes `curiosity` and `arbitration` sub-sections in
+> addition to `agent`, `policy`, and `transition`. See the
+> [System A+W Manual](system-aw-manual.md) for the full configuration
+> reference.
+
 ---
 
 ## 5. System A configuration (`system_type: "system_a"`)
@@ -642,6 +648,17 @@ System A on a toroidal (wraparound) grid world. Runs 5 episodes on a
 
 ```
 axis experiments run experiments/configs/system-a-toroidal-demo.yaml
+```
+
+### `system-aw-exploration-demo.yaml` -- System A+W exploration demo
+
+System A+W dual-drive agent on a 20x20 grid with sparse regeneration.
+Runs 3 episodes with curiosity-driven exploration and Maslow-like
+drive arbitration. See the [System A+W Manual](system-aw-manual.md)
+for parameter details.
+
+```
+axis experiments run experiments/configs/system-aw-exploration-demo.yaml
 ```
 
 To create a custom config, copy one of these files, modify the values
