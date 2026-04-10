@@ -1,0 +1,52 @@
+# Exploration demo: large grid, high energy, sharp gating
+system_type: "system_aw"
+experiment_type: "single_run"
+
+general:
+  seed: 7
+
+execution:
+  max_steps: 500
+
+world:
+  world_type: "grid_2d"
+  grid_width: 20
+  grid_height: 20
+  obstacle_density: 0.05
+  resource_regen_rate: 0.3
+  regeneration_mode: "sparse_fixed_ratio"
+  regen_eligible_ratio: 0.10
+
+system:
+  agent:
+    initial_energy: 100.0
+    max_energy: 100.0
+    memory_capacity: 20
+  policy:
+    selection_mode: "sample"
+    temperature: 0.5
+    stay_suppression: 0.1
+    consume_weight: 2.5
+  transition:
+    move_cost: 0.5
+    consume_cost: 0.5
+    stay_cost: 0.3
+    max_consume: 1.0
+    energy_gain_factor: 15.0
+  curiosity:
+    base_curiosity: 1.0
+    spatial_sensory_balance: 0.7
+    explore_suppression: 0.5
+  arbitration:
+    hunger_weight_base: 0.2
+    curiosity_weight_base: 1.5
+    gating_sharpness: 3.0
+
+logging:
+  enabled: true
+  console_enabled: true
+  jsonl_enabled: false
+  jsonl_path: "experiments/output/system-aw-exploration-demo.jsonl"
+  verbosity: "compact"
+
+num_episodes_per_run: 3

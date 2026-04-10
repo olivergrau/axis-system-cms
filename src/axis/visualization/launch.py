@@ -117,6 +117,10 @@ def _import_adapter_modules() -> None:
     except ImportError:
         pass
     try:
+        import axis.systems.system_aw.visualization  # noqa: F401
+    except ImportError:
+        pass
+    try:
         import axis.systems.system_b.visualization  # noqa: F401
     except ImportError:
         pass

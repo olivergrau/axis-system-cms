@@ -172,3 +172,27 @@ def test_system_a_exports() -> None:
     }
     actual = set(axis.systems.system_a.__all__)
     assert expected == actual
+
+
+def test_axis_systems_system_aw_importable() -> None:
+    """axis.systems.system_aw sub-package is importable."""
+    import axis.systems.system_aw  # noqa: F401
+
+
+def test_system_aw_exports() -> None:
+    """axis.systems.system_aw exports SystemAW, SystemAWConfig."""
+    import axis.systems.system_aw
+
+    expected = {
+        "SystemAW",
+        "SystemAWConfig",
+    }
+    actual = set(axis.systems.system_aw.__all__)
+    assert expected == actual
+
+
+def test_system_aw_registered() -> None:
+    """system_aw is registered in the system registry."""
+    from axis.framework import registered_system_types
+
+    assert "system_aw" in registered_system_types()

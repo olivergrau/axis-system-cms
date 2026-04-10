@@ -121,6 +121,7 @@ class TestDispatch:
         known_types = [
             "direction_arrow", "center_dot", "center_ring", "bar_chart",
             "diamond_marker", "neighbor_dot", "x_marker", "radius_circle",
+            "heatmap_cell", "novelty_arrow",
         ]
         # Verify all types are in the dispatch table
         for t in known_types:
@@ -256,6 +257,58 @@ class TestIntegration:
         renderer = OverlayRenderer()
         layout = _make_layout()
         item = _make_item("diamond_marker", data={"opacity": 0.7})
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer.render(painter, (_make_overlay(items=(item,)),), layout)
+        finally:
+            painter.end()
+
+    def test_render_heatmap_cell_no_crash(self, qapp) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "heatmap_cell",
+            data={"visit_count": 5, "intensity": 0.167},
+        )
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer.render(painter, (_make_overlay(items=(item,)),), layout)
+        finally:
+            painter.end()
+
+    def test_render_heatmap_cell_zero_visits(self, qapp) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "heatmap_cell",
+            data={"visit_count": 0, "intensity": 1.0},
+        )
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer.render(painter, (_make_overlay(items=(item,)),), layout)
+        finally:
+            painter.end()
+
+    def test_render_novelty_arrow_no_crash(self, qapp) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "novelty_arrow",
+            data={"direction": "right", "length": 0.7, "intensity": 0.7},
+        )
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer.render(painter, (_make_overlay(items=(item,)),), layout)
+        finally:
+            painter.end()
+
+    def test_render_novelty_arrow_zero_length(self, qapp) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "novelty_arrow",
+            data={"direction": "up", "length": 0.0, "intensity": 0.0},
+        )
         img, painter = _qpainter_on_image(qapp)
         try:
             renderer.render(painter, (_make_overlay(items=(item,)),), layout)

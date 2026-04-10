@@ -225,6 +225,63 @@ class OverlayRenderer:
             painter.setFont(QFont("monospace", 8))
             painter.drawText(QPointF(cx + radius_px + 3, cy), label)
 
+    def _draw_heatmap_cell(
+        self, painter: QPainter, item: OverlayItem, layout: CellLayout,
+    ) -> None:
+        """Draw a colored rectangle over a cell, intensity by visit count."""
+        bbox = layout.cell_bounding_boxes.get(item.grid_position)
+        if bbox is None:
+            return
+
+        visit_count = item.data.get("visit_count", 0)
+        # Intensity decays with visits: high visits = warm color
+        intensity = 1.0 - 1.0 / (1 + visit_count)
+
+        r = int(255 * intensity)
+        g = int(100 * (1 - intensity))
+        b = 50
+        alpha = int(80 + 120 * intensity)
+
+        bx, by, bw, bh = bbox
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(r, g, b, alpha))
+        painter.drawRect(QRectF(bx, by, bw, bh))
+
+        # Draw visit count text
+        if visit_count > 0:
+            painter.setPen(QColor(255, 255, 255, 200))
+            painter.setFont(QFont("monospace", 8))
+            painter.drawText(
+                QRectF(bx, by, bw, bh),
+                Qt.AlignmentFlag.AlignCenter,
+                str(visit_count),
+            )
+
+    def _draw_novelty_arrow(
+        self, painter: QPainter, item: OverlayItem, layout: CellLayout,
+    ) -> None:
+        """Draw a novelty indicator arrow from cell center."""
+        center = layout.cell_centers.get(item.grid_position)
+        bbox = layout.cell_bounding_boxes.get(item.grid_position)
+        if center is None or bbox is None:
+            return
+
+        direction = item.data.get("direction", "up")
+        length = item.data.get("length", 0.0)
+
+        dx, dy = _DIRECTION_DELTAS.get(direction, (0.0, 0.0))
+        cell_w, cell_h = bbox[2], bbox[3]
+        scale = min(cell_w, cell_h) * 0.4 * length
+
+        cx, cy = center
+        ex, ey = cx + dx * scale, cy + dy * scale
+
+        # Green-tinted arrows for novelty
+        alpha = int(80 + 175 * length)
+        color = QColor(100, 255, 150, min(alpha, 255))
+        painter.setPen(QPen(color, 2.0))
+        painter.drawLine(QPointF(cx, cy), QPointF(ex, ey))
+
     # -- Dispatch table -----------------------------------------------------
 
     _RENDERERS: dict = {
@@ -236,4 +293,6 @@ class OverlayRenderer:
         "neighbor_dot": _draw_neighbor_dot,
         "x_marker": _draw_x_marker,
         "radius_circle": _draw_radius_circle,
+        "heatmap_cell": _draw_heatmap_cell,
+        "novelty_arrow": _draw_novelty_arrow,
     }

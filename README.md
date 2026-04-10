@@ -29,6 +29,7 @@ src/axis/
 
   systems/              Pluggable system implementations
     system_a/             Energy-driven forager (sensor, drive, policy, transition)
+    system_aw/            Dual-drive agent with curiosity and world model
     system_b/             Scout agent with scan action
 
   world/                Pluggable world implementations
@@ -71,11 +72,64 @@ Ready-to-use configs ship at `experiments/configs/`:
 | `system-a-baseline.yaml` | Single-run baseline (10x10, sparse regen) |
 | `system-a-energy-gain-sweep.yaml` | OFAT sweep over energy gain factor |
 | `system-a-toroidal-demo.yaml` | System A on a toroidal (wraparound) grid |
+| `system-aw-baseline.yaml` | System A+W dual-drive baseline (10x10, sparse regen) |
+| `system-aw-curiosity-sweep.yaml` | OFAT sweep over curiosity strength (μ_C = 0.0 to 1.0) |
+| `system-aw-exploration-demo.yaml` | Exploration demo (20x20, high curiosity, verbose) |
 | `system-b-sdk-demo.yaml` | System B scout agent on a signal landscape |
 
 ```bash
 axis experiments run experiments/configs/system-a-baseline.yaml
+
+# System A+W dual-drive with curiosity
+axis experiments run experiments/configs/system-aw-baseline.yaml
+
+# Sweep over curiosity strength (μ_C = 0.0 to 1.0)
+axis experiments run experiments/configs/system-aw-curiosity-sweep.yaml
+
+# Exploration demo (large grid, high curiosity)
+axis experiments run experiments/configs/system-aw-exploration-demo.yaml
 ```
+
+## Systems
+
+### System A — Energy-Driven Forager
+
+A single-drive agent that seeks resources to maintain energy. Uses a sensor,
+hunger drive, softmax policy, and energy-based transitions.
+
+### System A+W — Dual-Drive Agent with Curiosity and World Model
+
+System A+W extends System A with a second drive (curiosity) and a spatial world model.
+The agent balances hunger-driven resource-seeking with curiosity-driven exploration,
+modulated by a dynamic weight function that implements a Maslow-like hierarchy:
+hunger gates curiosity.
+
+Key additions over System A:
+- **Curiosity drive** with composite novelty (spatial + sensory)
+- **Spatial world model** (visit-count map via dead reckoning)
+- **Dynamic drive arbitration** (hunger suppresses curiosity as energy decreases)
+
+When curiosity parameters are zeroed, System A+W reduces exactly to System A.
+
+System A+W configuration adds two optional sub-sections to the `system:` block:
+
+```yaml
+system:
+  curiosity:
+    base_curiosity: 1.0             # μ_C: overall curiosity strength (0 = disabled)
+    spatial_sensory_balance: 0.5    # α: weight of spatial vs sensory novelty
+    explore_suppression: 0.3        # penalty for non-exploring actions
+  arbitration:
+    hunger_weight_base: 0.3         # w_H_base: minimum hunger weight
+    curiosity_weight_base: 1.0      # w_C_base: curiosity weight at zero hunger
+    gating_sharpness: 2.0           # γ: how sharply hunger suppresses curiosity
+```
+
+Design documents: `docs/system-design/system-a+w/`
+
+### System B — Scout Agent
+
+A scan-based scout agent that operates on signal landscapes.
 
 ## Key Concepts
 
