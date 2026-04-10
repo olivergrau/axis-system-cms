@@ -124,14 +124,18 @@ class RunExecutor:
 
     def execute(self, config: RunConfig) -> RunResult:
         """Execute a complete run: N episodes, aggregate results."""
+        from axis.framework.logging import EpisodeLogger
+
         run_id = config.run_id or str(uuid.uuid4())
         seeds = resolve_episode_seeds(config.num_episodes, config.base_seed)
         system = create_system(config.system_type, config.system_config)
 
         traces: list[BaseEpisodeTrace] = []
-        for episode_seed in seeds:
-            trace = self._run_single_episode(system, config, episode_seed)
-            traces.append(trace)
+        with EpisodeLogger(config.framework_config.logging) as logger:
+            for ep_idx, episode_seed in enumerate(seeds, start=1):
+                trace = self._run_single_episode(system, config, episode_seed)
+                logger.log_episode(trace, ep_idx)
+                traces.append(trace)
 
         episode_traces = tuple(traces)
         summary = compute_run_summary(episode_traces)

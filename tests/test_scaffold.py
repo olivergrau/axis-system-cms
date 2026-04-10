@@ -92,6 +92,8 @@ def test_axis_visualization_importable() -> None:
         "RunStatus",
         "RunStatusRecord",
         "RunMetadata",
+        # Logging runtime
+        "EpisodeLogger",
     }
     actual = set(axis.framework.__all__)
     assert expected == actual

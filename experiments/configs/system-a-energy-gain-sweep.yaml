@@ -30,6 +30,12 @@ system:
     max_consume: 1.0
     energy_gain_factor: 10.0
 
+logging:
+  enabled: true
+  console_enabled: true
+  jsonl_enabled: false
+  verbosity: "verbose"
+
 num_episodes_per_run: 5
 
 parameter_path: "system.transition.energy_gain_factor"

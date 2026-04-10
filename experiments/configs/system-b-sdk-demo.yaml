@@ -20,8 +20,8 @@ world:
 
 system:
   agent:
-    initial_energy: 30.0
-    max_energy: 50.0
+    initial_energy: 100.0
+    max_energy: 100.0
   policy:
     selection_mode: "sample"
     temperature: 1.0
@@ -30,5 +30,12 @@ system:
     move_cost: 1.0
     scan_cost: 0.5
     stay_cost: 0.5
+
+logging:
+  enabled: true
+  console_enabled: false
+  jsonl_enabled: true
+  jsonl_path: "experiments/output/system-b-sdk-demo.jsonl"
+  verbosity: "verbose"
 
 num_episodes_per_run: 5

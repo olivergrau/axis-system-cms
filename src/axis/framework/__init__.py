@@ -24,6 +24,7 @@ from axis.framework.experiment import (
     resume_experiment,
     variation_description,
 )
+from axis.framework.logging import EpisodeLogger
 from axis.framework.persistence import (
     ExperimentMetadata,
     ExperimentRepository,
@@ -99,4 +100,6 @@ __all__ = [
     "RunStatus",
     "RunStatusRecord",
     "RunMetadata",
+    # Logging runtime
+    "EpisodeLogger",
 ]
