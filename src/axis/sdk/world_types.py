@@ -116,7 +116,7 @@ class ActionOutcome(BaseModel):
     """Result of applying an action to the world.
 
     Returned by the framework to the system after action application.
-    The system uses this to update its internal state (energy, memory, etc.).
+    The system uses this to update its internal state (energy, observation buffer, etc.).
 
     Universal fields (action, moved, new_position) are provided by the
     framework. The ``data`` dict carries action-specific results set by

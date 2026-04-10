@@ -38,7 +38,7 @@ Key modules and their roles:
 |--------|---------------|
 | `world.py` | Grid world model (Cell, World, create_world). World is the sole mutable container. |
 | `observation.py` | Stateless sensor projection: Von Neumann neighborhood -> Observation (10-dim vector) |
-| `memory.py` | Pure FIFO memory update. Populated but unused by current drive/policy. |
+| `observation_buffer.py` | Pure FIFO memory update. Populated but unused by current drive/policy. |
 | `drives.py` | Hunger drive: `(energy, observation) -> HungerDriveOutput` (activation + 6 action contributions) |
 | `policy.py` | Decision pipeline: admissibility mask -> softmax -> action selection -> `DecisionTrace` |
 | `transition.py` | 6-phase state transition: regen -> act -> observe -> energy -> memory -> termination |
@@ -308,7 +308,7 @@ Key interfaces to define:
 
 Currently `run_episode()` directly constructs System A agent state, calls `build_observation()`, and runs `episode_step()` per timestep. The generic loop structure (init -> loop -> record -> terminate) must be preserved, but system interactions must go through interfaces.
 
-**Key decision**: The framework needs a way to initialize episode state. Currently this is hardcoded in `run_episode()` (`AgentState(energy=..., memory_state=...)`). System initialization must become a system method.
+**Key decision**: The framework needs a way to initialize episode state. Currently this is hardcoded in `run_episode()` (`AgentState(energy=..., observation_buffer=...)`). System initialization must become a system method.
 
 ### 6.3 Configuration Model Decomposition
 

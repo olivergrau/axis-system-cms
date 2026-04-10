@@ -586,7 +586,7 @@ Validated from `dict[str, Any]` (the opaque `system` section of `ExperimentConfi
 
 ```
 SystemAConfig
-    agent: AgentConfig              # initial_energy, max_energy, memory_capacity
+    agent: AgentConfig              # initial_energy, max_energy, buffer_capacity
     policy: PolicyConfig            # selection_mode, temperature, stay_suppression, consume_weight
     transition: TransitionConfig    # move_cost, consume_cost, stay_cost, max_consume, energy_gain_factor
     # Note: WorldDynamicsConfig has been removed. Regeneration parameters

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from axis.systems.system_a.types import HungerDriveOutput, MemoryState
+from axis.systems.system_a.types import HungerDriveOutput, ObservationBuffer
 from axis.systems.system_aw.types import (
     AgentStateAW,
     CuriosityDriveOutput,
@@ -109,14 +109,14 @@ class TestAgentStateAW:
     ) -> AgentStateAW:
         return AgentStateAW(
             energy=energy,
-            memory_state=MemoryState(entries=(), capacity=capacity),
+            observation_buffer=ObservationBuffer(entries=(), capacity=capacity),
             world_model=WorldModelState(),
         )
 
     def test_agent_state_aw_valid(self) -> None:
         state = self._make_state()
         assert state.energy == 50.0
-        assert len(state.memory_state.entries) == 0
+        assert len(state.observation_buffer.entries) == 0
         assert state.world_model.relative_position == (0, 0)
 
     def test_agent_state_aw_frozen(self) -> None:
@@ -161,7 +161,7 @@ class TestSerialization:
     def test_agent_state_aw_serializable(self) -> None:
         state = AgentStateAW(
             energy=75.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
             world_model=WorldModelState(
                 relative_position=(2, -1),
                 visit_counts=(((0, 0), 1), ((1, 0), 2), ((2, -1), 1)),

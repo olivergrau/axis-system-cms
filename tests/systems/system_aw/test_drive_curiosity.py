@@ -6,8 +6,8 @@ import pytest
 
 from axis.systems.system_a.types import (
     CellObservation,
-    MemoryEntry,
-    MemoryState,
+    BufferEntry,
+    ObservationBuffer,
     Observation,
 )
 from axis.systems.system_aw.drive_curiosity import (
@@ -41,16 +41,16 @@ def _make_observation(
 def _make_memory(
     observations: list[Observation],
     capacity: int = 5,
-) -> MemoryState:
+) -> ObservationBuffer:
     entries = tuple(
-        MemoryEntry(timestep=t, observation=obs)
+        BufferEntry(timestep=t, observation=obs)
         for t, obs in enumerate(observations)
     )
-    return MemoryState(entries=entries, capacity=capacity)
+    return ObservationBuffer(entries=entries, capacity=capacity)
 
 
-def _empty_memory(capacity: int = 5) -> MemoryState:
-    return MemoryState(entries=(), capacity=capacity)
+def _empty_buffer(capacity: int = 5) -> ObservationBuffer:
+    return ObservationBuffer(entries=(), capacity=capacity)
 
 
 class TestSpatialNovelty:
@@ -77,12 +77,12 @@ class TestSpatialNovelty:
 class TestSensoryNovelty:
     """Sensory novelty computation tests."""
 
-    def test_sensory_novelty_empty_memory(self) -> None:
+    def test_sensory_novelty_empty_buffer(self) -> None:
         obs = _make_observation(up_r=0.3, left_r=0.7)
-        result = compute_sensory_novelty(obs, _empty_memory())
+        result = compute_sensory_novelty(obs, _empty_buffer())
         assert result == pytest.approx((0.3, 0.0, 0.7, 0.0))
 
-    def test_sensory_novelty_matching_memory(self) -> None:
+    def test_sensory_novelty_matching_buffer(self) -> None:
         obs = _make_observation(up_r=0.3, down_r=0.5)
         mem_obs = _make_observation(up_r=0.3, down_r=0.5)
         memory = _make_memory([mem_obs])
@@ -124,8 +124,8 @@ class TestCompositeNovelty:
 class TestNoveltySaturation:
     """Novelty saturation computation tests."""
 
-    def test_saturation_empty_memory(self) -> None:
-        assert compute_novelty_saturation(_empty_memory()) == 0.0
+    def test_saturation_empty_buffer(self) -> None:
+        assert compute_novelty_saturation(_empty_buffer()) == 0.0
 
     def test_saturation_identical_entries(self) -> None:
         obs = _make_observation(up_r=0.5, down_r=0.5, left_r=0.5, right_r=0.5)
@@ -169,7 +169,7 @@ class TestActionContributions:
         )
         wm = create_world_model()
         obs = _make_observation(up_r=0.4, left_r=0.6)
-        out = drive.compute(obs, _empty_memory(), wm)
+        out = drive.compute(obs, _empty_buffer(), wm)
         # Movement contributions = composite novelty
         assert out.action_contributions[0] == pytest.approx(
             out.composite_novelty[0])
@@ -187,7 +187,7 @@ class TestActionContributions:
             explore_suppression=0.3,
         )
         out = drive.compute(_make_observation(),
-                            _empty_memory(), create_world_model())
+                            _empty_buffer(), create_world_model())
         assert out.action_contributions[4] == pytest.approx(-0.3)
 
     def test_stay_suppressed(self) -> None:
@@ -197,7 +197,7 @@ class TestActionContributions:
             explore_suppression=0.3,
         )
         out = drive.compute(_make_observation(),
-                            _empty_memory(), create_world_model())
+                            _empty_buffer(), create_world_model())
         assert out.action_contributions[5] == pytest.approx(-0.3)
 
 
@@ -211,7 +211,7 @@ class TestFullPipeline:
             explore_suppression=0.3,
         )
         out = drive.compute(_make_observation(),
-                            _empty_memory(), create_world_model())
+                            _empty_buffer(), create_world_model())
         assert isinstance(out, CuriosityDriveOutput)
 
     def test_full_pipeline_all_fields_present(self) -> None:
@@ -221,7 +221,7 @@ class TestFullPipeline:
             explore_suppression=0.3,
         )
         out = drive.compute(_make_observation(),
-                            _empty_memory(), create_world_model())
+                            _empty_buffer(), create_world_model())
         assert len(out.spatial_novelty) == 4
         assert len(out.sensory_novelty) == 4
         assert len(out.composite_novelty) == 4
@@ -233,7 +233,7 @@ class TestWorkedExamples:
     """Worked example verification."""
 
     def test_example_a1_curiosity(self) -> None:
-        """A1: e=90, all unvisited, empty memory."""
+        """A1: e=90, all unvisited, empty observation buffer."""
         drive = SystemAWCuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
@@ -243,7 +243,7 @@ class TestWorkedExamples:
         obs = _make_observation(
             current_r=0.8, up_r=0.0, down_r=0.0, left_r=0.3, right_r=0.0,
         )
-        out = drive.compute(obs, _empty_memory(), wm)
+        out = drive.compute(obs, _empty_buffer(), wm)
 
         assert out.activation == pytest.approx(1.0, abs=0.01)
         assert out.spatial_novelty == pytest.approx((1.0, 1.0, 1.0, 1.0))
@@ -258,7 +258,7 @@ class TestWorkedExamples:
         assert out.action_contributions[5] == pytest.approx(-0.3, abs=0.01)
 
     def test_example_b1_curiosity(self) -> None:
-        """B1: memory with 3 entries, all neighbors visited once."""
+        """B1: observation buffer with 3 entries, all neighbors visited once."""
         drive = SystemAWCuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
@@ -282,7 +282,7 @@ class TestWorkedExamples:
             left=CellObservation(traversability=0.0, resource=0.0),
             right=CellObservation(traversability=1.0, resource=0.0),
         )
-        # Memory: 3 entries with mean r_dir: up=0.1, down=0.0, left=0.2, right=0.0
+        # Observation buffer: 3 entries with mean r_dir: up=0.1, down=0.0, left=0.2, right=0.0
         mem_obs1 = _make_observation(
             up_r=0.3, down_r=0.0, left_r=0.6, right_r=0.0)
         mem_obs2 = _make_observation(
@@ -315,7 +315,7 @@ class TestWorkedExamples:
         obs = _make_observation(
             current_r=0.5, up_r=0.0, down_r=0.0, left_r=0.0, right_r=0.2,
         )
-        out = drive.compute(obs, _empty_memory(), wm)
+        out = drive.compute(obs, _empty_buffer(), wm)
         # phi_C values are the composite novelty values
         # They are NOT yet scaled by w_C * d_C (that's arbitration, WP-7)
         assert out.composite_novelty[0] == pytest.approx(0.50, abs=0.01)  # UP
@@ -347,11 +347,11 @@ class TestReduction:
             explore_suppression=0.3,
         )
         out = drive.compute(_make_observation(),
-                            _empty_memory(), create_world_model())
+                            _empty_buffer(), create_world_model())
         assert out.activation == pytest.approx(0.0)
 
     def test_alpha_one_no_memory_dependency(self) -> None:
-        """alpha=1.0: composite independent of memory content."""
+        """alpha=1.0: composite independent of observation buffer content."""
         drive = SystemAWCuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=1.0,
@@ -360,7 +360,7 @@ class TestReduction:
         wm = create_world_model()
         obs = _make_observation(up_r=0.5)
 
-        out1 = drive.compute(obs, _empty_memory(), wm)
+        out1 = drive.compute(obs, _empty_buffer(), wm)
         mem_obs = _make_observation(
             up_r=0.9, down_r=0.8, left_r=0.7, right_r=0.6)
         out2 = drive.compute(obs, _make_memory([mem_obs]), wm)
@@ -376,7 +376,7 @@ class TestReduction:
             explore_suppression=0.3,
         )
         obs = _make_observation(up_r=0.5)
-        memory = _empty_memory()
+        memory = _empty_buffer()
 
         wm1 = create_world_model()
         wm2 = WorldModelState(

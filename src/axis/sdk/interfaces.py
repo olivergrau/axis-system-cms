@@ -79,7 +79,7 @@ class SystemInterface(Protocol):
 
         Receives the outcome of the applied action (what happened in the
         world) and the post-action observation. Updates internal state
-        (energy, memory, etc.) and checks for system-level termination.
+        (energy, observation buffer, etc.) and checks for system-level termination.
         """
         ...
 
@@ -162,7 +162,7 @@ class PolicyInterface(Protocol):
 class TransitionInterface(Protocol):
     """Updates agent state after an action has been applied to the world.
 
-    Handles state evolution: energy changes, memory updates,
+    Handles state evolution: energy changes, observation buffer updates,
     termination checks. Does NOT mutate the world.
     """
 

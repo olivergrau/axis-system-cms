@@ -192,8 +192,8 @@ For System A, `system_data` will contain:
         "energy_after": 43.5,
         "energy_delta": -1.5,
         "resource_consumed": 0.0,
-        "memory_entries_before": 3,
-        "memory_entries_after": 4,
+        "buffer_entries_before": 3,
+        "buffer_entries_after": 4,
         "agent_snapshot_before": {...},
         "agent_snapshot_after": {...},
         "regen_summary": {...},
@@ -506,7 +506,7 @@ When System A is adapted (WP-2.3), the mapping should be:
 | `drive_output` | `BaseStepTrace.system_data["decision"]["drive_output"]` |
 | `decision_result` | `BaseStepTrace.system_data["decision"]["decision_trace"]` |
 | `agent_snapshot_*` | `BaseStepTrace.system_data["transition"]["agent_snapshot_*"]` |
-| `memory_state_*` | `BaseStepTrace.system_data["transition"]["memory_state_*"]` |
+| `memory_state_*` | `BaseStepTrace.system_data["transition"]["observation_buffer_*"]` |
 | `regen_summary` | `BaseStepTrace.system_data["transition"]["regen_summary"]` |
 | terminated, reason | `BaseStepTrace.terminated`, `termination_reason` |
 

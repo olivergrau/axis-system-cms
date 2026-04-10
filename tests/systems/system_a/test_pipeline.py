@@ -11,7 +11,7 @@ from axis.sdk.world_types import BaseWorldConfig
 from axis.systems.system_a.actions import handle_consume
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
-from axis.systems.system_a.types import AgentState, MemoryState
+from axis.systems.system_a.types import AgentState, ObservationBuffer
 from axis.world.actions import create_action_registry
 from axis.world.grid_2d.factory import create_world
 from axis.world.grid_2d.factory import create_world
@@ -140,7 +140,7 @@ class TestPipeline:
         world = World(grid, Position(x=2, y=2))
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
 
         from axis.sdk.world_types import ActionOutcome

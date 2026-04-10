@@ -1,11 +1,11 @@
-"""System A+W transition -- energy, memory, dead reckoning, world model, termination."""
+"""System A+W transition -- energy, observation buffer, dead reckoning, world model, termination."""
 
 from __future__ import annotations
 
 from axis.sdk.actions import MOVEMENT_DELTAS, STAY
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.memory import update_memory
+from axis.systems.system_a.observation_buffer import update_observation_buffer
 from axis.systems.system_a.types import Observation, clip_energy
 from axis.systems.system_aw.types import AgentStateAW
 from axis.systems.system_aw.world_model import update_world_model
@@ -19,7 +19,7 @@ class SystemAWTransition:
 
     Five phases (Model Section 8):
     1. Energy update
-    2. Memory update
+    2. Observation buffer update
     3. Dead reckoning update
     4. World model update
     5. Termination check
@@ -51,7 +51,7 @@ class SystemAWTransition:
         *,
         timestep: int = 0,
     ) -> TransitionResult:
-        """Process action outcome: energy, memory, world model, termination."""
+        """Process action outcome: energy, observation buffer, world model, termination."""
 
         # Phase 1: Energy update (unchanged from System A)
         cost = self._get_action_cost(action_outcome.action)
@@ -63,9 +63,9 @@ class SystemAWTransition:
             self._max_energy,
         )
 
-        # Phase 2: Memory update (unchanged from System A)
-        new_memory = update_memory(
-            agent_state.memory_state, observation, timestep,
+        # Phase 2: Observation buffer update (unchanged from System A)
+        new_buffer = update_observation_buffer(
+            agent_state.observation_buffer, observation, timestep,
         )
 
         # Phase 3 + 4: Dead reckoning + world model update (NEW)
@@ -78,7 +78,7 @@ class SystemAWTransition:
         # Assemble new state
         new_state = AgentStateAW(
             energy=new_energy,
-            memory_state=new_memory,
+            observation_buffer=new_buffer,
             world_model=new_world_model,
         )
 
@@ -92,8 +92,8 @@ class SystemAWTransition:
             "energy_delta": new_energy - agent_state.energy,
             "action_cost": cost,
             "energy_gain": energy_gain,
-            "memory_entries_before": len(agent_state.memory_state.entries),
-            "memory_entries_after": len(new_memory.entries),
+            "buffer_entries_before": len(agent_state.observation_buffer.entries),
+            "buffer_entries_after": len(new_buffer.entries),
             "relative_position": new_world_model.relative_position,
             "visit_count_at_current": dict(new_world_model.visit_counts).get(
                 new_world_model.relative_position, 0,

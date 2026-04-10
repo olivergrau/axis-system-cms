@@ -13,7 +13,7 @@ from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
-from axis.systems.system_a.types import CellObservation, MemoryState, Observation
+from axis.systems.system_a.types import CellObservation, ObservationBuffer, Observation
 from axis.systems.system_aw.config import SystemAWConfig
 from axis.systems.system_aw.drive_curiosity import (
     compute_composite_novelty,
@@ -241,10 +241,10 @@ class TestReductionMultiStep:
 
 
 class TestAlphaBoundary:
-    """Alpha boundary: memory independence at alpha=1, wm independence at alpha=0."""
+    """Alpha boundary: observation buffer independence at alpha=1, wm independence at alpha=0."""
 
     def test_alpha_one_memory_independent(self) -> None:
-        """alpha=1.0: vary memory contents, composite novelty unchanged."""
+        """alpha=1.0: vary observation buffer contents, composite novelty unchanged."""
         wm = create_world_model()
         spatial = compute_spatial_novelty(wm)
 

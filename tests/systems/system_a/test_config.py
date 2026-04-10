@@ -20,7 +20,7 @@ class TestConfig:
     def test_valid_construction(self) -> None:
         config = SystemAConfig(
             agent=AgentConfig(initial_energy=50,
-                              max_energy=100, memory_capacity=5),
+                              max_energy=100, buffer_capacity=5),
             policy=PolicyConfig(
                 selection_mode="sample", temperature=1.0,
                 stay_suppression=0.1, consume_weight=1.5,
@@ -42,7 +42,7 @@ class TestConfig:
     def test_agent_energy_bounds(self) -> None:
         with pytest.raises(ValidationError, match="initial_energy"):
             AgentConfig(initial_energy=200.0,
-                        max_energy=100.0, memory_capacity=5)
+                        max_energy=100.0, buffer_capacity=5)
 
     def test_policy_config_values(self) -> None:
         d = SystemAConfigBuilder().build()

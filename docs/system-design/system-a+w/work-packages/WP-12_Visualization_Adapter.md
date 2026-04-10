@@ -46,7 +46,7 @@ system_data
 └── trace_data             (from SystemAWTransition.transition())
     ├── energy_before, energy_after, energy_delta
     ├── action_cost, energy_gain
-    ├── memory_entries_before, memory_entries_after
+    ├── buffer_entries_before, buffer_entries_after
     ├── relative_position   (tuple[int, int])
     └── visit_count_at_current (int)
 ```

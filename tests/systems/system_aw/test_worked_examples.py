@@ -15,7 +15,7 @@ import pytest
 from axis.systems.system_a.types import (
     CellObservation,
     HungerDriveOutput,
-    MemoryState,
+    ObservationBuffer,
     Observation,
 )
 from axis.systems.system_aw.config import ArbitrationConfig, SystemAWConfig
@@ -94,7 +94,7 @@ def _we_config_builder() -> SystemAWConfigBuilder:
     return (
         SystemAWConfigBuilder()
         .with_max_energy(E_MAX)
-        .with_memory_capacity(5)
+        .with_buffer_capacity(5)
         .with_temperature(BETA)
         .with_consume_weight(W_CONSUME)
         .with_stay_suppression(LAMBDA_STAY)
@@ -126,7 +126,7 @@ class TestExampleA1:
         )
         state = AgentStateAW(
             energy=90.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
             world_model=create_world_model(),
         )
         result = drive.compute(state, self.OBS)
@@ -137,7 +137,7 @@ class TestExampleA1:
             explore_suppression=LAMBDA_EXPLORE,
         )
         c_result = curiosity.compute(
-            self.OBS, state.memory_state, state.world_model)
+            self.OBS, state.observation_buffer, state.world_model)
         assert c_result.activation == pytest.approx(1.0, abs=0.005)
 
     def test_a1_drive_arbitration(self) -> None:
@@ -154,8 +154,8 @@ class TestExampleA1:
             assert v == pytest.approx(1.0, abs=0.005)
 
     def test_a1_sensory_novelty(self) -> None:
-        """Empty memory -> nu_sensory = (0.0, 0.0, 0.3, 0.0)."""
-        mem = MemoryState(entries=(), capacity=5)
+        """Empty observation buffer -> nu_sensory = (0.0, 0.0, 0.3, 0.0)."""
+        mem = ObservationBuffer(entries=(), capacity=5)
         sensory = compute_sensory_novelty(self.OBS, mem)
         assert sensory[0] == pytest.approx(0.0, abs=0.005)
         assert sensory[1] == pytest.approx(0.0, abs=0.005)
@@ -184,7 +184,7 @@ class TestExampleA1:
         )
         state = AgentStateAW(
             energy=90.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
             world_model=create_world_model(),
         )
         result = drive.compute(state, self.OBS)
@@ -206,11 +206,11 @@ class TestExampleA1:
         )
         state = AgentStateAW(
             energy=90.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
             world_model=create_world_model(),
         )
         c_result = curiosity.compute(
-            self.OBS, state.memory_state, state.world_model)
+            self.OBS, state.observation_buffer, state.world_model)
         phi = c_result.action_contributions
         assert phi[0] == pytest.approx(0.50, abs=0.005)   # UP
         assert phi[1] == pytest.approx(0.50, abs=0.005)   # DOWN
@@ -456,7 +456,7 @@ class TestExampleD1:
         )
         state = AgentStateAW(
             energy=40.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
             world_model=create_world_model(),
         )
         obs = _make_obs(0.8, 0.0, 0.0, 0.0, 0.0)
@@ -542,7 +542,7 @@ class TestExampleE2:
 
     def test_e2_alpha_table(self) -> None:
         """For alpha in {0.0, 0.5, 1.0}: verify composite novelty."""
-        # Cell visited 3 times, r=0.8, memory mean r_bar=0.1
+        # Cell visited 3 times, r=0.8, observation buffer mean r_bar=0.1
         nu_spatial = 1 / (1 + 3)  # 0.25
         nu_sensory = abs(0.8 - 0.1)  # 0.7
 

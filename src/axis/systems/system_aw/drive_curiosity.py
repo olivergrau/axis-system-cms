@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from axis.systems.system_a.types import MemoryState, Observation
+from axis.systems.system_a.types import ObservationBuffer, Observation
 from axis.systems.system_aw.types import CuriosityDriveOutput, WorldModelState
 from axis.systems.system_aw.world_model import all_spatial_novelties
 
@@ -24,14 +24,14 @@ def compute_spatial_novelty(
 
 def compute_sensory_novelty(
     observation: Observation,
-    memory: MemoryState,
+    buffer: ObservationBuffer,
 ) -> tuple[float, float, float, float]:
-    """Per-direction sensory novelty from observation vs memory mean.
+    """Per-direction sensory novelty from observation vs buffer mean.
 
     Returns: (nu_up, nu_down, nu_left, nu_right)
 
-    nu^sensory_dir = |r_dir(t) - mean(r_dir over memory)|
-    When memory is empty, mean = 0.
+    nu^sensory_dir = |r_dir(t) - mean(r_dir over buffer)|
+    When buffer is empty, mean = 0.
 
     Model reference: Section 5.2.5.
     """
@@ -42,12 +42,12 @@ def compute_sensory_novelty(
         observation.right.resource,
     )
 
-    if len(memory.entries) == 0:
+    if len(buffer.entries) == 0:
         return current  # |r - 0| = r (all non-negative)
 
-    n = len(memory.entries)
+    n = len(buffer.entries)
     means = [0.0, 0.0, 0.0, 0.0]
-    for entry in memory.entries:
+    for entry in buffer.entries:
         obs = entry.observation
         means[0] += obs.up.resource
         means[1] += obs.down.resource
@@ -80,17 +80,17 @@ def compute_composite_novelty(
     )
 
 
-def compute_novelty_saturation(memory: MemoryState) -> float:
-    """Compute mean novelty saturation from memory.
+def compute_novelty_saturation(buffer: ObservationBuffer) -> float:
+    """Compute mean novelty saturation from observation buffer.
 
-    Returns 0.0 when memory is empty (maximum curiosity).
+    Returns 0.0 when buffer is empty (maximum curiosity).
 
     sigma_j = mean over directions of |r_dir^(j) - mean(r_dir)|
     nu_bar_t = mean over entries of sigma_j
 
     Model reference: Section 5.2.2.
     """
-    entries = memory.entries
+    entries = buffer.entries
     if len(entries) == 0:
         return 0.0
 
@@ -164,24 +164,24 @@ class SystemAWCuriosityDrive:
     def compute(
         self,
         observation: Observation,
-        memory: MemoryState,
+        buffer: ObservationBuffer,
         world_model: WorldModelState,
     ) -> CuriosityDriveOutput:
         """Compute curiosity drive output.
 
         Pipeline:
         1. Spatial novelty (from world model)
-        2. Sensory novelty (from observation + memory)
+        2. Sensory novelty (from observation + buffer)
         3. Composite novelty (alpha-blend)
-        4. Novelty saturation (from memory)
+        4. Novelty saturation (from buffer)
         5. Drive activation
         6. Action contributions
         """
         spatial = compute_spatial_novelty(world_model, self._k)
-        sensory = compute_sensory_novelty(observation, memory)
+        sensory = compute_sensory_novelty(observation, buffer)
         composite = compute_composite_novelty(spatial, sensory, self._alpha)
 
-        saturation = compute_novelty_saturation(memory)
+        saturation = compute_novelty_saturation(buffer)
         activation = compute_curiosity_activation(self._mu_c, saturation)
 
         # Action contributions (Model Section 6.3)

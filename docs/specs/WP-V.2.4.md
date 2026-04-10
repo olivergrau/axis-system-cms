@@ -38,8 +38,8 @@ system_data = {
         "energy_delta": float,
         "action_cost": float,
         "energy_gain": float,
-        "memory_entries_before": int,
-        "memory_entries_after": int,
+        "buffer_entries_before": int,
+        "buffer_entries_after": int,
     },
 }
 ```

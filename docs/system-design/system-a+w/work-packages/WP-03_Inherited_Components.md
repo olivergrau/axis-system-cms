@@ -4,7 +4,7 @@
 - Work Package: WP-3
 - Title: Inherited Components (Sensor, Memory, Consume Action)
 - System: System A+W
-- Source Files: `src/axis/systems/system_aw/sensor.py`, `memory.py`, `actions.py`
+- Source Files: `src/axis/systems/system_aw/sensor.py`, `observation_buffer.py`, `actions.py`
 - Test File: `tests/systems/system_aw/test_inherited.py`
 - Model Reference: `01_System A+W Model.md`, Sections 1.1, 8
 - Dependencies: WP-1 (config), WP-2 (types)
@@ -66,25 +66,25 @@ __all__ = ["SystemAWSensor"]
 
 **Note on position:** The sensor receives the agent's absolute position from the framework (via the `observe(world_view, position)` call). This is the framework providing the observation — the sensor is a passive transducer. The **agent** does not store or reason about this position. The sensor's output (`Observation`) contains no coordinate information. This is identical to how System A works.
 
-### 3.2 Memory (`memory.py`)
+### 3.2 Memory (`observation_buffer.py`)
 
 The FIFO episodic memory update is identical.
 
 ```python
 """System A+W memory -- re-exports System A's memory update."""
 
-from axis.systems.system_a.memory import update_memory
+from axis.systems.system_a.memory import update_observation_buffer
 
 # System A+W uses the same memory update as System A.
 # m_{t+1} = M(m_t, u_{t+1})
 # FIFO bounded buffer with configurable capacity k.
 
-__all__ = ["update_memory"]
+__all__ = ["update_observation_buffer"]
 ```
 
 **Usage in System A+W:** Called during the transition phase (WP-9) to append the new observation to the memory buffer. The memory buffer is also read by the curiosity drive (WP-6) for sensory novelty computation.
 
-**Note on memory capacity:** Memory capacity $k$ is a configurable parameter in `AgentConfig.memory_capacity`. There is no fixed limit — it can be set to any positive integer. For large $k$, the sensory novelty computation (averaging over all entries) becomes a longer sum, but the computational cost is negligible for typical values.
+**Note on memory capacity:** Memory capacity $k$ is a configurable parameter in `AgentConfig.buffer_capacity`. There is no fixed limit — it can be set to any positive integer. For large $k$, the sensory novelty computation (averaging over all entries) becomes a longer sum, but the computational cost is negligible for typical values.
 
 ### 3.3 Consume Action (`actions.py`)
 
@@ -127,9 +127,9 @@ The inherited components must work with the new types from WP-2. Key compatibili
 
 `SystemASensor.observe()` returns an `Observation` (from `axis.systems.system_a.types`). This type is used unchanged in System A+W. No compatibility issue.
 
-### 5.2 Memory + MemoryState
+### 5.2 Memory + ObservationBuffer
 
-`update_memory()` operates on `MemoryState` (from `axis.systems.system_a.types`). System A+W's `AgentStateAW` contains a `memory_state: MemoryState` field with the same type. No compatibility issue.
+`update_observation_buffer()` operates on `ObservationBuffer` (from `axis.systems.system_a.types`). System A+W's `AgentStateAW` contains a `observation_buffer: ObservationBuffer` field with the same type. No compatibility issue.
 
 ### 5.3 Consume + ActionOutcome
 
@@ -152,14 +152,14 @@ The tests verify that the inherited components work correctly **in the System A+
 | 1 | `test_sensor_produces_observation` | `SystemAWSensor().observe(world_view, position)` returns a valid 10-dimensional `Observation` |
 | 2 | `test_sensor_out_of_bounds` | Out-of-bounds neighbors return `(traversability=0.0, resource=0.0)` |
 | 3 | `test_sensor_is_system_a_sensor` | `SystemAWSensor is SystemASensor` — confirms identity, not copy |
-| 4 | `test_memory_update_appends` | `update_memory(state, observation, timestep)` appends entry correctly |
+| 4 | `test_memory_update_appends` | `update_observation_buffer(state, observation, timestep)` appends entry correctly |
 | 5 | `test_memory_update_fifo_overflow` | When at capacity, oldest entry is dropped |
-| 6 | `test_memory_update_with_agent_state_aw` | Extract `memory_state` from `AgentStateAW`, update, verify new state |
+| 6 | `test_memory_update_with_agent_state_aw` | Extract `observation_buffer` from `AgentStateAW`, update, verify new state |
 | 7 | `test_consume_handler_extracts_resource` | `handle_consume(world, context={"max_consume": 1.0})` returns `ActionOutcome` with correct `resource_consumed` |
 | 8 | `test_consume_handler_respects_max` | Extraction capped at `max_consume` |
 | 9 | `test_consume_handler_empty_cell` | On empty cell, `resource_consumed = 0.0` |
 | 10 | `test_imports_accessible` | `from axis.systems.system_aw.sensor import SystemAWSensor` succeeds |
-| 11 | `test_imports_accessible_memory` | `from axis.systems.system_aw.memory import update_memory` succeeds |
+| 11 | `test_imports_accessible_memory` | `from axis.systems.system_aw.memory import update_observation_buffer` succeeds |
 | 12 | `test_imports_accessible_actions` | `from axis.systems.system_aw.actions import handle_consume` succeeds |
 
 ---
@@ -167,7 +167,7 @@ The tests verify that the inherited components work correctly **in the System A+
 ## 7. Acceptance Criteria
 
 - [ ] `SystemAWSensor` produces observations identical to `SystemASensor`
-- [ ] `update_memory` works with `MemoryState` extracted from `AgentStateAW`
+- [ ] `update_observation_buffer` works with `ObservationBuffer` extracted from `AgentStateAW`
 - [ ] `handle_consume` works unchanged as a registered action handler
 - [ ] All three modules are importable from `axis.systems.system_aw.*`
 - [ ] No System A source code is copied — only imported and re-exported

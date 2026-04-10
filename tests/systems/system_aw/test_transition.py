@@ -8,9 +8,9 @@ from axis.sdk.position import Position
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
 from axis.systems.system_a.types import (
+    BufferEntry,
     CellObservation,
-    MemoryEntry,
-    MemoryState,
+    ObservationBuffer,
     Observation,
 )
 from axis.systems.system_aw.transition import SystemAWTransition
@@ -36,12 +36,12 @@ def _make_transition(
 
 def _make_state(
     energy: float = 50.0,
-    memory_capacity: int = 5,
+    buffer_capacity: int = 5,
     world_model: WorldModelState | None = None,
 ) -> AgentStateAW:
     return AgentStateAW(
         energy=energy,
-        memory_state=MemoryState(entries=(), capacity=memory_capacity),
+        observation_buffer=ObservationBuffer(entries=(), capacity=buffer_capacity),
         world_model=world_model or create_world_model(),
     )
 
@@ -122,32 +122,32 @@ class TestEnergyUpdate:
         assert result.new_state.energy == pytest.approx(0.0)
 
 
-class TestMemoryUpdate:
-    """Phase 2: Memory update tests."""
+class TestObservationBufferUpdate:
+    """Phase 2: Observation buffer update tests."""
 
-    def test_memory_appended(self) -> None:
+    def test_buffer_appended(self) -> None:
         trans = _make_transition()
         result = trans.transition(
-            _make_state(memory_capacity=5),
+            _make_state(buffer_capacity=5),
             _make_outcome(),
             _make_observation(),
         )
-        assert len(result.new_state.memory_state.entries) == 1
+        assert len(result.new_state.observation_buffer.entries) == 1
 
-    def test_memory_fifo_overflow(self) -> None:
+    def test_buffer_fifo_overflow(self) -> None:
         trans = _make_transition()
         obs = _make_observation()
 
-        # Fill memory to capacity 2
-        state = _make_state(memory_capacity=2)
+        # Fill observation buffer to capacity 2
+        state = _make_state(buffer_capacity=2)
         for t in range(3):
             result = trans.transition(
                 state, _make_outcome(), obs, timestep=t,
             )
             state = result.new_state
 
-        assert len(state.memory_state.entries) == 2
-        assert state.memory_state.entries[0].timestep == 1
+        assert len(state.observation_buffer.entries) == 2
+        assert state.observation_buffer.entries[0].timestep == 1
 
 
 class TestWorldModelUpdate:

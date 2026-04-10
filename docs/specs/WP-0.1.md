@@ -14,7 +14,7 @@ The current repository contains:
 src/axis_system_a/
     __init__.py
     cli.py, config.py, drives.py, enums.py, experiment.py,
-    experiment_executor.py, logging.py, memory.py, observation.py,
+    experiment_executor.py, logging.py, observation_buffer.py, observation.py,
     policy.py, repository.py, results.py, run.py, runner.py,
     snapshots.py, transition.py, types.py, world.py
     visualization/

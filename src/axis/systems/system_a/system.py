@@ -13,7 +13,7 @@ from axis.systems.system_a.drive import SystemAHungerDrive
 from axis.systems.system_a.policy import SystemAPolicy
 from axis.systems.system_a.sensor import SystemASensor
 from axis.systems.system_a.transition import SystemATransition
-from axis.systems.system_a.types import AgentState, MemoryState
+from axis.systems.system_a.types import AgentState, ObservationBuffer
 
 
 class SystemA:
@@ -55,9 +55,9 @@ class SystemA:
         """Create initial agent state from stored config."""
         return AgentState(
             energy=self._config.agent.initial_energy,
-            memory_state=MemoryState(
+            observation_buffer=ObservationBuffer(
                 entries=(),
-                capacity=self._config.agent.memory_capacity,
+                capacity=self._config.agent.buffer_capacity,
             ),
         )
 
@@ -102,7 +102,7 @@ class SystemA:
         action_outcome: Any,
         new_observation: Any,
     ) -> TransitionResult:
-        """Phase 2: energy update, memory update, termination check."""
+        """Phase 2: energy update, observation buffer update, termination check."""
         return self._transition.transition(
             agent_state, action_outcome, new_observation,
         )

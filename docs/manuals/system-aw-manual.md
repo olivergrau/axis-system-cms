@@ -84,14 +84,14 @@ shared with System A. Sections 2.4--2.5 are new to System A+W.
 |-------------------|-------|----------|----------------------|-------------|
 | `initial_energy`  | float | yes      | > 0, <= `max_energy` | Starting energy at the beginning of each episode. |
 | `max_energy`      | float | yes      | > 0                  | Maximum energy the agent can hold. Energy gains are capped here. |
-| `memory_capacity` | int   | yes      | > 0                  | Number of recent observations the agent remembers. Affects sensory novelty and novelty saturation. |
+| `buffer_capacity` | int   | yes      | > 0                  | Number of recent observations the agent remembers. Affects sensory novelty and novelty saturation. |
 
 ```yaml
 system:
   agent:
     initial_energy: 100.0
     max_energy: 100.0
-    memory_capacity: 20
+    buffer_capacity: 20
 ```
 
 ### 2.2 `system.policy` -- Action selection
@@ -420,7 +420,7 @@ Source: `src/axis/systems/system_aw/world_model.py`
 4. **No global path planning**: The agent cannot plan multi-step paths.
    It acts greedily based on local novelty and hunger signals.
 
-5. **Memory capacity trade-off**: Larger `memory_capacity` gives more
+5. **Memory capacity trade-off**: Larger `buffer_capacity` gives more
    stable sensory novelty and saturation estimates but makes the agent
    slower to adapt to changing environments.
 
@@ -462,7 +462,7 @@ system:
   agent:
     initial_energy: 100.0
     max_energy: 100.0
-    memory_capacity: 20
+    buffer_capacity: 20
   policy:
     selection_mode: "sample"
     temperature: 1.5

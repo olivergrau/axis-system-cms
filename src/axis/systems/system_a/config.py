@@ -12,7 +12,7 @@ class AgentConfig(BaseModel):
 
     initial_energy: float = Field(..., gt=0)
     max_energy: float = Field(..., gt=0)
-    memory_capacity: int = Field(..., gt=0)
+    buffer_capacity: int = Field(..., gt=0)
 
     @model_validator(mode="after")
     def check_energy_bounds(self) -> AgentConfig:

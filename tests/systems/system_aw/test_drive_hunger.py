@@ -9,7 +9,7 @@ from axis.systems.system_a.types import (
     AgentState,
     CellObservation,
     HungerDriveOutput,
-    MemoryState,
+    ObservationBuffer,
     Observation,
 )
 from axis.systems.system_aw.drive_hunger import SystemAWHungerDrive
@@ -31,7 +31,7 @@ def _make_drive(
 def _make_agent_state_aw(energy: float = 50.0) -> AgentStateAW:
     return AgentStateAW(
         energy=energy,
-        memory_state=MemoryState(entries=(), capacity=5),
+        observation_buffer=ObservationBuffer(entries=(), capacity=5),
         world_model=WorldModelState(),
     )
 

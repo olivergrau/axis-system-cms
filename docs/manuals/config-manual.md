@@ -256,7 +256,7 @@ sub-section are required unless a default is shown.
 |-------------------|----------------|----------|-------------|-------------|
 | `initial_energy`  | float          | yes      | > 0         | Starting energy at the beginning of each episode. |
 | `max_energy`      | float          | yes      | > 0         | Maximum energy the agent can hold. Energy gains are capped at this value. |
-| `memory_capacity` | integer        | yes      | > 0         | Number of recently visited cells the agent remembers. Affects action weighting. |
+| `buffer_capacity` | integer        | yes      | > 0         | Number of recently visited cells the agent remembers. Affects action weighting. |
 
 **Validation:** `initial_energy` must be <= `max_energy`.
 
@@ -265,7 +265,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 5
+    buffer_capacity: 5
 ```
 
 ### 5.2 `system.policy` -- Action selection
@@ -409,7 +409,7 @@ walkthrough.
 |------------------------------------------|--------|----------|---------------------|
 | `system.agent.initial_energy`            | float  | yes      | --                  |
 | `system.agent.max_energy`               | float  | yes      | --                  |
-| `system.agent.memory_capacity`          | int    | yes      | --                  |
+| `system.agent.buffer_capacity`          | int    | yes      | --                  |
 | `system.policy.selection_mode`          | string | yes      | --                  |
 | `system.policy.temperature`             | float  | yes      | --                  |
 | `system.policy.stay_suppression`        | float  | yes      | --                  |
@@ -524,7 +524,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 5
+    buffer_capacity: 5
   policy:
     selection_mode: "sample"
     temperature: 1.0
@@ -552,7 +552,7 @@ system:
     "agent": {
       "initial_energy": 50.0,
       "max_energy": 100.0,
-      "memory_capacity": 5
+      "buffer_capacity": 5
     },
     "policy": {
       "selection_mode": "sample",

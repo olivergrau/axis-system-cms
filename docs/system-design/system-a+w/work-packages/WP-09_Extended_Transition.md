@@ -8,7 +8,7 @@
 - Test File: `tests/systems/system_aw/test_transition.py`
 - Model Reference: `01_System A+W Model.md`, Section 8
 - Worked Examples: `02_System A+W Worked Examples.md`, Examples D1, F1, F3
-- Dependencies: WP-2 (types: `AgentStateAW`), WP-3 (inherited: `update_memory`), WP-4 (world model: `update_world_model`)
+- Dependencies: WP-2 (types: `AgentStateAW`), WP-3 (inherited: `update_observation_buffer`), WP-4 (world model: `update_world_model`)
 
 ---
 
@@ -38,7 +38,7 @@ Phases 3 and 4 are handled in a single call to `update_world_model()` from WP-4.
 
 ### 2.2 New vs. System A's Transition
 
-System A's `SystemATransition` returns `AgentState(energy, memory_state)`. System A+W's transition returns `AgentStateAW(energy, memory_state, world_model)`.
+System A's `SystemATransition` returns `AgentState(energy, observation_buffer)`. System A+W's transition returns `AgentStateAW(energy, observation_buffer, world_model)`.
 
 Rather than inheriting from `SystemATransition`, we create an independent `SystemAWTransition` that:
 - Replicates the energy and memory logic (using the same helper functions)
@@ -67,7 +67,7 @@ from __future__ import annotations
 from axis.sdk.actions import MOVEMENT_DELTAS, STAY
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.memory import update_memory
+from axis.systems.system_a.memory import update_observation_buffer
 from axis.systems.system_a.types import Observation, clip_energy
 from axis.systems.system_aw.types import AgentStateAW
 from axis.systems.system_aw.world_model import update_world_model
@@ -125,8 +125,8 @@ class SystemAWTransition:
         )
 
         # Phase 2: Memory update (unchanged from System A)
-        new_memory = update_memory(
-            agent_state.memory_state, observation, timestep,
+        new_buffer = update_observation_buffer(
+            agent_state.observation_buffer, observation, timestep,
         )
 
         # Phase 3 + 4: Dead reckoning + world model update (NEW)
@@ -140,7 +140,7 @@ class SystemAWTransition:
         # Assemble new state
         new_state = AgentStateAW(
             energy=new_energy,
-            memory_state=new_memory,
+            observation_buffer=new_buffer,
             world_model=new_world_model,
         )
 
@@ -154,8 +154,8 @@ class SystemAWTransition:
             "energy_delta": new_energy - agent_state.energy,
             "action_cost": cost,
             "energy_gain": energy_gain,
-            "memory_entries_before": len(agent_state.memory_state.entries),
-            "memory_entries_after": len(new_memory.entries),
+            "buffer_entries_before": len(agent_state.observation_buffer.entries),
+            "buffer_entries_after": len(new_buffer.entries),
             "relative_position": new_world_model.relative_position,
             "visit_count_at_current": dict(new_world_model.visit_counts).get(
                 new_world_model.relative_position, 0

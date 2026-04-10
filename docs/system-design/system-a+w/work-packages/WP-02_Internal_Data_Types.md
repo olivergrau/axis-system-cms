@@ -28,8 +28,8 @@ The following types from `axis.systems.system_a.types` are reused **without modi
 | `CellObservation` | Sensor, curiosity drive | Observation format unchanged (Section 1.1) |
 | `Observation` | Sensor, memory, drives | Von Neumann neighborhood unchanged |
 | `HungerDriveOutput` | Hunger drive | Hunger drive output format unchanged |
-| `MemoryEntry` | Memory | Memory entry format unchanged |
-| `MemoryState` | Memory, curiosity drive | FIFO buffer unchanged; capacity is configurable |
+| `BufferEntry` | Memory | Memory entry format unchanged |
+| `ObservationBuffer` | Memory, curiosity drive | FIFO buffer unchanged; capacity is configurable |
 | `clip_energy` | Transition | Energy clipping utility unchanged |
 
 These are imported into the `system_aw` package — not copied or re-exported from `types.py`. Modules that need them import directly from `axis.systems.system_a.types`.
@@ -162,15 +162,15 @@ class AgentStateAW(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     energy: float = Field(..., ge=0)
-    memory_state: MemoryState
+    observation_buffer: ObservationBuffer
     world_model: WorldModelState
 ```
 
 **Notes:**
-- `energy` and `memory_state` have identical semantics to `AgentState` in System A
+- `energy` and `observation_buffer` have identical semantics to `AgentState` in System A
 - `world_model` is the new component containing the relative position and visit counts
 - `AgentStateAW` does **not** inherit from System A's `AgentState` — it is a new, independent model. This avoids issues with Pydantic frozen model inheritance while keeping the types explicit
-- The `MemoryState` type is imported from `axis.systems.system_a.types`
+- The `ObservationBuffer` type is imported from `axis.systems.system_a.types`
 
 ---
 

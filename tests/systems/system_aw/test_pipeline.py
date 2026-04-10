@@ -79,7 +79,7 @@ class TestMultiStep:
     """Multi-step episode tests."""
 
     def test_multi_step_episode(self) -> None:
-        """Run 10 steps: energy decreases, world model grows, memory fills."""
+        """Run 10 steps: energy decreases, world model grows, observation buffer fills."""
         config = SystemAWConfig(**SystemAWConfigBuilder().build())
         system = SystemAW(config)
         state = system.initialize_state()
@@ -104,7 +104,7 @@ class TestMultiStep:
 
         assert isinstance(state, AgentStateAW)
         assert state.energy < config.agent.initial_energy
-        assert len(state.memory_state.entries) > 0
+        assert len(state.observation_buffer.entries) > 0
         assert len(state.world_model.visit_counts) >= 1
 
     def test_episode_until_termination(self) -> None:

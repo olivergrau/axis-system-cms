@@ -27,7 +27,7 @@ This module has **no counterpart** in System A.
 The curiosity drive computation follows a strict pipeline:
 
 ```
-                 WorldModelState          Observation + MemoryState
+                 WorldModelState          Observation + ObservationBuffer
                       │                          │
             ┌─────────▼──────────┐    ┌──────────▼──────────┐
             │  Spatial Novelty   │    │  Sensory Novelty    │
@@ -109,7 +109,7 @@ Computes per-direction sensory novelty by comparing the current observation with
 
 **Inputs:**
 - `observation: Observation` — current sensor output
-- `memory: MemoryState` — episodic memory buffer
+- `memory: ObservationBuffer` — episodic memory buffer
 
 **Algorithm:**
 
@@ -128,7 +128,7 @@ When memory is empty ($|m_t| = 0$): $\bar{r}_{dir} = 0$, so $\nu^{sensory}_{dir}
 ```python
 def compute_sensory_novelty(
     observation: Observation,
-    memory: MemoryState,
+    memory: ObservationBuffer,
 ) -> tuple[float, float, float, float]:
     """Per-direction sensory novelty from observation vs memory mean.
     
@@ -205,7 +205,7 @@ $$
 where $\sigma_j$ is the sensory surprise of the $j$-th memory entry. To compute $\sigma_j$, we need to compare each memory entry against the memory mean. A practical approximation: compute the per-entry deviation from the overall mean, averaged across directions.
 
 ```python
-def compute_novelty_saturation(memory: MemoryState) -> float:
+def compute_novelty_saturation(memory: ObservationBuffer) -> float:
     """Compute mean novelty saturation from memory.
     
     Returns 0.0 when memory is empty (maximum curiosity).
@@ -306,7 +306,7 @@ class SystemAWCuriosityDrive:
     def compute(
         self,
         observation: Observation,
-        memory: MemoryState,
+        memory: ObservationBuffer,
         world_model: WorldModelState,
     ) -> CuriosityDriveOutput:
         """Compute curiosity drive output.

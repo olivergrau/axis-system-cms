@@ -45,7 +45,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 10
+    buffer_capacity: 10
   policy:
     selection_mode: "sample"
     temperature: 0.5
@@ -111,7 +111,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 10
+    buffer_capacity: 10
   policy:
     selection_mode: "sample"
     temperature: 0.5
@@ -184,7 +184,7 @@ system:
   agent:
     initial_energy: 100.0
     max_energy: 100.0
-    memory_capacity: 20
+    buffer_capacity: 20
   policy:
     selection_mode: "sample"
     temperature: 0.5

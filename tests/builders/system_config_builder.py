@@ -9,7 +9,7 @@ from tests.constants import (
     DEFAULT_INITIAL_ENERGY,
     DEFAULT_MAX_CONSUME,
     DEFAULT_MAX_ENERGY,
-    DEFAULT_MEMORY_CAPACITY,
+    DEFAULT_BUFFER_CAPACITY,
     DEFAULT_MOVE_COST,
     DEFAULT_SELECTION_MODE,
     DEFAULT_STAY_COST,
@@ -29,7 +29,7 @@ class SystemAConfigBuilder:
         self._agent = {
             "initial_energy": DEFAULT_INITIAL_ENERGY,
             "max_energy": DEFAULT_MAX_ENERGY,
-            "memory_capacity": DEFAULT_MEMORY_CAPACITY,
+            "buffer_capacity": DEFAULT_BUFFER_CAPACITY,
         }
         self._policy = {
             "selection_mode": DEFAULT_SELECTION_MODE,
@@ -57,8 +57,8 @@ class SystemAConfigBuilder:
         self._policy["temperature"] = temp
         return self
 
-    def with_memory_capacity(self, capacity: int) -> SystemAConfigBuilder:
-        self._agent["memory_capacity"] = capacity
+    def with_buffer_capacity(self, capacity: int) -> SystemAConfigBuilder:
+        self._agent["buffer_capacity"] = capacity
         return self
 
     def with_selection_mode(self, mode: str) -> SystemAConfigBuilder:

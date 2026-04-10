@@ -29,13 +29,13 @@ src/axis/
         actions.py                          # ActionRegistry, movement/stay handlers
         dynamics.py                         # apply_regeneration()
     systems/system_a/
-        types.py                            # AgentState, Observation, MemoryState, etc.
+        types.py                            # AgentState, Observation, ObservationBuffer, etc.
         config.py                           # SystemAConfig (agent, policy, transition, world_dynamics)
         sensor.py                           # SystemASensor
         drive.py                            # SystemAHungerDrive
         policy.py                           # SystemAPolicy
         transition.py                       # SystemATransition
-        memory.py                           # update_memory()
+        observation_buffer.py                           # update_observation_buffer()
         actions.py                          # handle_consume()
         system.py                           # SystemA (implements SystemInterface)
 ```
@@ -134,24 +134,24 @@ Tests for `SystemATransition` in isolation.
 | `test_energy_clipped_to_zero` | Energy doesn't go below 0 |
 | `test_termination_on_zero_energy` | `terminated=True, termination_reason="energy_depleted"` |
 | `test_no_termination_above_zero` | `terminated=False, termination_reason=None` |
-| `test_memory_updated` | Memory entries count increases by 1 |
-| `test_memory_fifo` | Oldest entry dropped when capacity exceeded |
+| `test_observation_buffer_updated` | Observation buffer entries count increases by 1 |
+| `test_observation_buffer_fifo` | Oldest entry dropped when capacity exceeded |
 | `test_returns_transition_result` | Returns `TransitionResult` with correct structure |
 | `test_trace_data_contains_energy_fields` | `trace_data` has energy_before, energy_after, energy_delta |
 | `test_new_state_is_agent_state` | `result.new_state` is `AgentState` |
 | `test_transition_interface_conformance` | `isinstance(transition, TransitionInterface)` |
 
-### 5. Unit Tests -- Memory (`tests/systems/system_a/test_memory.py`)
+### 5. Unit Tests -- Observation Buffer (`tests/systems/system_a/test_observation_buffer.py`)
 
-Tests for `update_memory()`.
+Tests for `update_observation_buffer()`.
 
 | Test | Description |
 |------|-------------|
-| `test_empty_memory_append` | First entry added to empty memory |
-| `test_memory_ordering` | Entries in chronological order |
+| `test_empty_buffer_append` | First entry added to empty observation buffer |
+| `test_buffer_ordering` | Entries in chronological order |
 | `test_fifo_eviction` | Oldest entry removed when capacity exceeded |
 | `test_capacity_respected` | Never exceeds capacity |
-| `test_returns_new_instance` | Original memory unchanged |
+| `test_returns_new_instance` | Original observation buffer unchanged |
 
 ### 6. Unit Tests -- Consume Handler (`tests/systems/system_a/test_consume.py`)
 
@@ -355,7 +355,7 @@ tests/systems/system_a/test_sensor.py       # NEW (sensor unit tests)
 tests/systems/system_a/test_drive.py         # NEW (drive unit tests)
 tests/systems/system_a/test_policy.py        # NEW (policy unit tests)
 tests/systems/system_a/test_transition.py    # NEW (transition unit tests)
-tests/systems/system_a/test_memory.py        # NEW (memory unit tests)
+tests/systems/system_a/test_observation_buffer.py        # NEW (observation buffer unit tests)
 tests/systems/system_a/test_consume.py       # NEW (consume handler tests)
 tests/systems/system_a/test_config.py        # NEW (config validation tests)
 tests/systems/system_a/test_pipeline.py      # NEW (integration tests)
@@ -407,7 +407,7 @@ The tests ARE the deliverable for this WP. Success criteria:
 2. Drive unit tests at `tests/systems/system_a/test_drive.py`
 3. Policy unit tests at `tests/systems/system_a/test_policy.py`
 4. Transition unit tests at `tests/systems/system_a/test_transition.py`
-5. Memory unit tests at `tests/systems/system_a/test_memory.py`
+5. Observation buffer unit tests at `tests/systems/system_a/test_observation_buffer.py`
 6. Consume handler tests at `tests/systems/system_a/test_consume.py`
 7. Config tests at `tests/systems/system_a/test_config.py`
 8. Integration tests at `tests/systems/system_a/test_pipeline.py`

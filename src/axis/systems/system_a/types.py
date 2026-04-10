@@ -1,4 +1,4 @@
-"""System A internal types -- agent state, observation, memory."""
+"""System A internal types -- agent state, observation, observation buffer."""
 
 from __future__ import annotations
 
@@ -70,8 +70,8 @@ class HungerDriveOutput(BaseModel):
     ]
 
 
-class MemoryEntry(BaseModel):
-    """Single episodic memory record: timestep + observation."""
+class BufferEntry(BaseModel):
+    """Single observation buffer record: timestep + observation."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -79,19 +79,20 @@ class MemoryEntry(BaseModel):
     observation: Observation
 
 
-class MemoryState(BaseModel):
-    """Bounded episodic memory buffer.
+class ObservationBuffer(BaseModel):
+    """Bounded observation buffer.
 
-    FIFO update behavior is provided by update_memory() in memory.py.
+    FIFO update behavior is provided by update_observation_buffer()
+    in observation_buffer.py.
     """
 
     model_config = ConfigDict(frozen=True)
 
-    entries: tuple[MemoryEntry, ...] = Field(default_factory=tuple)
+    entries: tuple[BufferEntry, ...] = Field(default_factory=tuple)
     capacity: int = Field(..., gt=0)
 
     @model_validator(mode="after")
-    def check_capacity(self) -> MemoryState:
+    def check_capacity(self) -> ObservationBuffer:
         if len(self.entries) > self.capacity:
             raise ValueError(
                 f"entries length ({len(self.entries)}) "
@@ -101,7 +102,7 @@ class MemoryState(BaseModel):
 
 
 class AgentState(BaseModel):
-    """System A agent state: energy + memory.
+    """System A agent state: energy + observation buffer.
 
     Position is explicitly NOT part of AgentState -- it belongs to
     the world state (agent/world separation).
@@ -110,7 +111,7 @@ class AgentState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     energy: float = Field(..., ge=0)
-    memory_state: MemoryState
+    observation_buffer: ObservationBuffer
 
 
 def clip_energy(energy: float, max_energy: float) -> float:

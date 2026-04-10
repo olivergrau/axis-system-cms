@@ -113,7 +113,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 25
+    buffer_capacity: 25
   policy:
     selection_mode: "sample"
     temperature: 1.0
@@ -179,7 +179,7 @@ Manual for full constraints).
 |--------------------|----------|-------------|
 | `initial_energy`   | `50.0`   | Starting energy |
 | `max_energy`       | `100.0`  | Energy cap |
-| `memory_capacity`  | `25`     | Number of recent cells remembered |
+| `buffer_capacity`  | `25`     | Number of recent cells remembered |
 
 **`system.policy`** -- Action selection
 
@@ -261,7 +261,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 5
+    buffer_capacity: 5
   policy:
     selection_mode: "sample"
     temperature: 1.0
@@ -320,7 +320,7 @@ system:
   agent:
     initial_energy: 50.0
     max_energy: 100.0
-    memory_capacity: 5
+    buffer_capacity: 5
   policy:
     selection_mode: "sample"
     temperature: 1.0
@@ -354,7 +354,7 @@ system:
   agent:
     initial_energy: 80.0
     max_energy: 150.0
-    memory_capacity: 10
+    buffer_capacity: 10
   policy:
     selection_mode: "sample"
     temperature: 0.5        # lower temperature = more deterministic

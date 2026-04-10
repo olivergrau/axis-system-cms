@@ -40,8 +40,8 @@ System A's logic currently lives entirely in `axis_system_a/`:
 | `drives.py` | `compute_hunger_drive()`, `HungerDriveOutput` | `axis/systems/system_a/drive.py` |
 | `policy.py` | `select_action()`, `DecisionTrace` | `axis/systems/system_a/policy.py` |
 | `transition.py` | `step()` (agent logic only) | `axis/systems/system_a/transition.py` |
-| `memory.py` | `update_memory()` | `axis/systems/system_a/memory.py` |
-| `types.py` | `AgentState`, `MemoryState`, `Observation`, etc. | `axis/systems/system_a/types.py` |
+| `observation_buffer.py` | `update_observation_buffer()` | `axis/systems/system_a/observation_buffer.py` |
+| `types.py` | `AgentState`, `ObservationBuffer`, `Observation`, etc. | `axis/systems/system_a/types.py` |
 | `config.py` | `AgentConfig`, `PolicyConfig`, `TransitionConfig` | `axis/systems/system_a/config.py` |
 | `runner.py:episode_step` | Orchestration chain | Split: `decide()` and `transition()` in `SystemA` |
 
@@ -59,7 +59,7 @@ The v0.1.0 `episode_step()` runs this chain:
 
 ```
 observation -> drive -> policy -> transition_step()
-                                  (regen -> action -> new_obs -> energy -> memory -> termination)
+                                  (regen -> action -> new_obs -> energy -> observation_buffer -> termination)
 ```
 
 In v0.2.0, this splits into:
@@ -78,12 +78,12 @@ Framework applies action to world:
 
 Framework calls system.transition(agent_state, action_outcome, new_observation):
     5. Energy update                            [was phases 4-6 of transition.step()]
-    6. Memory update
+    6. Observation buffer update
     7. Termination check
     8. Return TransitionResult(new_state, trace_data, terminated)
 ```
 
-**Key insight**: The v0.1.0 transition engine's phases 1-3 (regen, action application, new observation) move to the framework. Phases 4-6 (energy, memory, termination) stay in the system's `transition()` method.
+**Key insight**: The v0.1.0 transition engine's phases 1-3 (regen, action application, new observation) move to the framework. Phases 4-6 (energy, observation buffer, termination) stay in the system's `transition()` method.
 
 ### Reference Documents
 
@@ -105,7 +105,7 @@ Create the `SystemA` class implementing `SystemInterface` and restructure all Sy
 4. **`SystemAHungerDrive`** -- drive implementing `DriveInterface`
 5. **`SystemAPolicy`** -- policy implementing `PolicyInterface`
 6. **`SystemATransition`** -- transition implementing `TransitionInterface`
-7. **System A types** -- `AgentState`, `MemoryState`, `Observation`, etc.
+7. **System A types** -- `AgentState`, `ObservationBuffer`, `Observation`, etc.
 8. **Consume action handler** -- registered with the `ActionRegistry`
 
 ---
@@ -136,23 +136,23 @@ class Observation(BaseModel):
 
     def to_vector(self) -> tuple[float, ...]: ...
 
-class MemoryEntry(BaseModel):
+class BufferEntry(BaseModel):
     model_config = ConfigDict(frozen=True)
     timestep: int = Field(..., ge=0)
     observation: Observation
 
-class MemoryState(BaseModel):
+class ObservationBuffer(BaseModel):
     model_config = ConfigDict(frozen=True)
-    entries: tuple[MemoryEntry, ...] = Field(default_factory=tuple)
+    entries: tuple[BufferEntry, ...] = Field(default_factory=tuple)
     capacity: int = Field(..., gt=0)
 
 class AgentState(BaseModel):
-    """System A agent state: energy + memory.
+    """System A agent state: energy + observation buffer.
     Position is NOT part of agent state (world-owned).
     """
     model_config = ConfigDict(frozen=True)
     energy: float = Field(..., ge=0)
-    memory_state: MemoryState
+    observation_buffer: ObservationBuffer
 
 def clip_energy(energy: float, max_energy: float) -> float:
     return max(0.0, min(energy, max_energy))
@@ -174,7 +174,7 @@ class AgentConfig(BaseModel):
 
     initial_energy: float = Field(..., gt=0)
     max_energy: float = Field(..., gt=0)
-    memory_capacity: int = Field(..., gt=0)
+    buffer_capacity: int = Field(..., gt=0)
 
     @model_validator(mode="after")
     def check_energy_bounds(self) -> AgentConfig:
@@ -330,18 +330,18 @@ class SystemAPolicy:
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
 from axis.systems.system_a.types import AgentState, Observation, clip_energy
-from axis.systems.system_a.memory import update_memory
+from axis.systems.system_a.observation_buffer import update_observation_buffer
 
 
 class SystemATransition:
     """Transition function for System A.
 
     Satisfies TransitionInterface. Processes the ActionOutcome from
-    the framework and updates energy, memory, and termination status.
+    the framework and updates energy, observation buffer, and termination status.
 
     This handles v0.1.0 phases 4-6 only:
     - Phase 4: Energy update
-    - Phase 5: Memory update
+    - Phase 5: Observation buffer update
     - Phase 6: Termination check
     """
 
@@ -366,7 +366,7 @@ class SystemATransition:
         action_outcome: ActionOutcome,
         observation: Observation,
     ) -> TransitionResult:
-        """Process action outcome: energy, memory, termination.
+        """Process action outcome: energy, observation buffer, termination.
 
         Returns:
             TransitionResult with new agent state and trace data.
@@ -379,10 +379,10 @@ class SystemATransition:
             self._max_energy,
         )
 
-        # Phase 5: Memory update
+        # Phase 5: Observation buffer update
         # Note: observation here is the POST-action observation
-        new_memory = update_memory(agent_state.memory_state, observation, timestep=...)
-        new_state = AgentState(energy=new_energy, memory_state=new_memory)
+        new_buffer = update_observation_buffer(agent_state.observation_buffer, observation, timestep=...)
+        new_state = AgentState(energy=new_energy, observation_buffer=new_buffer)
 
         # Phase 6: Termination check
         terminated = new_energy <= 0.0
@@ -394,8 +394,8 @@ class SystemATransition:
             "energy_delta": new_energy - agent_state.energy,
             "action_cost": cost,
             "energy_gain": energy_gain,
-            "memory_entries_before": len(agent_state.memory_state.entries),
-            "memory_entries_after": len(new_memory.entries),
+            "buffer_entries_before": len(agent_state.observation_buffer.entries),
+            "buffer_entries_after": len(new_buffer.entries),
         }
 
         return TransitionResult(
@@ -413,7 +413,7 @@ class SystemATransition:
 - `action_outcome.data.get("resource_consumed", 0.0)` provides the delta for energy gain
 - `trace_data` carries system-specific trace information (packed into `system_data` in `BaseStepTrace`)
 - Returns `TransitionResult` (SDK type)
-- **Timestep parameter**: The transition needs the timestep for memory entries. This is passed via the agent state or as an additional parameter. The cleanest approach is to include `timestep` as a field on `AgentState` or to have the `SystemA.transition()` method inject it. See design decision below.
+- **Timestep parameter**: The transition needs the timestep for buffer entries. This is passed via the agent state or as an additional parameter. The cleanest approach is to include `timestep` as a field on `AgentState` or to have the `SystemA.transition()` method inject it. See design decision below.
 
 **Timestep handling**: The `TransitionInterface` protocol signature is `transition(agent_state, action_outcome, observation)`. The timestep is not in the signature. Two options:
 
@@ -422,24 +422,24 @@ class SystemATransition:
 
 **Chosen: Option A** -- Include the `current_timestep` in `AgentState`. The framework increments it each step via the system's own `transition()` return. The system's `initialize_state()` sets `timestep=0`. This keeps the `TransitionInterface` signature clean and the timestep management system-internal.
 
-### 7. Memory
+### 7. Observation Buffer
 
-**File**: `src/axis/systems/system_a/memory.py`
+**File**: `src/axis/systems/system_a/observation_buffer.py`
 
 ```python
-from axis.systems.system_a.types import MemoryEntry, MemoryState, Observation
+from axis.systems.system_a.types import BufferEntry, ObservationBuffer, Observation
 
 
-def update_memory(
-    memory: MemoryState,
+def update_observation_buffer(
+    observation_buffer: ObservationBuffer,
     observation: Observation,
     timestep: int,
-) -> MemoryState:
-    """Append observation as memory entry with FIFO overflow."""
+) -> ObservationBuffer:
+    """Append observation as buffer entry with FIFO overflow."""
     ...
 ```
 
-Functionally identical to `axis_system_a/memory.py:update_memory()`.
+Functionally identical to `axis_system_a/observation_buffer.py:update_observation_buffer()`.
 
 ### 8. Consume Action Handler
 
@@ -493,7 +493,7 @@ from axis.systems.system_a.drive import SystemAHungerDrive
 from axis.systems.system_a.policy import SystemAPolicy
 from axis.systems.system_a.sensor import SystemASensor
 from axis.systems.system_a.transition import SystemATransition
-from axis.systems.system_a.types import AgentState, MemoryState
+from axis.systems.system_a.types import AgentState, ObservationBuffer
 
 
 class SystemA:
@@ -534,9 +534,9 @@ class SystemA:
         config = SystemAConfig(**system_config)
         return AgentState(
             energy=config.agent.initial_energy,
-            memory_state=MemoryState(
+            observation_buffer=ObservationBuffer(
                 entries=(),
-                capacity=config.agent.memory_capacity,
+                capacity=config.agent.buffer_capacity,
             ),
         )
 
@@ -581,7 +581,7 @@ class SystemA:
         action_outcome: Any,
         new_observation: Any,
     ) -> TransitionResult:
-        """Phase 2: energy update, memory update, termination check."""
+        """Phase 2: energy update, observation buffer update, termination check."""
         return self._transition.transition(
             agent_state, action_outcome, new_observation,
         )
@@ -685,13 +685,13 @@ After WP-2.3, these files are **new or modified**:
 
 ```
 src/axis/systems/system_a/__init__.py       # MODIFIED (exports added)
-src/axis/systems/system_a/types.py          # NEW (AgentState, Observation, MemoryState, etc.)
+src/axis/systems/system_a/types.py          # NEW (AgentState, Observation, ObservationBuffer, etc.)
 src/axis/systems/system_a/config.py         # NEW (SystemAConfig, AgentConfig, PolicyConfig, etc.)
 src/axis/systems/system_a/sensor.py         # NEW (SystemASensor)
 src/axis/systems/system_a/drive.py          # NEW (SystemAHungerDrive, HungerDriveOutput)
 src/axis/systems/system_a/policy.py         # NEW (SystemAPolicy)
 src/axis/systems/system_a/transition.py     # NEW (SystemATransition)
-src/axis/systems/system_a/memory.py         # NEW (update_memory)
+src/axis/systems/system_a/observation_buffer.py         # NEW (update_observation_buffer)
 src/axis/systems/system_a/actions.py        # NEW (handle_consume)
 src/axis/systems/system_a/system.py         # NEW (SystemA)
 tests/systems/system_a/test_system_a.py # NEW (verification tests)
@@ -735,8 +735,8 @@ Must include:
    - `isinstance(transition, TransitionInterface)` is `True`
 
 5. **initialize_state**:
-   - Returns `AgentState` with correct initial energy and empty memory
-   - Memory capacity matches config
+   - Returns `AgentState` with correct initial energy and empty observation buffer
+   - Observation buffer capacity matches config
 
 6. **vitality**:
    - `vitality(state_at_full_energy) == 1.0`
@@ -764,7 +764,7 @@ Must include:
     - Energy decreases by move cost on movement
     - Energy increases by `energy_gain_factor * resource_consumed` on consume
     - Energy clipped to [0, max_energy]
-    - Memory is updated with new observation
+    - Observation buffer is updated with new observation
     - Terminates when energy <= 0
 
 11. **Consume handler**:
@@ -778,7 +778,7 @@ Must include:
 
 13. **transition() integration**:
     - Given an `ActionOutcome`, returns `TransitionResult` with new state
-    - `trace_data` contains energy and memory deltas
+    - `trace_data` contains energy and observation buffer deltas
 
 14. **Import verification**:
     - `from axis.systems.system_a import SystemA, SystemAConfig, handle_consume` succeeds
@@ -814,7 +814,7 @@ All existing tests must still pass.
 4. Drive at `src/axis/systems/system_a/drive.py`
 5. Policy at `src/axis/systems/system_a/policy.py`
 6. Transition at `src/axis/systems/system_a/transition.py`
-7. Memory at `src/axis/systems/system_a/memory.py`
+7. Observation buffer at `src/axis/systems/system_a/observation_buffer.py`
 8. Consume handler at `src/axis/systems/system_a/actions.py`
 9. SystemA class at `src/axis/systems/system_a/system.py`
 10. Updated `src/axis/systems/system_a/__init__.py` with exports

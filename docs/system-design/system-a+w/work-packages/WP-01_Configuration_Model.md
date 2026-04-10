@@ -25,7 +25,7 @@ System A's config is composed of three frozen sub-models:
 
 ```
 SystemAConfig
-├── agent: AgentConfig        (initial_energy, max_energy, memory_capacity)
+├── agent: AgentConfig        (initial_energy, max_energy, buffer_capacity)
 ├── policy: PolicyConfig      (selection_mode, temperature, stay_suppression, consume_weight)
 └── transition: TransitionConfig (move_cost, consume_cost, stay_cost, max_consume, energy_gain_factor)
 ```
@@ -103,7 +103,7 @@ system:
   agent:
     initial_energy: 100.0
     max_energy: 100.0
-    memory_capacity: 5
+    buffer_capacity: 5
   policy:
     selection_mode: "sample"
     temperature: 0.5

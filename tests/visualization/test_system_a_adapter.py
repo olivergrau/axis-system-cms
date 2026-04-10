@@ -56,8 +56,8 @@ def _sample_system_data() -> dict[str, Any]:
             "energy_delta": -1.50,
             "action_cost": 2.00,
             "energy_gain": 0.50,
-            "memory_entries_before": 3,
-            "memory_entries_after": 4,
+            "buffer_entries_before": 3,
+            "buffer_entries_after": 4,
         },
     }
 

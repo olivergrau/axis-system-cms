@@ -309,7 +309,7 @@ class TestFrameworkIntegration:
             "agent": {
                 "initial_energy": 50.0,
                 "max_energy": 100.0,
-                "memory_capacity": 5,
+                "buffer_capacity": 5,
             },
             "policy": {
                 "selection_mode": "sample",
@@ -348,7 +348,7 @@ class TestFrameworkIntegration:
 
         config_dict = {
             "agent": {"initial_energy": 20.0, "max_energy": 20.0,
-                      "memory_capacity": 3},
+                      "buffer_capacity": 3},
             "policy": {"selection_mode": "sample", "temperature": 1.0,
                        "stay_suppression": 0.1, "consume_weight": 1.5},
             "transition": {"move_cost": 1.0, "consume_cost": 1.0,

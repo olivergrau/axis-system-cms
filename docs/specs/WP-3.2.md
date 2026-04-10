@@ -207,7 +207,7 @@ Actually, checking the existing `SystemA.initialize_state()`:
 def initialize_state(self, system_config: dict[str, Any]) -> AgentState:
     return AgentState(
         energy=self._config.agent.initial_energy,
-        memory_state=MemoryState(entries=(), capacity=self._config.agent.memory_capacity),
+        observation_buffer=ObservationBuffer(entries=(), capacity=self._config.agent.buffer_capacity),
     )
 ```
 

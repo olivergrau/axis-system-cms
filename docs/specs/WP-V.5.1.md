@@ -164,8 +164,8 @@ def make_system_a_system_data(
             "energy_delta": energy_after - energy_before,
             "action_cost": 0.1,
             "energy_gain": 0.0,
-            "memory_entries_before": 0,
-            "memory_entries_after": 0,
+            "buffer_entries_before": 0,
+            "buffer_entries_after": 0,
         },
     }
 

@@ -1,4 +1,4 @@
-"""WP-3 unit tests -- inherited components (sensor, memory, actions)."""
+"""WP-3 unit tests -- inherited components (sensor, observation buffer, actions)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ from axis.sdk.world_types import ActionOutcome
 from axis.systems.system_a.sensor import SystemASensor
 from axis.systems.system_a.types import (
     CellObservation,
-    MemoryState,
+    ObservationBuffer,
     Observation,
 )
 from axis.systems.system_aw.actions import handle_consume
-from axis.systems.system_aw.memory import update_memory
+from axis.systems.system_aw.observation_buffer import update_observation_buffer
 from axis.systems.system_aw.sensor import SystemAWSensor
 from axis.systems.system_aw.types import AgentStateAW, WorldModelState
 from axis.world.grid_2d.model import Cell, CellType, World
@@ -57,34 +57,34 @@ class TestSensor:
         assert SystemAWSensor is SystemASensor
 
 
-class TestMemory:
-    """update_memory tests in System A+W context."""
+class TestObservationBuffer:
+    """update_observation_buffer tests in System A+W context."""
 
-    def test_memory_update_appends(self) -> None:
-        mem = MemoryState(entries=(), capacity=5)
-        new_mem = update_memory(mem, _make_observation(), timestep=0)
-        assert len(new_mem.entries) == 1
-        assert new_mem.entries[0].timestep == 0
+    def test_buffer_update_appends(self) -> None:
+        mem = ObservationBuffer(entries=(), capacity=5)
+        new_buffer = update_observation_buffer(mem, _make_observation(), timestep=0)
+        assert len(new_buffer.entries) == 1
+        assert new_buffer.entries[0].timestep == 0
 
-    def test_memory_update_fifo_overflow(self) -> None:
-        mem = MemoryState(entries=(), capacity=2)
+    def test_buffer_update_fifo_overflow(self) -> None:
+        mem = ObservationBuffer(entries=(), capacity=2)
         for t in range(3):
-            mem = update_memory(mem, _make_observation(), timestep=t)
+            mem = update_observation_buffer(mem, _make_observation(), timestep=t)
         assert len(mem.entries) == 2
         assert mem.entries[0].timestep == 1
         assert mem.entries[1].timestep == 2
 
-    def test_memory_update_with_agent_state_aw(self) -> None:
+    def test_buffer_update_with_agent_state_aw(self) -> None:
         state = AgentStateAW(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
             world_model=WorldModelState(),
         )
-        new_mem = update_memory(
-            state.memory_state, _make_observation(), timestep=0,
+        new_buffer = update_observation_buffer(
+            state.observation_buffer, _make_observation(), timestep=0,
         )
-        assert len(new_mem.entries) == 1
-        assert len(state.memory_state.entries) == 0  # original unchanged
+        assert len(new_buffer.entries) == 1
+        assert len(state.observation_buffer.entries) == 0  # original unchanged
 
 
 class TestConsumeAction:
@@ -120,8 +120,8 @@ class TestImportAccessibility:
     def test_imports_accessible(self) -> None:
         from axis.systems.system_aw.sensor import SystemAWSensor  # noqa: F401
 
-    def test_imports_accessible_memory(self) -> None:
-        from axis.systems.system_aw.memory import update_memory  # noqa: F401
+    def test_imports_accessible_observation_buffer(self) -> None:
+        from axis.systems.system_aw.observation_buffer import update_observation_buffer  # noqa: F401
 
     def test_imports_accessible_actions(self) -> None:
         from axis.systems.system_aw.actions import handle_consume  # noqa: F401

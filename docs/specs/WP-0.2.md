@@ -137,7 +137,7 @@ class SystemAConfigBuilder:
         self._agent = {
             "initial_energy": 50.0,
             "max_energy": 100.0,
-            "memory_capacity": 5,
+            "buffer_capacity": 5,
         }
         self._policy = {
             "selection_mode": "sample",
@@ -294,7 +294,7 @@ DEFAULT_OBSTACLE_DENSITY = 0.0
 # System A defaults
 DEFAULT_INITIAL_ENERGY = 50.0
 DEFAULT_MAX_ENERGY = 100.0
-DEFAULT_MEMORY_CAPACITY = 5
+DEFAULT_BUFFER_CAPACITY = 5
 DEFAULT_TEMPERATURE = 1.0
 DEFAULT_SELECTION_MODE = "sample"
 DEFAULT_STAY_SUPPRESSION = 0.1

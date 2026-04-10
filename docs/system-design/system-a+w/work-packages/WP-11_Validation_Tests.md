@@ -35,7 +35,7 @@ Tests use `pytest.approx` with absolute tolerance $\epsilon = 0.01$ for probabil
 To avoid boilerplate, shared fixtures provide:
 - `default_params()` → the common parameter set from Worked Examples Section 4
 - `make_observation(current, up, down, left, right)` → construct `Observation` from resource/traversability tuples
-- `make_memory(entries)` → construct `MemoryState` from a list of observation snapshots
+- `make_memory(entries)` → construct `ObservationBuffer` from a list of observation snapshots
 - `make_world_model(position, visits)` → construct `WorldModelState` from a position and visit dict
 
 ---

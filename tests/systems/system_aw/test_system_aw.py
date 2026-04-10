@@ -9,7 +9,7 @@ from axis.framework.registry import create_system, registered_system_types
 from axis.sdk.position import Position
 from axis.sdk.types import DecideResult, TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.types import CellObservation, MemoryState, Observation
+from axis.systems.system_a.types import CellObservation, ObservationBuffer, Observation
 from axis.systems.system_aw.config import SystemAWConfig
 from axis.systems.system_aw.system import SystemAW
 from axis.systems.system_aw.types import AgentStateAW
@@ -98,7 +98,7 @@ class TestConstructionAndInterface:
         state = system.initialize_state()
         assert isinstance(state, AgentStateAW)
         assert state.energy == 50.0
-        assert state.memory_state.entries == ()
+        assert state.observation_buffer.entries == ()
         assert state.world_model.relative_position == (0, 0)
         # World model starts with visit count 1 at origin
         visits = dict(state.world_model.visit_counts)

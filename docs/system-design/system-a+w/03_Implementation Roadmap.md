@@ -35,7 +35,7 @@ src/axis/systems/system_aw/
 ├── config.py                # WP-1: SystemAWConfig (Pydantic)
 ├── types.py                 # WP-2: Internal data types (WorldModel, CuriosityDriveOutput, etc.)
 ├── sensor.py                # WP-3: Sensor (inherited from System A, re-exported or extended)
-├── memory.py                # WP-3: Memory update (inherited)
+├── observation_buffer.py    # WP-3: Memory update (inherited)
 ├── world_model.py           # WP-4: Visit-count map (new)
 ├── drive_hunger.py          # WP-5: Hunger drive module (reuse from System A)
 ├── drive_curiosity.py       # WP-6: Curiosity drive module (new)
@@ -103,7 +103,7 @@ experiments/configs/
 **Source:** `types.py`
 
 **Details:**
-- Reuse from System A: `CellObservation`, `Observation`, `MemoryEntry`, `MemoryState`, `clip_energy`
+- Reuse from System A: `CellObservation`, `Observation`, `BufferEntry`, `ObservationBuffer`, `clip_energy`
 - New types:
   - `WorldModelState`: encapsulates the visit-count map $w_t : \mathbb{Z}^2 \to \mathbb{N}_0$ and the relative position $\hat{p}_t$
   - `CuriosityDriveOutput`: activation $d_C$, per-direction novelty components ($\nu^{spatial}$, $\nu^{sensory}$, $\nu_{composite}$), per-action contributions
@@ -124,11 +124,11 @@ experiments/configs/
 
 **Goal:** Wire reusable System A components into the System A+W package.
 
-**Source:** `sensor.py`, `memory.py`, `actions.py`
+**Source:** `sensor.py`, `observation_buffer.py`, `actions.py`
 
 **Details:**
 - **Sensor**: Reuse `SystemASensor` directly (observation model is identical per Section 1.1)
-- **Memory**: Reuse `update_memory` directly (memory mechanics are unchanged per Section 1.1)
+- **Memory**: Reuse `update_observation_buffer` directly (memory mechanics are unchanged per Section 1.1)
 - **Consume**: Reuse `handle_consume` directly (energy dynamics are unchanged per Section 1.1)
 - Approach: import and re-export from System A, or copy if decoupling is preferred
 
@@ -535,7 +535,7 @@ The dependency graph admits some parallelism. The recommended sequential order t
 | Risk | Impact | Status | Resolution |
 |---|---|---|---|
 | ~~Position tracking: the world model needs the agent's position, but `SystemInterface` doesn't expose it directly~~ | ~~High~~ | **Resolved** | Dead reckoning via path integration. The world model uses relative coordinates updated from `action_outcome.action` + `action_outcome.moved`. No absolute position is consumed. See Model Section 4.1. |
-| Sensory novelty depends on memory contents that System A stores but doesn't expose as structured data | Medium | Open | Verify that `MemoryState` entries contain full observation vectors. Memory capacity is configurable (parameter $k$), not a fixed constant. If memory entries lack structured per-direction resource values, extend `MemoryEntry` in WP-2. |
+| Sensory novelty depends on memory contents that System A stores but doesn't expose as structured data | Medium | Open | Verify that `ObservationBuffer` entries contain full observation vectors. Memory capacity is configurable (parameter $k$), not a fixed constant. If memory entries lack structured per-direction resource values, extend `BufferEntry` in WP-2. |
 | Softmax numerical stability with two-drive scores spanning a wider range than System A | Low | Open | System A's policy already handles `-inf` masking. The score range increase from curiosity is bounded by $w_C^{base} \cdot \mu_C \leq 1.0$, so overflow is unlikely. Monitor in WP-11. |
 | Performance of visit-count map on large grids | Low | Open | Dict-based map is $O(1)$ per lookup. For 20x20 grids with 200 steps, max map size is 200 entries. Not a concern at current scale. |
 

@@ -96,7 +96,7 @@ from axis.systems.system_aw.sensor import SystemAWSensor
 from axis.systems.system_aw.transition import SystemAWTransition
 from axis.systems.system_aw.types import AgentStateAW
 from axis.systems.system_aw.world_model import create_world_model
-from axis.systems.system_a.types import MemoryState
+from axis.systems.system_a.types import ObservationBuffer
 
 
 class SystemAW:
@@ -142,9 +142,9 @@ class SystemAW:
     def initialize_state(self) -> AgentStateAW:
         return AgentStateAW(
             energy=self._config.agent.initial_energy,
-            memory_state=MemoryState(
+            observation_buffer=ObservationBuffer(
                 entries=(),
-                capacity=self._config.agent.memory_capacity,
+                capacity=self._config.agent.buffer_capacity,
             ),
             world_model=create_world_model(),
         )
@@ -166,7 +166,7 @@ class SystemAW:
         # Step 2: Drive evaluation
         hunger_output = self._hunger_drive.compute(agent_state, observation)
         curiosity_output = self._curiosity_drive.compute(
-            observation, agent_state.memory_state, agent_state.world_model,
+            observation, agent_state.observation_buffer, agent_state.world_model,
         )
 
         # Step 3: Drive arbitration

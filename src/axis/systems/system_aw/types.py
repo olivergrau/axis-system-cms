@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from axis.systems.system_a.types import MemoryState
+from axis.systems.system_a.types import ObservationBuffer
 
 
 class WorldModelState(BaseModel):
@@ -77,7 +77,7 @@ class DriveWeights(BaseModel):
 
 
 class AgentStateAW(BaseModel):
-    """System A+W agent state: energy + memory + world model.
+    """System A+W agent state: energy + observation buffer + world model.
 
     Extends System A's AgentState with the spatial world model.
     Position is explicitly NOT part of AgentStateAW in the absolute
@@ -90,5 +90,5 @@ class AgentStateAW(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     energy: float = Field(..., ge=0)
-    memory_state: MemoryState
+    observation_buffer: ObservationBuffer
     world_model: WorldModelState

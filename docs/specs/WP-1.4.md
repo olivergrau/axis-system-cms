@@ -37,7 +37,7 @@ The existing config hierarchy in `axis_system_a`:
 SimulationConfig                     # Top-level, flat structure
     general: GeneralConfig           # seed
     world: WorldConfig               # grid_width, grid_height, regen params, obstacle_density
-    agent: AgentConfig               # initial_energy, max_energy, memory_capacity
+    agent: AgentConfig               # initial_energy, max_energy, buffer_capacity
     policy: PolicyConfig             # selection_mode, temperature, stay_suppression, consume_weight
     transition: TransitionConfig     # move_cost, consume_cost, stay_cost, max_consume, energy_gain_factor
     execution: ExecutionConfig       # max_steps
@@ -509,7 +509,7 @@ The system config dict contains only system-owned sections:
 ```json
 {
     "system": {
-        "agent": { "initial_energy": 50.0, "max_energy": 100.0, "memory_capacity": 5 },
+        "agent": { "initial_energy": 50.0, "max_energy": 100.0, "buffer_capacity": 5 },
         "policy": { "selection_mode": "sample", "temperature": 1.0, ... },
         "transition": { "move_cost": 1.0, ... }
     }

@@ -14,8 +14,8 @@ from axis.systems.system_a.transition import SystemATransition
 from axis.systems.system_a.types import (
     AgentState,
     CellObservation,
-    MemoryEntry,
-    MemoryState,
+    BufferEntry,
+    ObservationBuffer,
     Observation,
 )
 
@@ -36,10 +36,10 @@ def _make_transition(
     )
 
 
-def _make_state(energy: float = 50.0, memory_capacity: int = 5) -> AgentState:
+def _make_state(energy: float = 50.0, buffer_capacity: int = 5) -> AgentState:
     return AgentState(
         energy=energy,
-        memory_state=MemoryState(entries=(), capacity=memory_capacity),
+        observation_buffer=ObservationBuffer(entries=(), capacity=buffer_capacity),
     )
 
 
@@ -136,33 +136,33 @@ class TestTransition:
         assert result.terminated is False
         assert result.termination_reason is None
 
-    def test_memory_updated(self) -> None:
+    def test_observation_buffer_updated(self) -> None:
         trans = _make_transition()
         result = trans.transition(
             _make_state(50.0),
             _make_outcome("stay"),
             _make_observation(),
         )
-        assert len(result.new_state.memory_state.entries) == 1
+        assert len(result.new_state.observation_buffer.entries) == 1
 
-    def test_memory_fifo(self) -> None:
+    def test_observation_buffer_fifo(self) -> None:
         trans = _make_transition()
         obs = _make_observation()
-        # Build state with full memory (capacity=2, 2 entries)
+        # Build state with full observation buffer (capacity=2, 2 entries)
         mem_obs = _make_observation()
         entries = (
-            MemoryEntry(timestep=0, observation=mem_obs),
-            MemoryEntry(timestep=1, observation=mem_obs),
+            BufferEntry(timestep=0, observation=mem_obs),
+            BufferEntry(timestep=1, observation=mem_obs),
         )
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=entries, capacity=2),
+            observation_buffer=ObservationBuffer(entries=entries, capacity=2),
         )
         result = trans.transition(state, _make_outcome("stay"), obs)
-        mem = result.new_state.memory_state
-        assert len(mem.entries) == 2
+        buf = result.new_state.observation_buffer
+        assert len(buf.entries) == 2
         # Oldest (timestep=0) should be evicted
-        assert mem.entries[0].timestep == 1
+        assert buf.entries[0].timestep == 1
 
     def test_returns_transition_result(self) -> None:
         trans = _make_transition()

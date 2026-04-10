@@ -120,7 +120,7 @@ even a tuple. The framework does not care.
 
 ```python
 # Pydantic model (System A style):
-return AgentState(energy=50.0, memory_state=MemoryState(...))
+return AgentState(energy=50.0, observation_buffer=ObservationBuffer(...))
 
 # Plain dict (MockSystem style):
 return {"energy": 10.0, "scan_cooldown": 0}

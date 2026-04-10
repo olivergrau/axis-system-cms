@@ -1,11 +1,11 @@
-"""System A transition -- energy, memory, and termination updates."""
+"""System A transition -- energy, observation buffer, and termination updates."""
 
 from __future__ import annotations
 
 from axis.sdk.actions import MOVEMENT_DELTAS, STAY
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.memory import update_memory
+from axis.systems.system_a.observation_buffer import update_observation_buffer
 from axis.systems.system_a.types import AgentState, Observation, clip_energy
 
 
@@ -13,11 +13,12 @@ class SystemATransition:
     """Transition function for System A.
 
     Satisfies TransitionInterface. Processes the ActionOutcome from
-    the framework and updates energy, memory, and termination status.
+    the framework and updates energy, observation buffer, and
+    termination status.
 
     This handles v0.1.0 phases 4-6 only:
     - Phase 4: Energy update
-    - Phase 5: Memory update
+    - Phase 5: Observation buffer update
     - Phase 6: Termination check
     """
 
@@ -44,13 +45,13 @@ class SystemATransition:
         *,
         timestep: int = 0,
     ) -> TransitionResult:
-        """Process action outcome: energy, memory, termination.
+        """Process action outcome: energy, observation buffer, termination.
 
         Args:
             agent_state: Current agent state.
             action_outcome: Result of the framework applying the action.
             observation: Post-action observation from the sensor.
-            timestep: Current timestep for memory entry.
+            timestep: Current timestep for buffer entry.
 
         Returns:
             TransitionResult with new agent state and trace data.
@@ -64,11 +65,11 @@ class SystemATransition:
             self._max_energy,
         )
 
-        # Phase 5: Memory update (post-action observation)
-        new_memory = update_memory(
-            agent_state.memory_state, observation, timestep,
+        # Phase 5: Observation buffer update (post-action observation)
+        new_buffer = update_observation_buffer(
+            agent_state.observation_buffer, observation, timestep,
         )
-        new_state = AgentState(energy=new_energy, memory_state=new_memory)
+        new_state = AgentState(energy=new_energy, observation_buffer=new_buffer)
 
         # Phase 6: Termination check
         terminated = new_energy <= 0.0
@@ -80,8 +81,8 @@ class SystemATransition:
             "energy_delta": new_energy - agent_state.energy,
             "action_cost": cost,
             "energy_gain": energy_gain,
-            "memory_entries_before": len(agent_state.memory_state.entries),
-            "memory_entries_after": len(new_memory.entries),
+            "buffer_entries_before": len(agent_state.observation_buffer.entries),
+            "buffer_entries_after": len(new_buffer.entries),
         }
 
         return TransitionResult(

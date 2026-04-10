@@ -30,7 +30,7 @@ from axis.systems.system_a.config import (
     TransitionConfig,
 )
 from axis.systems.system_a.drive import SystemAHungerDrive
-from axis.systems.system_a.memory import update_memory
+from axis.systems.system_a.observation_buffer import update_observation_buffer
 from axis.systems.system_a.policy import SystemAPolicy
 from axis.systems.system_a.sensor import SystemASensor
 from axis.systems.system_a.system import SystemA
@@ -39,8 +39,8 @@ from axis.systems.system_a.types import (
     AgentState,
     CellObservation,
     HungerDriveOutput,
-    MemoryEntry,
-    MemoryState,
+    BufferEntry,
+    ObservationBuffer,
     Observation,
     clip_energy,
 )
@@ -73,11 +73,11 @@ def system(config: SystemAConfig) -> SystemA:
 
 @pytest.fixture()
 def initial_state(config: SystemAConfig) -> AgentState:
-    """Agent state at initial energy with empty memory."""
+    """Agent state at initial energy with empty observation buffer."""
     return AgentState(
         energy=config.agent.initial_energy,
-        memory_state=MemoryState(
-            entries=(), capacity=config.agent.memory_capacity,
+        observation_buffer=ObservationBuffer(
+            entries=(), capacity=config.agent.buffer_capacity,
         ),
     )
 
@@ -138,7 +138,7 @@ class TestSystemAConfig:
     def test_energy_bounds_validation(self) -> None:
         with pytest.raises(ValueError, match="initial_energy"):
             AgentConfig(initial_energy=200.0,
-                        max_energy=100.0, memory_capacity=5)
+                        max_energy=100.0, buffer_capacity=5)
 
     def test_sub_configs_accessible(self, config: SystemAConfig) -> None:
         assert isinstance(config.agent, AgentConfig)
@@ -148,7 +148,7 @@ class TestSystemAConfig:
     def test_construct_without_world_dynamics(self) -> None:
         cfg = SystemAConfig(
             agent=AgentConfig(initial_energy=50,
-                              max_energy=100, memory_capacity=5),
+                              max_energy=100, buffer_capacity=5),
             policy=PolicyConfig(
                 selection_mode="sample", temperature=1.0,
                 stay_suppression=0.1, consume_weight=1.5,
@@ -238,13 +238,13 @@ class TestInitializeState:
         state = system.initialize_state()
         assert state.energy == 50.0
 
-    def test_empty_memory(self, system: SystemA, config_dict: dict) -> None:
+    def test_empty_observation_buffer(self, system: SystemA, config_dict: dict) -> None:
         state = system.initialize_state()
-        assert state.memory_state.entries == ()
+        assert state.observation_buffer.entries == ()
 
-    def test_memory_capacity(self, system: SystemA, config_dict: dict) -> None:
+    def test_observation_buffer_capacity(self, system: SystemA, config_dict: dict) -> None:
         state = system.initialize_state()
-        assert state.memory_state.capacity == 5
+        assert state.observation_buffer.capacity == 5
 
 
 # ===========================================================================
@@ -258,21 +258,21 @@ class TestVitality:
     def test_full_energy(self, system: SystemA, config: SystemAConfig) -> None:
         state = AgentState(
             energy=config.agent.max_energy,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         assert system.vitality(state) == 1.0
 
     def test_half_energy(self, system: SystemA, config: SystemAConfig) -> None:
         state = AgentState(
             energy=config.agent.max_energy / 2,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         assert system.vitality(state) == 0.5
 
     def test_zero_energy(self, system: SystemA) -> None:
         state = AgentState(
             energy=0.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         assert system.vitality(state) == 0.0
 
@@ -362,7 +362,7 @@ class TestDrive:
         drive = self._make_drive()
         state = AgentState(
             energy=100.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         output = drive.compute(state, self._make_observation())
         assert output.activation == 0.0
@@ -372,7 +372,7 @@ class TestDrive:
         drive = self._make_drive()
         state = AgentState(
             energy=10.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         output = drive.compute(state, self._make_observation())
         assert output.activation == pytest.approx(0.9)
@@ -383,7 +383,7 @@ class TestDrive:
         drive = self._make_drive()
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         output = drive.compute(state, self._make_observation())
         assert output.action_contributions[5] < 0  # stay
@@ -392,7 +392,7 @@ class TestDrive:
         drive = self._make_drive()
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         obs = self._make_observation(resource=0.5)
         output = drive.compute(state, obs)
@@ -405,7 +405,7 @@ class TestDrive:
         drive = self._make_drive()
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         output = drive.compute(state, self._make_observation())
         assert isinstance(output, HungerDriveOutput)
@@ -501,7 +501,7 @@ class TestTransition:
     def _make_state(self, energy: float = 50.0) -> AgentState:
         return AgentState(
             energy=energy,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
 
     def _make_observation(self) -> Observation:
@@ -577,7 +577,7 @@ class TestTransition:
         assert result.terminated is False
         assert result.termination_reason is None
 
-    def test_memory_updated(self) -> None:
+    def test_observation_buffer_updated(self) -> None:
         trans = self._make_transition()
         outcome = ActionOutcome(
             action="stay", moved=False,
@@ -585,7 +585,7 @@ class TestTransition:
         )
         result = trans.transition(
             self._make_state(), outcome, self._make_observation())
-        assert len(result.new_state.memory_state.entries) == 1
+        assert len(result.new_state.observation_buffer.entries) == 1
 
     def test_trace_data_keys(self) -> None:
         trans = self._make_transition()
@@ -694,7 +694,7 @@ class TestTransitionIntegration:
     def test_returns_transition_result(self, system: SystemA) -> None:
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         outcome = ActionOutcome(
             action="up", moved=True,
@@ -714,7 +714,7 @@ class TestTransitionIntegration:
     def test_trace_data_present(self, system: SystemA) -> None:
         state = AgentState(
             energy=50.0,
-            memory_state=MemoryState(entries=(), capacity=5),
+            observation_buffer=ObservationBuffer(entries=(), capacity=5),
         )
         outcome = ActionOutcome(
             action="stay", moved=False,
@@ -749,7 +749,7 @@ class TestImportVerification:
         from axis.systems.system_a.drive import SystemAHungerDrive  # noqa: F401
         from axis.systems.system_a.policy import SystemAPolicy  # noqa: F401
         from axis.systems.system_a.transition import SystemATransition  # noqa: F401
-        from axis.systems.system_a.memory import update_memory  # noqa: F401
+        from axis.systems.system_a.observation_buffer import update_observation_buffer  # noqa: F401
 
 
 # ===========================================================================
@@ -769,23 +769,23 @@ class TestTypes:
     def test_clip_energy_below_zero(self) -> None:
         assert clip_energy(-10.0, 100.0) == 0.0
 
-    def test_memory_state_capacity_validation(self) -> None:
+    def test_observation_buffer_capacity_validation(self) -> None:
         cell = CellObservation(traversability=1.0, resource=0.0)
         obs = Observation(
             current=cell, up=cell, down=cell, left=cell, right=cell,
         )
         entries = tuple(
-            MemoryEntry(timestep=i, observation=obs) for i in range(5)
+            BufferEntry(timestep=i, observation=obs) for i in range(5)
         )
         # Should succeed with capacity=5
-        MemoryState(entries=entries, capacity=5)
+        ObservationBuffer(entries=entries, capacity=5)
         # Should fail with capacity=3
         with pytest.raises(ValueError, match="exceeds capacity"):
-            MemoryState(entries=entries, capacity=3)
+            ObservationBuffer(entries=entries, capacity=3)
 
 
-class TestMemory:
-    """Memory update function."""
+class TestObservationBuffer:
+    """Observation buffer update function."""
 
     def _make_observation(self) -> Observation:
         cell = CellObservation(traversability=1.0, resource=0.0)
@@ -794,16 +794,16 @@ class TestMemory:
         )
 
     def test_append_entry(self) -> None:
-        mem = MemoryState(entries=(), capacity=5)
-        new_mem = update_memory(mem, self._make_observation(), timestep=0)
-        assert len(new_mem.entries) == 1
-        assert new_mem.entries[0].timestep == 0
+        mem = ObservationBuffer(entries=(), capacity=5)
+        new_buffer = update_observation_buffer(mem, self._make_observation(), timestep=0)
+        assert len(new_buffer.entries) == 1
+        assert new_buffer.entries[0].timestep == 0
 
     def test_fifo_overflow(self) -> None:
-        mem = MemoryState(entries=(), capacity=2)
-        mem = update_memory(mem, self._make_observation(), timestep=0)
-        mem = update_memory(mem, self._make_observation(), timestep=1)
-        mem = update_memory(mem, self._make_observation(), timestep=2)
+        mem = ObservationBuffer(entries=(), capacity=2)
+        mem = update_observation_buffer(mem, self._make_observation(), timestep=0)
+        mem = update_observation_buffer(mem, self._make_observation(), timestep=1)
+        mem = update_observation_buffer(mem, self._make_observation(), timestep=2)
         assert len(mem.entries) == 2
         assert mem.entries[0].timestep == 1  # oldest dropped
         assert mem.entries[1].timestep == 2

@@ -18,7 +18,7 @@ class WorldSnapshot(BaseModel):
 
     Used for replay visualization and audit trail. Contains the full
     grid state and agent position. This is the framework-level snapshot;
-    system-specific state (agent energy, memory) is in system_data.
+    system-specific state (agent energy, observation buffer) is in system_data.
     """
 
     model_config = ConfigDict(frozen=True)
