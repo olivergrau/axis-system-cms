@@ -27,6 +27,8 @@ src/axis/
     persistence.py        ExperimentRepository (file-based)
     registry.py           System registry (register_system, create_system)
 
+  plugins.py            Plugin discovery (entry points + YAML)
+
   systems/              Pluggable system implementations
     system_a/             Energy-driven forager (sensor, drive, policy, transition)
     system_aw/            Dual-drive agent with curiosity and world model
@@ -156,19 +158,72 @@ python -m pytest tests/framework/test_cli.py
 ```
 
 - **Python 3.11+** with PySide6, Pydantic v2, NumPy
-- **Testing**: pytest (72 test files across framework, SDK, systems, worlds,
+- **Testing**: pytest (1800+ tests across framework, SDK, systems, worlds,
   and visualization)
 
 ## Documentation
 
-Manuals and specs are in `docs/`:
+All documentation lives in `docs/`.
 
-- `manuals/cli-manual.md` -- CLI user guide
-- `manuals/config-manual.md` -- Configuration reference
-- `manuals/system-dev-manual.md` -- Building custom systems
-- `manuals/world-dev-manual.md` -- Building custom worlds
-- `architecture/` -- Design documents and evolution history
-- `specs/` -- Specifications
+### Conceptual Series
+
+A five-part series covering the mathematical foundations and design philosophy
+behind AXIS agents. Target audience: researchers and developers who want to
+understand the theory before (or alongside) the code.
+
+| Document | Topic |
+|---|---|
+| `concepts/00-axis-vision.md` | AXIS vision statement |
+| `concepts/01-axis-cms-vision.md` | Biological inspiration and design principles |
+| `concepts/02-math-as-modeling.md` | Why mathematical formalism; alternatives and trade-offs |
+| `concepts/03-agent-framework.md` | Generic 8-tuple agent framework ($\mathcal{X}, \mathcal{U}, \mathcal{M}, \mathcal{A}, \mathcal{D}, F, \Gamma, \pi$) |
+| `concepts/04-system-a.md` | System A: hunger drive, modulation, softmax policy, energy dynamics |
+| `concepts/05-system-aw.md` | System A+W: curiosity drive, world model, drive arbitration, reduction property |
+
+### Tutorials
+
+Step-by-step guides that build a complete system or world from scratch,
+with tests alongside each chapter.
+
+| Tutorial | What you build |
+|---|---|
+| `tutorials/building-a-system.md` | System A from scratch (16 chapters) |
+| `tutorials/building-a-world.md` | Grid 2D world from scratch (12 chapters) |
+
+### Manuals
+
+Reference documentation for using and extending the framework.
+
+| Manual | Content |
+|---|---|
+| `manuals/axis-overview.md` | Framework overview and architecture |
+| `manuals/cli-manual.md` | CLI user guide |
+| `manuals/config-manual.md` | Configuration reference |
+| `manuals/visualization-manual.md` | Interactive viewer and overlays |
+| `manuals/system-dev-manual.md` | Building custom systems |
+| `manuals/system-aw-manual.md` | System A+W configuration and behavior |
+| `manuals/world-dev-manual.md` | Building custom worlds |
+
+### Specifications and Design
+
+| Path | Content |
+|---|---|
+| `system-design/system-a/` | System A formal specification and worked examples |
+| `system-design/system-a+w/` | System A+W formal specification and worked examples |
+| `architecture/` | Architecture documents and evolution history |
+| `specs/` | Protocol and contract specifications |
+
+## Plugin System
+
+AXIS discovers plugins through two mechanisms:
+
+1. **Setuptools entry points** (`axis.plugins` group) -- for installed packages.
+   `pip install axis-system-foo` automatically registers the plugin.
+2. **`axis-plugins.yaml`** -- for local development and unpackaged plugins.
+
+Both sources call each plugin's `register()` function, which populates the
+system, world, and visualization registries. Idempotency guards prevent
+conflicts when both sources list the same plugin.
 
 ## License
 
