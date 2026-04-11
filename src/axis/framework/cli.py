@@ -461,6 +461,9 @@ def _cmd_visualize(args: argparse.Namespace, repo) -> None:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns exit code (0=success, 1=error)."""
     from axis.framework.persistence import ExperimentRepository
+    from axis.plugins import discover_plugins
+
+    discover_plugins()
 
     parser = build_parser()
     args = parser.parse_args(argv)

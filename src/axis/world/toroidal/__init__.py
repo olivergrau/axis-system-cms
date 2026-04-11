@@ -17,17 +17,22 @@ __all__ = [
     "create_toroidal_world",
 ]
 
-# --- Registration ---
-from axis.world.registry import register_world  # noqa: E402
 
+def register() -> None:
+    """Register toroidal: world factory + visualization adapter."""
+    from axis.world.registry import register_world, registered_world_types
 
-def _toroidal_factory(
-    config: object,
-    agent_position: object,
-    seed: object,
-) -> ToroidalWorld:
-    # type: ignore[arg-type]
-    return create_toroidal_world(config, agent_position, seed=seed)
+    if "toroidal" not in registered_world_types():
 
+        def _factory(config, agent_position, seed):
+            return create_toroidal_world(config, agent_position, seed=seed)
 
-register_world("toroidal", _toroidal_factory)  # type: ignore[arg-type]
+        register_world("toroidal", _factory)
+
+    from axis.visualization.registry import registered_world_visualizations
+
+    if "toroidal" not in registered_world_visualizations():
+        try:
+            import axis.world.toroidal.visualization  # noqa: F401
+        except ImportError:
+            pass

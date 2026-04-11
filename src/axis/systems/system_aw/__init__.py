@@ -7,3 +7,23 @@ __all__ = [
     "SystemAW",
     "SystemAWConfig",
 ]
+
+
+def register() -> None:
+    """Register system_aw: system factory + visualization adapter."""
+    from axis.framework.registry import register_system, registered_system_types
+
+    if "system_aw" not in registered_system_types():
+
+        def _factory(cfg: dict) -> SystemAW:
+            return SystemAW(SystemAWConfig(**cfg))
+
+        register_system("system_aw", _factory)
+
+    from axis.visualization.registry import registered_system_visualizations
+
+    if "system_aw" not in registered_system_visualizations():
+        try:
+            import axis.systems.system_aw.visualization  # noqa: F401
+        except ImportError:
+            pass

@@ -15,10 +15,6 @@ from axis.world.registry import (
     registered_world_types,
 )
 
-# Import sub-packages to trigger world type registration
-import axis.world.signal_landscape  # noqa: F401
-import axis.world.toroidal  # noqa: F401
-
 __all__ = [
     "CellType",
     "RegenerationMode",

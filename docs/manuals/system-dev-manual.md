@@ -5,6 +5,10 @@
 > [Configuration Reference](config-manual.md) |
 > [Visualization Manual](visualization-manual.md) |
 > [World Developer Manual](world-dev-manual.md)
+>
+> **Tutorials:**
+> [Building a System](../tutorials/building-a-system.md) |
+> [Building a World](../tutorials/building-a-world.md)
 
 ## Overview
 
@@ -564,70 +568,111 @@ __all__ = ["SystemB", "SystemBConfig"]
 
 ## 5. Registering your system
 
-The framework discovers systems through a central registry. You need
-one call to `register_system()` with a factory function.
+The framework discovers systems through a **plugin system**. Each
+system package provides a `register()` function that the framework
+calls during startup. Two discovery mechanisms exist:
 
-### 5.1 The factory function
+1. **Setuptools entry points** (`axis.plugins` group) -- for installed
+   packages. Adding an entry point makes `pip install my-system` sufficient.
+2. **`axis-plugins.yaml`** -- for local development and unpackaged plugins.
 
-A factory takes a `dict[str, Any]` (the raw `system` dict from the
-config file) and returns a `SystemInterface` instance:
+Both mechanisms call the same `register()` function. Idempotency
+guards prevent double-registration if both sources list the same plugin.
 
-```python
-from typing import Any
-from axis.sdk.interfaces import SystemInterface
+### 5.1 The `register()` function
 
-
-def _system_b_factory(system_config: dict[str, Any]) -> SystemInterface:
-    from axis.systems.system_b import SystemB, SystemBConfig
-    config = SystemBConfig(**system_config)
-    return SystemB(config)
-```
-
-The factory is responsible for parsing the opaque dict into your
-typed config. Use Pydantic's `**system_config` unpacking -- it gives
-you validation, type coercion, and clear error messages for free.
-
-### 5.2 Registering
-
-There are two approaches:
-
-**Option A: Auto-register on import** (recommended for built-in
-systems). Add this to your package's `__init__.py` or to
-`src/axis/framework/registry.py`:
+Add a `register()` function to your package's `__init__.py`. It should
+register the system factory and, optionally, a visualization adapter:
 
 ```python
-from axis.framework.registry import register_system
+# src/axis/systems/system_b/__init__.py
+from axis.systems.system_b.config import SystemBConfig
+from axis.systems.system_b.system import SystemB
 
-register_system("system_b", _system_b_factory)
+__all__ = ["SystemB", "SystemBConfig"]
+
+
+def register() -> None:
+    """Register system_b: system factory + visualization adapter."""
+    from axis.framework.registry import register_system, registered_system_types
+
+    if "system_b" not in registered_system_types():
+
+        def _factory(cfg: dict) -> SystemB:
+            return SystemB(SystemBConfig(**cfg))
+
+        register_system("system_b", _factory)
+
+    # Optional: register visualization adapter
+    from axis.visualization.registry import registered_system_visualizations
+
+    if "system_b" not in registered_system_visualizations():
+        try:
+            import axis.systems.system_b.visualization  # noqa: F401
+        except ImportError:
+            pass
 ```
 
-This is how System A registers itself -- see
-`src/axis/framework/registry.py:67-68`.
+**Key points:**
+- The idempotency guard (`if "system_b" not in registered_system_types()`)
+  prevents `ValueError` if both entry points and YAML trigger registration.
+- The factory function takes a `dict[str, Any]` and returns a
+  `SystemInterface` instance. Use Pydantic's `**cfg` unpacking for
+  validation.
+- Visualization adapter registration is optional and guarded by
+  `try/except ImportError` so the system works without PySide6 installed.
 
-**Option B: Register in test fixtures or entry-point scripts**
-(recommended for experimental systems or external packages):
+### 5.2 Registering via entry points (recommended for packages)
 
-```python
-import pytest
-from axis.framework.registry import register_system, _SYSTEM_REGISTRY
+Add an entry point in your `pyproject.toml`:
 
-@pytest.fixture(autouse=True)
-def _register_system_b():
-    register_system("system_b", _system_b_factory)
-    yield
-    _SYSTEM_REGISTRY.pop("system_b", None)  # cleanup
+```toml
+[project.entry-points."axis.plugins"]
+system_b = "axis.systems.system_b"
 ```
 
-### 5.3 What happens at runtime
+After `pip install -e .` (or `pip install my-package`), the framework
+automatically discovers and calls `axis.systems.system_b.register()`.
+
+This is the recommended approach for distributable packages. External
+systems installed via pip are automatically available without any
+configuration file edits.
+
+### 5.3 Registering via `axis-plugins.yaml` (for local development)
+
+For systems under local development that aren't yet packaged, add
+the module path to `axis-plugins.yaml` in the project root:
+
+```yaml
+plugins:
+  - axis.systems.system_b
+```
+
+The framework imports each listed module and calls its `register()`
+function.
+
+### 5.4 What happens at runtime
 
 ```
+pip install → entry point metadata registered
+     │
+     ▼
+discover_plugins()
+  1. Scan entry points (axis.plugins group)
+  2. Read axis-plugins.yaml
+  3. For each plugin: import module → call register()
+     │
+     ▼
+register() calls register_system("system_b", _factory)
+     │
+     ▼
 config YAML: system_type: "system_b"
      │
      ▼
 registry.get_system_factory("system_b")
      │
      ▼
-_system_b_factory({"agent": {...}, "policy": {...}, ...})
+_factory({"agent": {...}, "policy": {...}, ...})
      │
      ▼
 SystemBConfig(**raw_dict)  →  SystemB(config)
@@ -1051,7 +1096,12 @@ def test_system_b_protocol():
 
 5. **Write a factory function** -- `dict[str, Any] → SystemInterface`.
 
-6. **Register your system** -- call `register_system("my_system", factory)`.
+6. **Add a `register()` function** to your package's `__init__.py`
+   with idempotency guards.
+
+7. **Register your plugin** -- add an entry point to `pyproject.toml`
+   (for packages) or add the module path to `axis-plugins.yaml`
+   (for local development).
 
 7. **Create a config file** -- YAML or JSON with `system_type: "my_system"`.
 
@@ -1076,7 +1126,10 @@ from axis.sdk.actions import BASE_ACTIONS, MOVEMENT_DELTAS
 # Use world.extract_resource() instead of direct Cell/CellType manipulation
 
 # Framework registration
-from axis.framework.registry import register_system
+from axis.framework.registry import register_system, registered_system_types
+
+# Plugin discovery (called automatically by CLI and visualizer)
+from axis.plugins import discover_plugins
 
 # Framework execution (for integration tests)
 from axis.framework.runner import setup_episode, run_episode

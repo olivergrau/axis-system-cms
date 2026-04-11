@@ -101,32 +101,7 @@ def launch_visualization(
 
 
 def _import_adapter_modules() -> None:
-    """Import adapter visualization modules to trigger registration.
+    """Legacy adapter import -- delegates to discover_plugins()."""
+    from axis.plugins import discover_plugins
 
-    Each module calls register_world_visualization() or
-    register_system_visualization() at import time.
-    """
-    try:
-        import axis.world.grid_2d.visualization  # noqa: F401
-    except ImportError:
-        pass
-    try:
-        import axis.world.toroidal.visualization  # noqa: F401
-    except ImportError:
-        pass
-    try:
-        import axis.world.signal_landscape.visualization  # noqa: F401
-    except ImportError:
-        pass
-    try:
-        import axis.systems.system_a.visualization  # noqa: F401
-    except ImportError:
-        pass
-    try:
-        import axis.systems.system_aw.visualization  # noqa: F401
-    except ImportError:
-        pass
-    try:
-        import axis.systems.system_b.visualization  # noqa: F401
-    except ImportError:
-        pass
+    discover_plugins()

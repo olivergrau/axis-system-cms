@@ -1,0 +1,13 @@
+# axis-plugins.yaml -- Plugin discovery configuration
+#
+# Each entry names a Python module that exposes a register() function.
+# discover_plugins() imports each module and calls its register(),
+# which registers system/world factories and visualization adapters.
+
+plugins:
+  - axis.systems.system_a
+  - axis.systems.system_b
+  - axis.systems.system_aw
+  - axis.world.grid_2d
+  - axis.world.toroidal
+  - axis.world.signal_landscape

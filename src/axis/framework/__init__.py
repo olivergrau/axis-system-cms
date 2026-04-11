@@ -36,6 +36,7 @@ from axis.framework.persistence import (
 )
 from axis.framework.registry import (
     SystemFactory,
+    _clear_system_registry,
     create_system,
     get_system_factory,
     register_system,
@@ -67,6 +68,7 @@ __all__ = [
     "set_config_value",
     # WP-3.1: System registry
     "SystemFactory",
+    "_clear_system_registry",
     "create_system",
     "get_system_factory",
     "register_system",

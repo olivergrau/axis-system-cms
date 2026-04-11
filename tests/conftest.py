@@ -1,6 +1,10 @@
 """Root conftest -- shared fixtures for all test suites."""
 
-from tests.fixtures.config_fixtures import (  # noqa: F401
+from axis.plugins import discover_plugins
+
+discover_plugins()
+
+from tests.fixtures.config_fixtures import (  # noqa: E402, F401
     experiment_config,
     experiment_config_dict,
     framework_config,

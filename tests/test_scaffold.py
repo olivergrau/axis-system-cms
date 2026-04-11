@@ -59,6 +59,7 @@ def test_axis_visualization_importable() -> None:
         "set_config_value",
         # WP-3.1: System registry
         "SystemFactory",
+        "_clear_system_registry",
         "create_system",
         "get_system_factory",
         "register_system",

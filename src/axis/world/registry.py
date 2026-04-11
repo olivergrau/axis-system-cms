@@ -47,6 +47,11 @@ def registered_world_types() -> tuple[str, ...]:
     return tuple(sorted(_WORLD_REGISTRY))
 
 
+def _clear_world_registry() -> None:
+    """Clear the world registry. Test-only helper."""
+    _WORLD_REGISTRY.clear()
+
+
 def create_world_from_config(
     config: BaseWorldConfig,
     agent_position: Position,
@@ -58,18 +63,3 @@ def create_world_from_config(
     """
     factory = get_world_factory(config.world_type)
     return factory(config, agent_position, seed)
-
-
-def _grid_2d_factory(
-    config: BaseWorldConfig,
-    agent_position: Position,
-    seed: int | None,
-) -> MutableWorldProtocol:
-    """Factory for the built-in 2D grid world."""
-    from axis.world.grid_2d.factory import create_world
-
-    return create_world(config, agent_position, seed=seed)
-
-
-# Auto-register built-in world type
-register_world("grid_2d", _grid_2d_factory)

@@ -45,6 +45,11 @@ def registered_system_types() -> tuple[str, ...]:
     return tuple(sorted(_SYSTEM_REGISTRY))
 
 
+def _clear_system_registry() -> None:
+    """Clear the system registry. Test-only helper."""
+    _SYSTEM_REGISTRY.clear()
+
+
 def create_system(
     system_type: str, system_config: dict[str, Any]
 ) -> SystemInterface:
@@ -54,33 +59,3 @@ def create_system(
     """
     factory = get_system_factory(system_type)
     return factory(system_config)
-
-
-def _system_a_factory(system_config: dict[str, Any]) -> SystemInterface:
-    """Factory for System A."""
-    from axis.systems.system_a import SystemA, SystemAConfig
-
-    config = SystemAConfig(**system_config)
-    return SystemA(config)
-
-
-def _system_b_factory(system_config: dict[str, Any]) -> SystemInterface:
-    """Factory for System B."""
-    from axis.systems.system_b import SystemB, SystemBConfig
-
-    config = SystemBConfig(**system_config)
-    return SystemB(config)
-
-
-def _system_aw_factory(system_config: dict[str, Any]) -> SystemInterface:
-    """Factory for System A+W."""
-    from axis.systems.system_aw import SystemAW, SystemAWConfig
-
-    config = SystemAWConfig(**system_config)
-    return SystemAW(config)
-
-
-# Auto-register built-in systems
-register_system("system_a", _system_a_factory)
-register_system("system_b", _system_b_factory)
-register_system("system_aw", _system_aw_factory)

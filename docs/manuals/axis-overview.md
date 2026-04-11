@@ -333,8 +333,15 @@ panels, grid) via Qt's scale factor mechanism.
 
 ## Extensibility
 
-AXIS is built for extension at every layer. The plugin system uses
-registry-based factories with protocol validation:
+AXIS is built for extension at every layer. The plugin system discovers
+extensions through two mechanisms:
+
+1. **Setuptools entry points** -- `pip install axis-system-foo` automatically
+   registers the package as a plugin. No config file edits needed.
+2. **`axis-plugins.yaml`** -- lists plugin modules for local development
+   and unpackaged systems.
+
+Both sources feed registry-based factories with protocol validation:
 
 | Extension Point | Register With | Protocol |
 |-----------------|---------------|----------|
@@ -344,12 +351,28 @@ registry-based factories with protocol validation:
 | World visualization | ``register_world_visualization()`` | ``WorldVisualizationAdapter`` |
 | Custom actions | ``action_handlers()`` | Handler function |
 
-No framework source modifications required for any extension. Protocol
+Each plugin package provides a `register()` function in its `__init__.py`.
+The framework calls this function during startup to populate all registries.
+Idempotency guards prevent conflicts when both discovery sources list the
+same plugin.
+
+### Packaging an External Plugin
+
+```toml
+# In your package's pyproject.toml:
+[project.entry-points."axis.plugins"]
+my_system = "my_package.my_system"
+```
+
+After `pip install`, the system is immediately available to the CLI
+and visualizer. No framework source modifications required. Protocol
 satisfaction is checked at runtime.
 
 Developer manuals are included for both system development and world
 development, covering the full development cycle from protocol
 implementation through testing to visualization adapter integration.
+Step-by-step tutorials walk through building System A and the Grid 2D
+world from scratch.
 
 ---
 

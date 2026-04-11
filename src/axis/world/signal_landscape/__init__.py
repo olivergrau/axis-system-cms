@@ -21,18 +21,22 @@ __all__ = [
     "create_signal_landscape",
 ]
 
-# --- Registration ---
-from axis.world.registry import register_world  # noqa: E402
 
+def register() -> None:
+    """Register signal_landscape: world factory + visualization adapter."""
+    from axis.world.registry import register_world, registered_world_types
 
-def _signal_landscape_factory(
-    config: object,
-    agent_position: object,
-    seed: object,
-) -> SignalLandscapeWorld:
-    # type: ignore[arg-type]
-    return create_signal_landscape(config, agent_position, seed=seed)
+    if "signal_landscape" not in registered_world_types():
 
+        def _factory(config, agent_position, seed):
+            return create_signal_landscape(config, agent_position, seed=seed)
 
-# type: ignore[arg-type]
-register_world("signal_landscape", _signal_landscape_factory)
+        register_world("signal_landscape", _factory)
+
+    from axis.visualization.registry import registered_world_visualizations
+
+    if "signal_landscape" not in registered_world_visualizations():
+        try:
+            import axis.world.signal_landscape.visualization  # noqa: F401
+        except ImportError:
+            pass

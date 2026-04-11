@@ -14,3 +14,23 @@ __all__ = [
     "create_world",
     "apply_regeneration",
 ]
+
+
+def register() -> None:
+    """Register grid_2d: world factory + visualization adapter."""
+    from axis.world.registry import register_world, registered_world_types
+
+    if "grid_2d" not in registered_world_types():
+
+        def _factory(config, agent_position, seed):
+            return create_world(config, agent_position, seed=seed)
+
+        register_world("grid_2d", _factory)
+
+    from axis.visualization.registry import registered_world_visualizations
+
+    if "grid_2d" not in registered_world_visualizations():
+        try:
+            import axis.world.grid_2d.visualization  # noqa: F401
+        except ImportError:
+            pass

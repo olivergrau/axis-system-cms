@@ -27,8 +27,8 @@ def _default_config() -> dict[str, Any]:
 # ── Auto-registration ───────────────────────────────────────────────
 
 
-def test_system_a_auto_registered() -> None:
-    """system_a is registered on import."""
+def test_system_a_registered_after_discovery() -> None:
+    """system_a is registered after discover_plugins() runs."""
     assert "system_a" in registered_system_types()
 
 

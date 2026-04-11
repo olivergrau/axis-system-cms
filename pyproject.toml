@@ -20,6 +20,14 @@ dev = [
     "pytest-cov>=4.0,<5.0",
 ]
 
+[project.entry-points."axis.plugins"]
+system_a = "axis.systems.system_a"
+system_b = "axis.systems.system_b"
+system_aw = "axis.systems.system_aw"
+grid_2d = "axis.world.grid_2d"
+toroidal = "axis.world.toroidal"
+signal_landscape = "axis.world.signal_landscape"
+
 [project.scripts]
 axis = "axis.framework.cli:main"
 
