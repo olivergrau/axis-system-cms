@@ -5,6 +5,12 @@ a protocol-based architecture where **systems** (agent logic) and **worlds**
 (environment dynamics) are pluggable components, composed via registries and
 executed through a unified CLI.
 
+## Project Method
+
+AXIS was developed spec-first and implemented with AI assistance.
+
+The repository should be read as the result of an engineering process centered on explicit specifications, formalized concepts, protocol contracts, and testable behavior. AI tools were used as implementation accelerators, not as substitutes for architecture or conceptual ownership.
+
 ## Architecture
 
 ```
@@ -46,6 +52,16 @@ src/axis/
     launch.py             Viewer entry point
     ui/                   Qt-based UI components
 ```
+
+## Engineering Principles
+
+The framework is built around a small number of explicit principles:
+
+- protocol-based extensibility over inheritance-heavy coupling
+- deterministic execution and replayability by default
+- separation of system logic, world dynamics, and framework orchestration
+- inspectable experiment artifacts and structured persistence
+- visualization as an analysis tool, not just a demo layer
 
 ## CLI
 
@@ -213,6 +229,8 @@ Reference documentation for using and extending the framework.
 | `architecture/` | Architecture documents and evolution history |
 | `specs/` | Protocol and contract specifications |
 
+The documents in `docs/system-design/`, `docs/specs/`, and `docs/architecture/` are not secondary documentation. They are part of the development process and define the conceptual and technical contract the implementation is expected to follow.
+
 ## Plugin System
 
 AXIS discovers plugins through two mechanisms:
@@ -224,6 +242,14 @@ AXIS discovers plugins through two mechanisms:
 Both sources call each plugin's `register()` function, which populates the
 system, world, and visualization registries. Idempotency guards prevent
 conflicts when both sources list the same plugin.
+
+## Development Approach
+
+AXIS was developed in a spec-first workflow with AI-assisted implementation.
+
+Core concepts, architecture boundaries, protocol contracts, and system behavior were specified before implementation. AI coding tools were used to accelerate implementation and iteration, while design consistency, mathematical intent, and framework structure remained under explicit human guidance and review.
+
+The repository is intended to be evaluated as an engineering artifact: by its coherence, extensibility, inspectability, and testability.
 
 ## License
 
