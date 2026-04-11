@@ -255,6 +255,33 @@ def sample_system_a_data() -> dict[str, Any]:
             "energy_gain": 0.50,
             "buffer_entries_before": 3,
             "buffer_entries_after": 4,
+            "buffer_capacity": 5,
+            "buffer_snapshot": [
+                {
+                    "timestep": 2, "current_res": 0.0, "up_res": 0.0,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.0,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 3, "current_res": 0.3, "up_res": 0.0,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.5,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 4, "current_res": 0.5, "up_res": 0.3,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.8,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 5, "current_res": 0.5, "up_res": 0.3,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.8,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+            ],
         },
     }
 

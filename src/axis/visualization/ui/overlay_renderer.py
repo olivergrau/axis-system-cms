@@ -117,7 +117,12 @@ class OverlayRenderer:
     def _draw_bar_chart(
         self, painter: QPainter, item: OverlayItem, layout: CellLayout,
     ) -> None:
-        """Draw mini horizontal bars within cell bounds."""
+        """Draw horizontal bars with labels within cell bounds.
+
+        In the zoomed view (cell width >= 100px) full action names are
+        shown to the left of bars.  In the small grid view, single-letter
+        labels are drawn inside each bar for readability.
+        """
         bbox = layout.cell_bounding_boxes.get(item.grid_position)
         if bbox is None:
             return
@@ -130,22 +135,44 @@ class OverlayRenderer:
         if n == 0:
             return
 
+        # Adaptive sizing: zoomed view has room for full labels on the left
+        zoomed = bw >= 100
+        font_size = 9 if zoomed else 7
+        label_area = 0.4 if zoomed else 0.05
+
         bar_h = bh * 0.7 / n
-        max_bar_w = bw * 0.6
+        bar_x = bx + bw * label_area
+        max_bar_w = bw * (1.0 - label_area - 0.05)
         y_start = by + bh * 0.15
 
-        painter.setFont(QFont("monospace", 7))
+        painter.setFont(QFont("monospace", font_size))
+        bar_color = QColor(100, 180, 255, 150)
         for i, val in enumerate(values):
             y = y_start + i * bar_h
             w = max(1.0, abs(val) * max_bar_w)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(100, 180, 255, 150))
-            painter.drawRect(QRectF(bx + bw * 0.3, y, w, bar_h * 0.8))
+            painter.setBrush(bar_color)
+            painter.drawRect(QRectF(bar_x, y, w, bar_h * 0.8))
             if i < len(labels):
-                painter.setPen(QColor(220, 220, 220))
-                painter.drawText(
-                    QPointF(bx + 2, y + bar_h * 0.7), labels[i][:1],
-                )
+                if zoomed:
+                    # Dark backdrop behind label for contrast
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    painter.setBrush(QColor(0, 0, 0, 140))
+                    painter.drawRect(QRectF(
+                        bx, y, bw * label_area - 2, bar_h * 0.8,
+                    ))
+                    # Full label on the backdrop
+                    painter.setPen(QColor(255, 255, 255))
+                    painter.drawText(
+                        QPointF(bx + 3, y + bar_h * 0.7), labels[i],
+                    )
+                else:
+                    # Single letter inside the bar for contrast
+                    painter.setPen(QColor(255, 255, 255))
+                    painter.drawText(
+                        QPointF(bar_x + 2, y + bar_h * 0.7),
+                        labels[i][:1].upper(),
+                    )
 
     def _draw_diamond_marker(
         self, painter: QPainter, item: OverlayItem, layout: CellLayout,
@@ -282,6 +309,40 @@ class OverlayRenderer:
         painter.setPen(QPen(color, 2.0))
         painter.drawLine(QPointF(cx, cy), QPointF(ex, ey))
 
+    def _draw_saturation_ring(
+        self, painter: QPainter, item: OverlayItem, layout: CellLayout,
+    ) -> None:
+        """Draw a colored ring encoding observation buffer saturation.
+
+        Color interpolates blue (low resource) to green (high resource).
+        Line width scales with buffer fill ratio.
+        """
+        center = layout.cell_centers.get(item.grid_position)
+        bbox = layout.cell_bounding_boxes.get(item.grid_position)
+        if center is None or bbox is None:
+            return
+
+        saturation = item.data.get("saturation", 0.0)
+        fill_ratio = item.data.get("fill_ratio", 0.0)
+
+        # Ring radius: slightly larger than other overlays
+        cell_w, cell_h = bbox[2], bbox[3]
+        r = min(cell_w, cell_h) * 0.38
+
+        # Color: blue (low sat) → green (high sat)
+        red = int(80 * (1 - saturation))
+        green = int(80 + 175 * saturation)
+        blue = int(255 * (1 - saturation))
+        alpha = int(120 + 135 * fill_ratio)
+        color = QColor(red, green, blue, min(alpha, 255))
+
+        # Width: thicker when buffer is fuller
+        width = 1.0 + 2.5 * fill_ratio
+
+        painter.setPen(QPen(color, width))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(QPointF(*center), r, r)
+
     # -- Dispatch table -----------------------------------------------------
 
     _RENDERERS: dict = {
@@ -295,4 +356,5 @@ class OverlayRenderer:
         "radius_circle": _draw_radius_circle,
         "heatmap_cell": _draw_heatmap_cell,
         "novelty_arrow": _draw_novelty_arrow,
+        "saturation_ring": _draw_saturation_ring,
     }

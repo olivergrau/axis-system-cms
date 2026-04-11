@@ -3,6 +3,7 @@
 > **Related manuals:**
 > [CLI User Manual](cli-manual.md) |
 > [Configuration Reference](config-manual.md) |
+> [Visualization Manual](visualization-manual.md) |
 > [World Developer Manual](world-dev-manual.md)
 
 ## Overview

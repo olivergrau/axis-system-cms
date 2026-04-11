@@ -28,6 +28,7 @@ def launch_visualization(
     *,
     start_step: int | None = None,
     start_phase: int | None = None,
+    scale: float = 1.0,
 ) -> int:
     """Load episode, resolve adapters, and launch the visualization viewer.
 
@@ -38,6 +39,7 @@ def launch_visualization(
         episode_index: Episode index within the run.
         start_step: Optional initial step (0-based).
         start_phase: Optional initial phase index.
+        scale: UI scale factor (default 1.0).
 
     Returns:
         Qt application exit code.
@@ -77,8 +79,12 @@ def launch_visualization(
         )
 
     # 7. Ensure QApplication exists before creating any widgets
+    import os
     import sys
     from PySide6.QtWidgets import QApplication
+
+    if scale != 1.0:
+        os.environ["QT_SCALE_FACTOR"] = str(scale)
 
     app = QApplication.instance() or QApplication(sys.argv)
 

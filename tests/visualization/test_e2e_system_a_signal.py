@@ -55,7 +55,7 @@ class TestSystemASignalLandscape:
     def test_five_analysis_sections(self, system_a_signal) -> None:
         handle, wadapter, sadapter = system_a_signal
         frame = build_frame(handle, wadapter, sadapter)
-        assert len(frame.analysis_sections) == 5
+        assert len(frame.analysis_sections) == 6
 
     def test_boundary_phases_build(self, system_a_signal) -> None:
         handle, wadapter, sadapter = system_a_signal

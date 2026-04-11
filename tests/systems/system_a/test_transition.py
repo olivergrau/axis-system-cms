@@ -182,6 +182,24 @@ class TestTransition:
         assert "action_cost" in result.trace_data
         assert "energy_gain" in result.trace_data
 
+    def test_trace_data_contains_buffer_snapshot(self) -> None:
+        trans = _make_transition()
+        result = trans.transition(
+            _make_state(), _make_outcome(), _make_observation(),
+        )
+        assert "buffer_snapshot" in result.trace_data
+        assert "buffer_capacity" in result.trace_data
+        snapshot = result.trace_data["buffer_snapshot"]
+        assert isinstance(snapshot, list)
+        assert len(snapshot) == result.trace_data["buffer_entries_after"]
+        # Each entry has the expected keys
+        if snapshot:
+            entry = snapshot[0]
+            assert "timestep" in entry
+            assert "current_res" in entry
+            assert "up_res" in entry
+            assert "current_trav" in entry
+
     def test_new_state_is_agent_state(self) -> None:
         trans = _make_transition()
         result = trans.transition(

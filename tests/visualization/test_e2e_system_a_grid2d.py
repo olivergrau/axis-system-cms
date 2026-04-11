@@ -82,7 +82,7 @@ class TestSystemAGrid2DFrameBuilding:
     def test_five_analysis_sections(self, system_a_grid2d) -> None:
         _, _, handle, wadapter, sadapter = system_a_grid2d
         frame = build_frame(handle, wadapter, sadapter)
-        assert len(frame.analysis_sections) == 5
+        assert len(frame.analysis_sections) == 6
 
     def test_energy_format(self, system_a_grid2d) -> None:
         _, _, handle, wadapter, sadapter = system_a_grid2d

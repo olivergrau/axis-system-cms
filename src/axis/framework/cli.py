@@ -144,6 +144,10 @@ examples:
     viz_parser.add_argument(
         "--phase", type=int, default=None, help="Initial phase index",
     )
+    viz_parser.add_argument(
+        "--scale", type=float, default=1.0,
+        help="UI scale factor (default: 1.0). E.g. 1.5 for a larger window.",
+    )
 
     return parser
 
@@ -445,6 +449,7 @@ def _cmd_visualize(args: argparse.Namespace, repo) -> None:
     sys.exit(launch_visualization(
         repo, args.experiment, args.run, episode_index,
         start_step=args.step, start_phase=args.phase,
+        scale=args.scale,
     ))
 
 

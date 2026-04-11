@@ -193,25 +193,27 @@ class TestSystemAAdapterIntegration:
         assert len(phases) == 3
         assert phases[1] == "AFTER_REGEN"
 
-    def test_five_analysis_sections(self) -> None:
+    def test_six_analysis_sections(self) -> None:
         sections = self._adapter().build_step_analysis(self._step())
-        assert len(sections) == 5
+        assert len(sections) == 6
 
     def test_section_titles(self) -> None:
         sections = self._adapter().build_step_analysis(self._step())
         titles = [s.title for s in sections]
-        assert titles == [
-            "Step Overview", "Observation", "Drive Output",
-            "Decision Pipeline", "Outcome",
-        ]
+        assert titles[0] == "Step Overview"
+        assert titles[1] == "Observation"
+        assert titles[2].startswith("Observation Buffer")
+        assert titles[3] == "Drive Output"
+        assert titles[4] == "Decision Pipeline"
+        assert titles[5] == "Outcome"
 
-    def test_three_overlay_types(self) -> None:
+    def test_four_overlay_types(self) -> None:
         overlays = self._adapter().build_overlays(self._step())
-        assert len(overlays) == 3
+        assert len(overlays) == 4
         types = {o.overlay_type for o in overlays}
         assert types == {
             "action_preference", "drive_contribution",
-            "consumption_opportunity",
+            "consumption_opportunity", "buffer_saturation",
         }
 
     def test_action_preference_items(self) -> None:

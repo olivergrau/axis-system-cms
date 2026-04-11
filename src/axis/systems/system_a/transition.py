@@ -83,6 +83,23 @@ class SystemATransition:
             "energy_gain": energy_gain,
             "buffer_entries_before": len(agent_state.observation_buffer.entries),
             "buffer_entries_after": len(new_buffer.entries),
+            "buffer_capacity": new_buffer.capacity,
+            "buffer_snapshot": [
+                {
+                    "timestep": entry.timestep,
+                    "current_res": entry.observation.current.resource,
+                    "up_res": entry.observation.up.resource,
+                    "down_res": entry.observation.down.resource,
+                    "left_res": entry.observation.left.resource,
+                    "right_res": entry.observation.right.resource,
+                    "current_trav": entry.observation.current.traversability,
+                    "up_trav": entry.observation.up.traversability,
+                    "down_trav": entry.observation.down.traversability,
+                    "left_trav": entry.observation.left.traversability,
+                    "right_trav": entry.observation.right.traversability,
+                }
+                for entry in new_buffer.entries
+            ],
         }
 
         return TransitionResult(

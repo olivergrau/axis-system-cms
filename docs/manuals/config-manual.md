@@ -2,6 +2,7 @@
 
 > **Related manuals:**
 > [CLI User Manual](cli-manual.md) |
+> [Visualization Manual](visualization-manual.md) |
 > [System Developer Manual](system-dev-manual.md) |
 > [World Developer Manual](world-dev-manual.md)
 

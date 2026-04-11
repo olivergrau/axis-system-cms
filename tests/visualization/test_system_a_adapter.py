@@ -58,6 +58,33 @@ def _sample_system_data() -> dict[str, Any]:
             "energy_gain": 0.50,
             "buffer_entries_before": 3,
             "buffer_entries_after": 4,
+            "buffer_capacity": 5,
+            "buffer_snapshot": [
+                {
+                    "timestep": 2, "current_res": 0.0, "up_res": 0.0,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.0,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 3, "current_res": 0.3, "up_res": 0.0,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.5,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 4, "current_res": 0.5, "up_res": 0.3,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.8,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 5, "current_res": 0.5, "up_res": 0.3,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.8,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+            ],
         },
     }
 
@@ -116,7 +143,7 @@ class TestAnalysisSections:
 
     def test_build_step_analysis_section_count(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        assert len(sections) == 5
+        assert len(sections) == 6
 
     def test_step_overview_section(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
@@ -145,9 +172,57 @@ class TestAnalysisSections:
         assert "traversable" in by_label["Up"]
         assert "blocked" in by_label["Down"]
 
-    def test_drive_output_section(self) -> None:
+    def test_observation_buffer_section(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
         s = sections[2]
+        assert s.title == "Observation Buffer (4/5)"
+        # 4 buffer entries → 4 rows
+        assert len(s.rows) == 4
+
+    def test_observation_buffer_row_labels(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        s = sections[2]
+        labels = [r.label for r in s.rows]
+        # Most recent first
+        assert labels[0] == "t=5"
+        assert labels[-1] == "t=2"
+
+    def test_observation_buffer_row_values(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        s = sections[2]
+        # Most recent entry (t=5) has resource values
+        assert "res=" in s.rows[0].value
+        assert "0.50" in s.rows[0].value  # current_res
+
+    def test_observation_buffer_traversability_sub_rows(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        s = sections[2]
+        assert s.rows[0].sub_rows is not None
+        assert len(s.rows[0].sub_rows) == 1
+        assert s.rows[0].sub_rows[0].label == "Traversability"
+
+    def test_observation_buffer_empty(self) -> None:
+        data = _sample_system_data()
+        data["trace_data"]["buffer_snapshot"] = []
+        data["trace_data"]["buffer_capacity"] = 5
+        snap = _make_snapshot()
+        step_trace = BaseStepTrace(
+            timestep=0, action="stay",
+            world_before=snap, world_after=snap,
+            agent_position_before=Position(x=2, y=2),
+            agent_position_after=Position(x=2, y=2),
+            vitality_before=0.45, vitality_after=0.435,
+            terminated=False, system_data=data,
+        )
+        sections = _adapter().build_step_analysis(step_trace)
+        s = sections[2]
+        assert s.title == "Observation Buffer (0/5)"
+        assert len(s.rows) == 1
+        assert s.rows[0].label == "(empty)"
+
+    def test_drive_output_section(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        s = sections[3]
         assert s.title == "Drive Output"
         by_label = {r.label: r.value for r in s.rows}
         assert by_label["Activation"] == "0.7500"
@@ -156,7 +231,7 @@ class TestAnalysisSections:
 
     def test_decision_pipeline_section(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        s = sections[3]
+        s = sections[4]
         assert s.title == "Decision Pipeline"
         labels = [r.label for r in s.rows]
         assert "Temperature" in labels
@@ -168,7 +243,7 @@ class TestAnalysisSections:
 
     def test_outcome_section(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        s = sections[4]
+        s = sections[5]
         assert s.title == "Outcome"
         by_label = {r.label: r.value for r in s.rows}
         assert by_label["Moved"] == "No"
@@ -187,7 +262,7 @@ class TestOverlays:
 
     def test_build_overlays_count(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
-        assert len(overlays) == 3
+        assert len(overlays) == 4
 
     def test_action_preference_overlay_type(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
@@ -260,6 +335,27 @@ class TestOverlays:
         # down is blocked
         assert len(markers) == 1
 
+    def test_buffer_saturation_overlay(self) -> None:
+        overlays = _adapter().build_overlays(_sample_step_trace())
+        bs = [o for o in overlays if o.overlay_type == "buffer_saturation"][0]
+        assert len(bs.items) == 1
+        assert bs.items[0].item_type == "saturation_ring"
+
+    def test_buffer_saturation_data_keys(self) -> None:
+        overlays = _adapter().build_overlays(_sample_step_trace())
+        bs = [o for o in overlays if o.overlay_type == "buffer_saturation"][0]
+        data = bs.items[0].data
+        assert "saturation" in data
+        assert "fill_ratio" in data
+        assert 0.0 <= data["saturation"] <= 1.0
+        assert 0.0 <= data["fill_ratio"] <= 1.0
+
+    def test_buffer_saturation_fill_ratio(self) -> None:
+        overlays = _adapter().build_overlays(_sample_step_trace())
+        bs = [o for o in overlays if o.overlay_type == "buffer_saturation"][0]
+        # 4 entries / 5 capacity = 0.8
+        assert bs.items[0].data["fill_ratio"] == pytest.approx(0.8)
+
 
 # ---------------------------------------------------------------------------
 # Overlay declaration tests
@@ -270,12 +366,13 @@ class TestOverlayDeclarations:
 
     def test_available_overlay_types(self) -> None:
         decls = _adapter().available_overlay_types()
-        assert len(decls) == 3
+        assert len(decls) == 4
         keys = {d.key for d in decls}
         assert keys == {
             "action_preference",
             "drive_contribution",
             "consumption_opportunity",
+            "buffer_saturation",
         }
 
     def test_overlay_keys_match_data(self) -> None:

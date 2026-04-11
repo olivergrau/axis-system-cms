@@ -27,9 +27,10 @@ DIRECTION_ACTIONS: tuple[str, ...] = ("up", "down", "left", "right")
 class SystemAWVisualizationAdapter:
     """Visualization adapter for System A+W.
 
-    Produces 7 analysis sections and 5 overlay types, extending
+    Produces 9 analysis sections and 6 overlay types, extending
     System A's adapter with curiosity drive, drive arbitration,
-    visit count heatmap, and novelty field overlays.
+    observation buffer, visit count heatmap, novelty field, and
+    buffer saturation overlays.
     """
 
     def __init__(self, max_energy: float) -> None:
@@ -51,7 +52,7 @@ class SystemAWVisualizationAdapter:
         energy = value * self._max_energy
         return f"{energy:.2f} / {self._max_energy:.2f}"
 
-    # ── Step analysis (7 sections) ───────────────────────────
+    # ── Step analysis (9 sections) ───────────────────────────
 
     def build_step_analysis(
         self, step_trace: BaseStepTrace,
@@ -61,6 +62,7 @@ class SystemAWVisualizationAdapter:
         return [
             self._section_step_overview(step_trace, td),
             self._section_observation(dd),
+            self._section_observation_buffer(td),
             self._section_hunger_drive(dd),
             self._section_curiosity_drive(dd),
             self._section_drive_arbitration(dd),
@@ -69,7 +71,7 @@ class SystemAWVisualizationAdapter:
             self._section_outcome(step_trace, td),
         ]
 
-    # ── Debug overlays (5 types) ─────────────────────────────
+    # ── Debug overlays (6 types) ─────────────────────────────
 
     def build_overlays(
         self, step_trace: BaseStepTrace,
@@ -88,6 +90,7 @@ class SystemAWVisualizationAdapter:
             self._overlay_consumption_opportunity(dd, pos),
             self._overlay_visit_count_heatmap(td, pos_after),
             self._overlay_novelty_field(dd, pos),
+            self._overlay_buffer_saturation(td, pos),
         ]
 
     def available_overlay_types(self) -> list[OverlayTypeDeclaration]:
@@ -145,6 +148,17 @@ class SystemAWVisualizationAdapter:
                     "arrow length=novelty intensity"
                 ),
             ),
+            OverlayTypeDeclaration(
+                key="buffer_saturation",
+                label="Buffer Saturation",
+                description="Ring around agent showing average resource "
+                            "richness across the observation buffer.",
+                legend_html=(
+                    "<span style='color:#5050FF'>\u25cb</span>=low resource "
+                    "<span style='color:#50FF50'>\u25cb</span>=high resource "
+                    "thickness=fill level"
+                ),
+            ),
         ]
 
     # ── Private: analysis section helpers ────────────────────
@@ -194,6 +208,32 @@ class SystemAWVisualizationAdapter:
                 value=f"resource={d['resource']:.3f}, {trav}",
             ))
         return AnalysisSection(title="Observation", rows=tuple(rows))
+
+    def _section_observation_buffer(
+        self, trace_data: dict[str, Any],
+    ) -> AnalysisSection:
+        snapshot = trace_data.get("buffer_snapshot", [])
+        capacity = trace_data.get("buffer_capacity", len(snapshot))
+        title = f"Observation Buffer ({len(snapshot)}/{capacity})"
+        rows: list[AnalysisRow] = []
+        for entry in reversed(snapshot):
+            ts = entry["timestep"]
+            res = (f"[{entry['current_res']:.2f}, {entry['up_res']:.2f}, "
+                   f"{entry['down_res']:.2f}, {entry['left_res']:.2f}, "
+                   f"{entry['right_res']:.2f}]")
+            trav = (f"[{int(entry['current_trav'])}, {int(entry['up_trav'])}, "
+                    f"{int(entry['down_trav'])}, {int(entry['left_trav'])}, "
+                    f"{int(entry['right_trav'])}]")
+            rows.append(AnalysisRow(
+                label=f"t={ts}",
+                value=f"res={res}",
+                sub_rows=(
+                    AnalysisRow(label="Traversability", value=trav),
+                ),
+            ))
+        if not rows:
+            rows.append(AnalysisRow(label="(empty)", value="\u2014"))
+        return AnalysisSection(title=title, rows=tuple(rows))
 
     def _section_hunger_drive(
         self, decision_data: dict[str, Any],
@@ -655,6 +695,36 @@ class SystemAWVisualizationAdapter:
         return OverlayData(
             overlay_type="novelty_field",
             items=tuple(items),
+        )
+
+    def _overlay_buffer_saturation(
+        self, trace_data: dict[str, Any],
+        agent_pos: tuple[int, int],
+    ) -> OverlayData:
+        snapshot = trace_data.get("buffer_snapshot", [])
+        capacity = trace_data.get("buffer_capacity", 1)
+        if snapshot:
+            total = sum(
+                e["current_res"] + e["up_res"] + e["down_res"]
+                + e["left_res"] + e["right_res"]
+                for e in snapshot
+            )
+            saturation = total / (len(snapshot) * 5)
+        else:
+            saturation = 0.0
+        fill_ratio = len(snapshot) / max(capacity, 1)
+        return OverlayData(
+            overlay_type="buffer_saturation",
+            items=(
+                OverlayItem(
+                    item_type="saturation_ring",
+                    grid_position=agent_pos,
+                    data={
+                        "saturation": saturation,
+                        "fill_ratio": fill_ratio,
+                    },
+                ),
+            ),
         )
 
 

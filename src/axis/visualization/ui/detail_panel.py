@@ -5,6 +5,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
+from axis.visualization.types import CellColorConfig
+from axis.visualization.ui.agent_cell_zoom import AgentCellZoomWidget
 from axis.visualization.view_models import (
     GridCellViewModel,
     GridViewModel,
@@ -16,20 +18,33 @@ from axis.visualization.view_models import (
 class DetailPanel(QWidget):
     """Shows cell info, agent info, or world metadata sections."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        cell_color_config: CellColorConfig,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
+        self._zoom_widget = AgentCellZoomWidget(cell_color_config)
         self._content_label = QLabel()
         self._content_label.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._content_label.setWordWrap(True)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
+        layout.addWidget(self._zoom_widget)
         layout.addWidget(self._content_label)
 
     def set_frame(
         self,
         frame: ViewerFrameViewModel,
     ) -> None:
+        # Update zoomed agent cell
+        agent = frame.agent
+        agent_cell = self._find_cell(frame.grid, agent.row, agent.col)
+        self._zoom_widget.set_data(
+            agent_cell, agent, frame.overlay_data,
+        )
+
         lines: list[str] = []
 
         sel = frame.selection

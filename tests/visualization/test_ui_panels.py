@@ -14,6 +14,7 @@ from axis.visualization.snapshot_models import ReplayCoordinate  # noqa: E402
 from axis.visualization.types import (  # noqa: E402
     AnalysisRow,
     AnalysisSection,
+    CellColorConfig,
     MetadataSection,
     OverlayTypeDeclaration,
 )
@@ -255,16 +256,25 @@ class TestStepAnalysisPanel:
 # ---------------------------------------------------------------------------
 
 
+def _default_color_config() -> CellColorConfig:
+    return CellColorConfig(
+        obstacle_color=(0, 0, 0), empty_color=(200, 200, 200),
+        resource_color_min=(200, 255, 200), resource_color_max=(0, 128, 0),
+        agent_color=(0, 0, 255), agent_selected_color=(0, 0, 255),
+        selection_border_color=(255, 165, 0), grid_line_color=(128, 128, 128),
+    )
+
+
 class TestDetailPanel:
 
     def test_detail_panel_no_selection(self, qapp) -> None:
-        panel = DetailPanel()
+        panel = DetailPanel(_default_color_config())
         frame = _make_frame()
         panel.set_frame(frame)
         assert "No entity selected" in panel._content_label.text()
 
     def test_detail_panel_cell_selection(self, qapp) -> None:
-        panel = DetailPanel()
+        panel = DetailPanel(_default_color_config())
         frame = _make_frame(
             selection_type=SelectionType.CELL,
             selected_cell=(1, 2),
@@ -276,7 +286,7 @@ class TestDetailPanel:
         assert "Resource: 0.300" in text
 
     def test_detail_panel_agent_selection(self, qapp) -> None:
-        panel = DetailPanel()
+        panel = DetailPanel(_default_color_config())
         frame = _make_frame(
             selection_type=SelectionType.AGENT,
             agent_selected=True,
@@ -287,7 +297,7 @@ class TestDetailPanel:
         assert "Position: (1, 1)" in text
 
     def test_detail_panel_world_metadata(self, qapp) -> None:
-        panel = DetailPanel()
+        panel = DetailPanel(_default_color_config())
         metadata = (
             MetadataSection(
                 title="Topology",

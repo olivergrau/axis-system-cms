@@ -39,7 +39,7 @@ class VisualizationMainWindow(QMainWindow):
         self._canvas = CanvasWidget(world_adapter)
         self._status_panel = StatusPanel()
         self._step_analysis_panel = StepAnalysisPanel()
-        self._detail_panel = DetailPanel()
+        self._detail_panel = DetailPanel(world_adapter.cell_color_config())
         self._replay_controls = ReplayControlsPanel(phase_names)
         self._overlay_panel = OverlayPanel(overlay_declarations)
 

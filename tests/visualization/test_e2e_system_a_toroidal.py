@@ -55,7 +55,7 @@ class TestSystemAToroidal:
     def test_five_analysis_sections(self, system_a_toroidal) -> None:
         handle, wadapter, sadapter = system_a_toroidal
         frame = build_frame(handle, wadapter, sadapter)
-        assert len(frame.analysis_sections) == 5
+        assert len(frame.analysis_sections) == 6
 
     def test_boundary_phases_build(self, system_a_toroidal) -> None:
         handle, wadapter, sadapter = system_a_toroidal

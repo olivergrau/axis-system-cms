@@ -194,7 +194,7 @@ class TestOverlayRenderingCrossCutting:
             "direction_arrow", "center_dot", "center_ring",
             "bar_chart", "diamond_marker", "neighbor_dot",
             "x_marker", "radius_circle",
-            "heatmap_cell", "novelty_arrow",
+            "heatmap_cell", "novelty_arrow", "saturation_ring",
         }
         assert expected == set(OverlayRenderer._RENDERERS.keys())
 

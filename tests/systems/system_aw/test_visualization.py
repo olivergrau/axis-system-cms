@@ -70,6 +70,27 @@ def _sample_system_data() -> dict[str, Any]:
             "energy_gain": 0.00,
             "buffer_entries_before": 2,
             "buffer_entries_after": 3,
+            "buffer_capacity": 5,
+            "buffer_snapshot": [
+                {
+                    "timestep": 3, "current_res": 0.0, "up_res": 0.0,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.0,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 4, "current_res": 0.5, "up_res": 0.3,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.8,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+                {
+                    "timestep": 5, "current_res": 0.5, "up_res": 0.3,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.8,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 0.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+            ],
             "relative_position": (3, 1),
             "visit_count_at_current": 2,
             "visit_counts_map": [
@@ -140,6 +161,15 @@ def _curiosity_zero_system_data() -> dict[str, Any]:
             "energy_gain": 5.00,
             "buffer_entries_before": 0,
             "buffer_entries_after": 1,
+            "buffer_capacity": 5,
+            "buffer_snapshot": [
+                {
+                    "timestep": 0, "current_res": 0.5, "up_res": 0.0,
+                    "down_res": 0.0, "left_res": 0.0, "right_res": 0.0,
+                    "current_trav": 1.0, "up_trav": 1.0,
+                    "down_trav": 1.0, "left_trav": 1.0, "right_trav": 1.0,
+                },
+            ],
             "relative_position": (0, 0),
             "visit_count_at_current": 1,
         },
@@ -163,27 +193,27 @@ def _adapter():
 
 class TestAnalysisSections:
 
-    def test_build_step_analysis_returns_8_sections(self) -> None:
+    def test_build_step_analysis_returns_9_sections(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        assert len(sections) == 8
+        assert len(sections) == 9
 
     def test_section_titles(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
         titles = [s.title for s in sections]
-        assert titles == [
-            "Step Overview",
-            "Observation",
-            "Hunger Drive",
-            "Curiosity Drive",
-            "Drive Arbitration",
-            "Decision Pipeline",
-            "World Model",
-            "Outcome",
-        ]
+        # Observation Buffer title includes fill level — match prefix
+        assert titles[0] == "Step Overview"
+        assert titles[1] == "Observation"
+        assert titles[2].startswith("Observation Buffer")
+        assert titles[3] == "Hunger Drive"
+        assert titles[4] == "Curiosity Drive"
+        assert titles[5] == "Drive Arbitration"
+        assert titles[6] == "Decision Pipeline"
+        assert titles[7] == "World Model"
+        assert titles[8] == "Outcome"
 
     def test_curiosity_drive_section_rows(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        cd_section = sections[3]
+        cd_section = sections[4]
         assert cd_section.title == "Curiosity Drive"
         labels = [r.label for r in cd_section.rows]
         assert "Activation" in labels
@@ -193,7 +223,7 @@ class TestAnalysisSections:
 
     def test_arbitration_section_rows(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        arb_section = sections[4]
+        arb_section = sections[5]
         assert arb_section.title == "Drive Arbitration"
         labels = [r.label for r in arb_section.rows]
         assert "Hunger Weight" in labels
@@ -210,9 +240,22 @@ class TestAnalysisSections:
 
     def test_outcome_has_world_model_info(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
-        outcome = sections[7]
+        outcome = sections[8]
         labels = [r.label for r in outcome.rows]
         assert "Relative Position" in labels
+
+    def test_observation_buffer_section(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        s = sections[2]
+        assert s.title == "Observation Buffer (3/5)"
+        assert len(s.rows) == 3
+
+    def test_observation_buffer_most_recent_first(self) -> None:
+        sections = _adapter().build_step_analysis(_sample_step_trace())
+        s = sections[2]
+        labels = [r.label for r in s.rows]
+        assert labels[0] == "t=5"
+        assert labels[-1] == "t=3"
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +267,7 @@ class TestOverlays:
 
     def test_available_overlay_types_count(self) -> None:
         decls = _adapter().available_overlay_types()
-        assert len(decls) == 5
+        assert len(decls) == 6
 
     def test_overlay_keys(self) -> None:
         decls = _adapter().available_overlay_types()
@@ -235,11 +278,12 @@ class TestOverlays:
             "consumption_opportunity",
             "visit_count_heatmap",
             "novelty_field",
+            "buffer_saturation",
         }
 
-    def test_build_overlays_returns_5(self) -> None:
+    def test_build_overlays_returns_6(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
-        assert len(overlays) == 5
+        assert len(overlays) == 6
 
     def test_drive_contribution_has_both_drives(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
@@ -260,6 +304,18 @@ class TestOverlays:
         assert len(nf.items) == 4
         directions = {item.data["direction"] for item in nf.items}
         assert directions == {"up", "down", "left", "right"}
+
+    def test_buffer_saturation_overlay(self) -> None:
+        overlays = _adapter().build_overlays(_sample_step_trace())
+        bs = [o for o in overlays if o.overlay_type == "buffer_saturation"][0]
+        assert len(bs.items) == 1
+        assert bs.items[0].item_type == "saturation_ring"
+        data = bs.items[0].data
+        assert "saturation" in data
+        assert "fill_ratio" in data
+        assert 0.0 <= data["saturation"] <= 1.0
+        # 3 entries / 5 capacity = 0.6
+        assert data["fill_ratio"] == pytest.approx(0.6)
 
 
 # ---------------------------------------------------------------------------
@@ -300,9 +356,9 @@ class TestDegradation:
         )
         adapter = _adapter()
         sections = adapter.build_step_analysis(step_trace)
-        assert len(sections) == 8
+        assert len(sections) == 9
         overlays = adapter.build_overlays(step_trace)
-        assert len(overlays) == 5
+        assert len(overlays) == 6
 
     def test_empty_world_model_heatmap(self) -> None:
         """Single visit at origin: heatmap has 1 item."""
@@ -344,8 +400,8 @@ class TestWorldModelSection:
     def test_world_model_section_position(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
         titles = [s.title for s in sections]
-        assert titles.index("World Model") == 6
-        assert titles.index("Outcome") == 7
+        assert titles[7] == "World Model"
+        assert titles[8] == "Outcome"
 
     def test_world_model_stats_rows(self) -> None:
         sections = _adapter().build_step_analysis(_sample_step_trace())
