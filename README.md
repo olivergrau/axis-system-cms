@@ -269,4 +269,4 @@ The repository is intended to be evaluated as an engineering artifact: by its co
 
 ## License
 
-TBD
+Apache 2.0 license
