@@ -52,7 +52,7 @@ by design.
 
 ## 3. State Spaces
 
-### 3.1 Internal State $\mathcal{X}$
+### 3.1 Internal State
 
 The internal state $x_t \in \mathcal{X}$ represents everything the
 agent carries between timesteps. At minimum:
@@ -92,7 +92,7 @@ its surroundings through the sensor function $S$, which provides
 only a local view. If an agent needs spatial awareness, it must
 build its own model (as System A+W does with the visit-count map).
 
-### 3.3 Observation Space $\mathcal{U}$
+### 3.3 Observation Space
 
 An observation $u_t \in \mathcal{U}$ is the agent's sensory input
 at time $t$:
@@ -120,7 +120,7 @@ $$u_t = (b_c, r_c, b_{\uparrow}, r_{\uparrow}, b_{\downarrow}, r_{\downarrow}, b
 Out-of-bounds cells are observed as $(b = 0, r = 0)$: non-traversable
 with no resource.
 
-### 3.4 Memory Space $\mathcal{M}$
+### 3.4 Memory Space
 
 The episodic perceptual memory $m_t \in \mathcal{M}$ stores a
 bounded history of recent observations:
@@ -142,7 +142,7 @@ sensory novelty.
 
 ---
 
-## 4. The Action Space $\mathcal{A}$
+## 4. The Action Space
 
 The action space is a finite set of discrete actions. All AXIS
 systems share five **base actions** provided by the framework:
@@ -164,7 +164,7 @@ The action space is ordered. All vectors indexed by action
 
 ---
 
-## 5. The Drive System $\mathcal{D}$
+## 5. The Drive System
 
 ### 5.1 What Is a Drive?
 
@@ -223,7 +223,7 @@ $\phi_{n+1}$, without modifying existing drives.
 
 ---
 
-## 6. The Modulation System $\Gamma$
+## 6. The Modulation System
 
 The modulation system combines all drive outputs into a single
 action score vector. It has two layers.
@@ -291,7 +291,7 @@ middle ground.
 
 ---
 
-## 7. The Policy $\pi$
+## 7. The Policy
 
 The policy converts the modulated action scores $\psi(a)$ into a
 probability distribution over actions.
@@ -354,7 +354,7 @@ Two selection modes are supported:
 
 ---
 
-## 8. The Transition Function $F$
+## 8. The Transition Function
 
 The transition function updates the complete system state after
 action execution. It operates in defined phases.

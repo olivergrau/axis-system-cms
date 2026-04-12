@@ -1578,7 +1578,7 @@ It is:
 
 ---
 
-### 12.7 Role of Temperature Parameter $\beta$
+### 12.7 Role of Temperature Parameter
 The parameter $\beta$ controls the trade-off between:
 
 - randomness

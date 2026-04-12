@@ -184,7 +184,7 @@ $$
 \nu^{sensory}_{right} = |0.0 - 0| = 0.0
 $$
 
-##### 4.3 Composite Novelty ($\alpha = 0.5$)
+##### 4.3 Composite Novelty
 
 $$
 \nu_{up} = 0.5 \cdot 1.0 + 0.5 \cdot 0.0 = 0.50
@@ -236,7 +236,7 @@ $$
 
 #### 7. Action Scoring
 
-##### Hunger Contributions ($w_H \cdot d_H \cdot \phi_H$)
+##### Hunger Contributions
 
 | Action | $\phi_H$ | $w_H \cdot d_H \cdot \phi_H$ |
 |---|---|---|
@@ -247,7 +247,7 @@ $$
 | CONSUME | $w_{consume} \cdot r_c = 2.5 \times 0.8 = 2.0$ | $0.307 \times 0.10 \times 2.0 = 0.061$ |
 | STAY | $-\lambda_{stay} = -0.1$ | $0.307 \times 0.10 \times (-0.1) = -0.003$ |
 
-##### Curiosity Contributions ($w_C \cdot d_C \cdot \phi_C$)
+##### Curiosity Contributions
 
 | Action | $\phi_C$ | $w_C \cdot d_C \cdot \phi_C$ |
 |---|---|---|
@@ -271,7 +271,7 @@ $$
 
 ---
 
-#### 8. Policy Selection ($\beta = 2.0$)
+#### 8. Policy Selection
 
 Computing $\exp(\beta \cdot \psi(a))$:
 
@@ -393,7 +393,7 @@ $$
 \nu^{sensory}_{right} = |0.0 - 0.0| = 0.0
 $$
 
-##### 4.3 Composite Novelty ($\alpha = 0.5$)
+##### 4.3 Composite Novelty
 
 $$
 \nu_{up} = 0.5 \times 0.500 + 0.5 \times 0.1 = 0.300
@@ -493,7 +493,7 @@ LEFT is blocked (obstacle: $b = 0$). Set $\psi(\text{LEFT}) = -\infty$.
 
 ---
 
-#### 8. Policy Selection ($\beta = 2.0$)
+#### 8. Policy Selection
 
 | Action | $\exp(\beta \cdot \psi)$ |
 |---|---|
@@ -638,7 +638,7 @@ $$
 
 ---
 
-#### 8. Policy Selection ($\beta = 2.0$)
+#### 8. Policy Selection
 
 | Action | $\exp(\beta \cdot \psi)$ |
 |---|---|
@@ -807,7 +807,7 @@ The curiosity drive produces a consistent forward bias. The agent continues expl
 
 ## 5.5 Example Group E: Parameter Sensitivity
 
-### E1. Effect of Gating Sharpness $\gamma$
+### E1. Effect of Gating Sharpness
 
 #### Objective
 
@@ -832,7 +832,7 @@ The default $\gamma = 2.0$ provides a reasonable balance: at 50% hunger, curiosi
 
 ---
 
-### E2. Effect of Spatial-Sensory Balance $\alpha$
+### E2. Effect of Spatial-Sensory Balance
 
 #### Objective
 

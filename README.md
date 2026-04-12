@@ -179,7 +179,21 @@ python -m pytest tests/framework/test_cli.py
 
 ## Documentation
 
-All documentation lives in `docs/`.
+Documentation is split into two directories:
+
+- **`docs/`** -- Public documentation, served as a browsable website via
+  [MkDocs](https://www.mkdocs.org/) with the
+  [Material](https://squidfunk.github.io/mkdocs-material/) theme.
+  Math notation is rendered with MathJax.
+- **`docs-internal/`** -- Internal development documents (architecture evolution,
+  implementation specs, work packages). Not served by mkdocs.
+
+```bash
+# Start the documentation server
+make docs-serve
+
+# Then open http://localhost:8000
+```
 
 ### Conceptual Series
 
@@ -224,12 +238,14 @@ Reference documentation for using and extending the framework.
 
 | Path | Content |
 |---|---|
-| `system-design/system-a/` | System A formal specification and worked examples |
-| `system-design/system-a+w/` | System A+W formal specification and worked examples |
-| `architecture/` | Architecture documents and evolution history |
-| `specs/` | Protocol and contract specifications |
+| `docs/system-design/system-a/` | System A formal specification and worked examples |
+| `docs/system-design/system-a+w/` | System A+W formal model and worked examples |
+| `docs-internal/specs/` | Implementation briefs (work packages) for all framework components |
+| `docs-internal/architecture/` | Architecture documents and evolution history |
+| `docs-internal/system-design/` | Implementation roadmap and work packages for System A+W |
 
-The documents in `docs/system-design/`, `docs/specs/`, and `docs/architecture/` are not secondary documentation. They are part of the development process and define the conceptual and technical contract the implementation is expected to follow.
+The documents in `docs-internal/` are part of the development process and define
+the conceptual and technical contracts the implementation is expected to follow.
 
 ## Plugin System
 

@@ -320,7 +320,7 @@ $$w_H(t) = w_H^{\text{base}} + (1 - w_H^{\text{base}}) \cdot d_H(t)^{\gamma}$$
 
 $$w_C(t) = w_C^{\text{base}} \cdot (1 - d_H(t))^{\gamma}$$
 
-### 6.3 The Role of $\gamma$ (Gating Sharpness)
+### 6.3 The Role of Gating Sharpness
 
 The parameter $\gamma > 0$ controls how abruptly the agent
 transitions between curiosity-dominated and hunger-dominated
@@ -477,7 +477,7 @@ through accumulated motor commands.
 
 System A+W exhibits four behavioral regimes, two more than System A:
 
-### 9.1 Active Exploration ($d_H \approx 0$)
+### 9.1 Active Exploration (Low Hunger)
 
 The agent is well-fed. $w_C \approx w_C^{\text{base}}$, curiosity
 dominates. The agent systematically moves toward cells with high
@@ -487,7 +487,7 @@ CONSUME outweighs the hunger incentive).
 
 This regime does not exist in System A.
 
-### 9.2 Balanced Foraging-Exploration ($0.3 \leq d_H \leq 0.6$)
+### 9.2 Balanced Foraging-Exploration (Moderate Hunger)
 
 Both drives contribute. The agent favors cells that combine resource
 availability with spatial novelty. It consumes when standing on
@@ -495,14 +495,14 @@ rich resources but otherwise prefers movement toward novel
 directions. This creates efficient foraging -- the agent covers new
 ground while feeding opportunistically.
 
-### 9.3 Hunger-Dominated Foraging ($0.7 \leq d_H \leq 0.9$)
+### 9.3 Hunger-Dominated Foraging (High Hunger)
 
 Hunger suppresses curiosity ($w_C$ low). Behavior resembles
 System A: directed toward food, consuming when possible. The
 world model still updates, but its influence on action selection
 is negligible.
 
-### 9.4 Pure Survival ($d_H \to 1$)
+### 9.4 Pure Survival (Critical Hunger)
 
 Identical to System A's desperate foraging. $w_C \approx 0$.
 The agent is a pure forager fighting for survival.
