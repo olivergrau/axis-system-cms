@@ -3,7 +3,7 @@
 **AXIS Conceptual Series -- Document 3 of 5**
 
 > **Reading order:**
-> [1. AXIS CMS Vision](01-axis-vision.md) |
+> [1. AXIS CMS Vision](01-axis-cms-vision.md) |
 > [2. Math as Modeling](02-math-as-modeling.md) |
 > **3. Agent Framework** |
 > [4. System A](04-system-a.md) |

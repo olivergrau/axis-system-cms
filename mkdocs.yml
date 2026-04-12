@@ -1,0 +1,94 @@
+site_name: AXIS Experimentation Framework
+site_description: A modular agent-environment experimentation framework with protocol-based architecture
+site_url: http://localhost:8000
+
+theme:
+  name: material
+  logo: assets/images/logo_futuristic_elegant.png
+  favicon: assets/images/logo_futuristic_elegant.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: indigo
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.expand
+    - toc.follow
+    - content.code.annotate
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+
+nav:
+  - Home: index.md
+
+  - Concepts:
+      - concepts/index.md
+      - "AXIS Vision": concepts/00-axis-vision.md
+      - "Biological Inspiration & Design Principles": concepts/01-axis-cms-vision.md
+      - "Math as a Modeling Tool": concepts/02-math-as-modeling.md
+      - "Generic Agent Framework": concepts/03-agent-framework.md
+      - "System A -- Hunger Drive": concepts/04-system-a.md
+      - "System A+W -- Curiosity & World Model": concepts/05-system-aw.md
+
+  - Tutorials:
+      - tutorials/index.md
+      - "Building a System": tutorials/building-a-system.md
+      - "Building a World": tutorials/building-a-world.md
+
+  - Manuals:
+      - manuals/index.md
+      - "Framework Overview": manuals/axis-overview.md
+      - "CLI User Guide": manuals/cli-manual.md
+      - "Configuration Reference": manuals/config-manual.md
+      - "Visualization": manuals/visualization-manual.md
+      - "System Development": manuals/system-dev-manual.md
+      - "System A+W": manuals/system-aw-manual.md
+      - "World Development": manuals/world-dev-manual.md
+
+  - Design:
+      - system-design/index.md
+      - "System A":
+          - "Formal Specification": system-design/system-a/01_System A Baseline.md
+          - "Worked Examples": system-design/system-a/02_System A Baseline Worked Examples.md
+      - "System A+W":
+          - "Formal Model": system-design/system-a+w/01_System A+W Model.md
+          - "Worked Examples": system-design/system-a+w/02_System A+W Worked Examples.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+      toc_depth: "2-3"
+  - footnotes
+  - attr_list
+  - def_list
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.critic
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_css:
+  - overrides/styles/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

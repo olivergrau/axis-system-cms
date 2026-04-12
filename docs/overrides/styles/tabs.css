@@ -1,0 +1,5 @@
+.md-tabs__list {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}

@@ -28,4 +28,5 @@ COPY requirements.txt /tmp/pip-tmp/requirements.txt
 # Install Python dependencies
 RUN pip install --upgrade pip \
     && pip install -r /tmp/pip-tmp/requirements.txt \
+    && pip install mkdocs mkdocs-material pymdown-extensions \
     && rm -rf /tmp/pip-tmp

@@ -1,0 +1,7 @@
+/* Non-integrated TOC (right sidebar) */
+.md-nav--secondary[aria-label="Table of contents"] > ul > li > a.md-nav__link { font-weight: 600 !important; }
+.md-nav--secondary[aria-label="Table of contents"] > ul ul > li > a.md-nav__link {
+  font-weight: 400 !important;
+  /* font-style: italic; */
+  padding-left: .25rem;
+}

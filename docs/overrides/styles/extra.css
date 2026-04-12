@@ -1,0 +1,16 @@
+/* Wider content area for documentation-heavy site */
+.md-grid {
+  max-width: 1400px;
+}
+
+/* Ensure tables don't overflow */
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+}
+
+/* Code blocks in tables */
+.md-typeset table code {
+  word-break: keep-all;
+  white-space: nowrap;
+}

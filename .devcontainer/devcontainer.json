@@ -35,5 +35,6 @@
     }
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "python -m pip install --upgrade pip && pip install pytest ipykernel"
+  "forwardPorts": [8000],
+  "postCreateCommand": "python -m pip install --upgrade pip && pip install pytest ipykernel mkdocs mkdocs-material pymdown-extensions"
 }

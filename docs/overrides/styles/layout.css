@@ -1,0 +1,84 @@
+/* =========================================================
+   MkDocs Material — harden layout (wide content + inset sidebars)
+   ========================================================= */
+
+/* 0) Page container a bit wider (optional) */
+.md-grid { max-width: 98% !important; }
+
+/* 1) CONTENT COLUMN: let it stretch fully */
+.md-content {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;        /* allow long code blocks to shrink */
+}
+.md-content__inner,
+.md-typeset {
+  max-width: none !important;      /* remove Material’s inner clamp */
+}
+
+/* 2) SIDEBAR WIDTHS — use explicit fixed widths (stable across versions) */
+.md-sidebar--primary {
+  flex: 0 0 14rem !important;      /* LEFT width */
+  width: 14rem !important;
+  max-width: 14rem !important;
+}
+.md-sidebar--secondary {
+  flex: 0 0 14rem !important;      /* RIGHT width */
+  width: 14rem !important;
+  max-width: 14rem !important;
+}
+
+/* If you prefer percent instead of rem, comment the three lines above
+   and use e.g.:
+   .md-sidebar--primary   { flex: 0 0 18% !important; max-width: 18% !important; }
+   .md-sidebar--secondary { flex: 0 0 16% !important; max-width: 16% !important; }
+*/
+
+/* 3) INSET PANEL LOOK FOR BOTH SIDEBARS */
+[data-md-color-scheme="default"] {
+  --sidebar-bg: #f5f5f5;
+  --sidebar-border: #e0e0e0;
+}
+[data-md-color-scheme="slate"] {
+  --sidebar-bg: #1f1f1f;
+  --sidebar-border: rgba(255,255,255,.08);
+}
+
+/* Create padding around the inner panel */
+.md-sidebar__scrollwrap { padding: .4rem .6rem !important; }
+
+/* Paint the inner surface and clip sticky elements */
+.md-sidebar--primary  .md-sidebar__scrollwrap > .md-sidebar__inner,
+.md-sidebar--secondary .md-sidebar__scrollwrap > .md-sidebar__inner {
+  background: var(--sidebar-bg) !important;
+  border: 1px solid var(--sidebar-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Keep links transparent so the panel color shows through */
+.md-nav__link { background: transparent !important; }
+
+/* 4) TITLE STRIPS — make them span the full panel and match background */
+.md-sidebar__inner .md-nav__title {
+  position: static !important;      /* unstick for cleaner scroll */
+  margin: 0 !important;             /* kill negative margins */
+  padding: .75rem 1rem !important;
+  background: var(--sidebar-bg) !important;
+  border-bottom: 1px solid var(--sidebar-border) !important;
+  box-shadow: none !important;
+}
+.md-sidebar__inner .md-nav__title::before,
+.md-sidebar__inner .md-nav__title::after { content: none !important; }
+
+/* 5) DEFENSIVE: never cap nav width inside the panel */
+.md-sidebar__inner .md-nav,
+.md-sidebar__inner .md-nav__container,
+.md-sidebar__inner .md-nav__list,
+.md-sidebar__inner .md-nav__item,
+.md-sidebar__inner .md-nav__link {
+  max-width: none !important;
+}
+
+/* 6) OPTIONAL: thin dividers between main and sidebars */
+.md-sidebar--primary  { border-right: 1px solid rgba(0,0,0,.06) !important; }
+.md-sidebar--secondary { border-left: 1px solid rgba(0,0,0,.06) !important; }

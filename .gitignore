@@ -6,3 +6,6 @@ __pycache__/
 experiments/results/
 logs/
 src/experiments/
+# MkDocs
+site/
+src/axis.egg-info/
