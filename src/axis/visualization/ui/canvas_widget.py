@@ -194,15 +194,30 @@ class CanvasWidget(QWidget):
         x, y = indicator.position
         radius = indicator.data.get("radius_pixels", 8)
         intensity = indicator.data.get("intensity", 0.8)
-        alpha = int(255 * intensity)
-        pen = QPen(QColor(255, 100, 0, alpha), 2)
-        painter.setPen(pen)
+        alpha = int(255 * max(0.25, intensity))
+
+        # Two-pass stroke to ensure visibility on bright backgrounds.
+        painter.setPen(QPen(QColor(10, 20, 30, 220), 3.5))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(QPointF(x, y), radius, radius)
+
+        painter.setPen(QPen(QColor(90, 230, 255, alpha), 2.0))
+        painter.drawEllipse(QPointF(x, y), radius, radius)
+
+        # Mark center point for faster visual targeting.
+        painter.setBrush(QBrush(QColor(90, 230, 255, min(255, alpha + 20))))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(QPointF(x, y), 2.5, 2.5)
+
         # Label
         label = indicator.data.get("label", "")
         if label:
-            painter.drawText(QPointF(x + radius + 2, y + 4), label)
+            text_pos = QPointF(x + radius + 4, y + 5)
+            painter.setPen(QColor(5, 5, 5, 220))
+            painter.drawText(
+                QPointF(text_pos.x() + 1, text_pos.y() + 1), label)
+            painter.setPen(QColor(235, 245, 255, 245))
+            painter.drawText(text_pos, label)
 
     def _draw_selection(self, painter: QPainter) -> None:
         """Draw selection highlight using CellLayout polygon."""

@@ -62,6 +62,9 @@ nav:
       - "System A+W":
           - "Formal Model": system-design/system-a+w/01_System A+W Model.md
           - "Worked Examples": system-design/system-a+w/02_System A+W Worked Examples.md
+      - "System B":
+          - "Formal Model": system-design/system-b/01_System B Model.md
+          - "Worked Examples": system-design/system-b/02_System B Worked Examples.md
 
 plugins:
   - search

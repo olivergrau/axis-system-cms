@@ -31,7 +31,8 @@ class SignalLandscapeWorldVisualizationAdapter(DefaultWorldVisualizationAdapter)
             resource_color_max=(255, 100, 0),
             agent_color=(33, 150, 243),
             agent_selected_color=(33, 150, 243),
-            selection_border_color=(255, 160, 0),
+            # Cyan selection border remains visible on warm signal cells.
+            selection_border_color=(80, 220, 255),
             grid_line_color=(80, 80, 100),
         )
 

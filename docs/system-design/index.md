@@ -17,6 +17,10 @@ These documents define the mathematical models that the code implements.
 | [Formal Model](system-a+w/01_System A+W Model.md) | Full model: curiosity, world model, drive arbitration |
 | [Worked Examples](system-a+w/02_System A+W Worked Examples.md) | Numerical walkthroughs of A+W behavior |
 
-### System A+W Work Packages
+## System B -- Scout Agent with Scan Action
 
-Detailed implementation briefs for each component of System A+W (WP-01 through WP-14).
+| Document | Content |
+|---|---|
+| [Formal Model](system-b/01_System B Model.md) | Full model: scan action, signal landscape, weight computation |
+| [Worked Examples](system-b/02_System B Worked Examples.md) | Numerical walkthroughs of System B behavior |
+

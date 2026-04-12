@@ -242,15 +242,25 @@ class OverlayRenderer:
         radius_px = radius_cells * cell_w
 
         cx, cy = center
-        painter.setPen(QPen(QColor(100, 200, 255, 150),
+        # Dark halo under bright cyan ring for better contrast.
+        painter.setPen(QPen(QColor(10, 20, 30, 200),
+                       2.5, Qt.PenStyle.SolidLine))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(QPointF(cx, cy), radius_px, radius_px)
+
+        painter.setPen(QPen(QColor(110, 220, 255, 210),
                        1.5, Qt.PenStyle.DashLine))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(QPointF(cx, cy), radius_px, radius_px)
 
         if label:
-            painter.setPen(QColor(200, 200, 200))
+            painter.setPen(QColor(5, 5, 5, 230))
             painter.setFont(QFont("monospace", 8))
-            painter.drawText(QPointF(cx + radius_px + 3, cy), label)
+            text_pos = QPointF(cx + radius_px + 3, cy)
+            painter.drawText(
+                QPointF(text_pos.x() + 1, text_pos.y() + 1), label)
+            painter.setPen(QColor(230, 240, 250, 245))
+            painter.drawText(text_pos, label)
 
     def _draw_heatmap_cell(
         self, painter: QPainter, item: OverlayItem, layout: CellLayout,
