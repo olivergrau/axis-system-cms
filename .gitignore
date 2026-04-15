@@ -9,3 +9,4 @@ src/experiments/
 # MkDocs
 site/
 src/axis.egg-info/
+build/

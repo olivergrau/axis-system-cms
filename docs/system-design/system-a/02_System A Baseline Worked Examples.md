@@ -122,7 +122,8 @@ $$
 \psi(a) = d_H(t)\cdot \phi_H(a, u_t)  
 $$
 
-Special case for **STAY**:  
+Special case for **STAY**: 
+
 $$
 \psi(\text{STAY}) = -\lambda_{stay}\cdot d_H(t)  
 $$
@@ -130,6 +131,7 @@ $$
 ##### 2.4 Coupling Function
 
 - For **CONSUME**:  
+
     $$  
     \phi_H(\text{CONSUME}, u_t) = w_{consume} \cdot r_c(t)  
     $$
@@ -153,14 +155,17 @@ $$
 $$ 
 
 If no resource is present:  
+
 $$  
 r_c = r_{up} = r_{down} = r_{left} = r_{right} = 0  
 $$ 
+
 Therefore:
 
 $$
 \phi_H(\text{CONSUME},u_t)=0
 $$
+
 and
 
 $$
@@ -185,6 +190,7 @@ $$
 $$
 E_{\max} = 100  
 $$ 
+
 $$
 e_t = 50  
 $$
@@ -219,6 +225,7 @@ Interpretation:
 $$  
 \lambda_{stay} = 1  
 $$ 
+
 $$
 \beta = 2  
 $$
@@ -278,18 +285,23 @@ $$
 $$  
 \psi(\text{UP}) = 0  
 $$ 
+
 $$
 \psi(\text{DOWN}) = 0  
 $$ 
+
 $$
 \psi(\text{LEFT}) = 0  
 $$ 
+
 $$
 \psi(\text{RIGHT}) = 0  
 $$ 
+
 $$
 \psi(\text{CONSUME}) = 0  
 $$ 
+
 $$
 \psi(\text{STAY}) = -0.5  
 $$
@@ -303,6 +315,7 @@ $$
 $$
 \exp(2 \cdot 0) = 1  
 $$ 
+
 $$
 \exp(2 \cdot (-0.5)) = \exp(-1) \approx 0.367879  
 $$
@@ -490,6 +503,7 @@ We define a simple multi-step trajectory in which the agent repeatedly executes 
 $$
 E_{\max} = 100
 $$
+
 $$
 e_0 = 60
 $$
@@ -952,6 +966,7 @@ We define a local state in which the agent is standing directly on a resource-be
 $$
 E_{\max}=100
 $$
+
 $$
 e_t=40
 $$
@@ -1000,9 +1015,11 @@ which means:
 $$
 \lambda_{stay}=1
 $$
+
 $$
 \beta=2
 $$
+
 $$
 w_{consume} = 6
 $$
