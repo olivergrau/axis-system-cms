@@ -5,12 +5,11 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from axis.systems.system_a.types import HungerDriveOutput, ObservationBuffer
+from axis.systems.construction_kit.drives.types import CuriosityDriveOutput, HungerDriveOutput
+from axis.systems.construction_kit.memory.types import ObservationBuffer, WorldModelState
+from axis.systems.construction_kit.arbitration.types import DriveWeights
 from axis.systems.system_aw.types import (
     AgentStateAW,
-    CuriosityDriveOutput,
-    DriveWeights,
-    WorldModelState,
 )
 
 
@@ -109,7 +108,8 @@ class TestAgentStateAW:
     ) -> AgentStateAW:
         return AgentStateAW(
             energy=energy,
-            observation_buffer=ObservationBuffer(entries=(), capacity=capacity),
+            observation_buffer=ObservationBuffer(
+                entries=(), capacity=capacity),
             world_model=WorldModelState(),
         )
 

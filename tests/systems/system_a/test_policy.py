@@ -1,4 +1,4 @@
-"""WP-2.4 unit tests -- SystemAPolicy."""
+"""WP-2.4 unit tests -- SoftmaxPolicy."""
 
 from __future__ import annotations
 
@@ -7,14 +7,15 @@ import pytest
 
 from axis.sdk.interfaces import PolicyInterface
 from axis.sdk.types import PolicyResult
-from axis.systems.system_a.policy import SystemAPolicy
-from axis.systems.system_a.types import CellObservation, HungerDriveOutput, Observation
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.drives.types import HungerDriveOutput
 
 
 def _make_policy(
     mode: str = "sample", temperature: float = 1.0,
-) -> SystemAPolicy:
-    return SystemAPolicy(temperature=temperature, selection_mode=mode)
+) -> SoftmaxPolicy:
+    return SoftmaxPolicy(temperature=temperature, selection_mode=mode)
 
 
 def _make_observation(
@@ -41,7 +42,7 @@ def _make_drive_output(
 
 
 class TestPolicy:
-    """SystemAPolicy unit tests."""
+    """SoftmaxPolicy unit tests."""
 
     def test_argmax_deterministic(self) -> None:
         policy = _make_policy("argmax")
@@ -50,7 +51,7 @@ class TestPolicy:
         actions = set()
         for seed in range(10):
             rng = np.random.default_rng(seed)
-            result = policy.select(drive, obs, rng)
+            result = policy.select(drive.action_contributions, obs, rng)
             actions.add(result.action)
         assert len(actions) == 1
 
@@ -59,7 +60,7 @@ class TestPolicy:
         obs = _make_observation()
         drive = _make_drive_output((0.1, 0.2, 0.3, 0.4, 0.5, -0.1))
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         assert result.action == "consume"
 
     def test_sample_uses_rng(self) -> None:
@@ -69,7 +70,7 @@ class TestPolicy:
         actions = set()
         for seed in range(50):
             rng = np.random.default_rng(seed)
-            result = policy.select(drive, obs, rng)
+            result = policy.select(drive.action_contributions, obs, rng)
             actions.add(result.action)
         assert len(actions) >= 2
 
@@ -77,8 +78,10 @@ class TestPolicy:
         policy = _make_policy("sample")
         obs = _make_observation()
         drive = _make_drive_output()
-        r1 = policy.select(drive, obs, np.random.default_rng(123))
-        r2 = policy.select(drive, obs, np.random.default_rng(123))
+        r1 = policy.select(drive.action_contributions,
+                           obs, np.random.default_rng(123))
+        r2 = policy.select(drive.action_contributions,
+                           obs, np.random.default_rng(123))
         assert r1.action == r2.action
 
     def test_obstacle_direction_zero_probability(self) -> None:
@@ -86,7 +89,7 @@ class TestPolicy:
         obs = _make_observation(blocked_dirs=("left",))
         drive = _make_drive_output()
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         probs = result.policy_data["probabilities"]
         assert probs[2] == 0.0  # left index
 
@@ -95,7 +98,7 @@ class TestPolicy:
         obs = _make_observation(blocked_dirs=("up", "down", "left", "right"))
         drive = _make_drive_output()
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         probs = result.policy_data["probabilities"]
         assert probs[0] == 0.0  # up
         assert probs[1] == 0.0  # down
@@ -109,7 +112,7 @@ class TestPolicy:
         obs = _make_observation()
         drive = _make_drive_output()
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         assert isinstance(result, PolicyResult)
 
     def test_policy_data_contains_probabilities(self) -> None:
@@ -117,7 +120,7 @@ class TestPolicy:
         obs = _make_observation()
         drive = _make_drive_output()
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         assert "probabilities" in result.policy_data
 
     def test_policy_data_contains_admissibility(self) -> None:
@@ -125,7 +128,7 @@ class TestPolicy:
         obs = _make_observation()
         drive = _make_drive_output()
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         assert "admissibility_mask" in result.policy_data
 
     def test_policy_interface_conformance(self) -> None:
@@ -137,6 +140,7 @@ class TestPolicy:
         obs = _make_observation()
         drive = _make_drive_output()
         rng = np.random.default_rng(42)
-        result = policy.select(drive, obs, rng)
+        result = policy.select(drive.action_contributions, obs, rng)
         assert isinstance(result.action, str)
-        assert result.action in ("up", "down", "left", "right", "consume", "stay")
+        assert result.action in ("up", "down", "left",
+                                 "right", "consume", "stay")

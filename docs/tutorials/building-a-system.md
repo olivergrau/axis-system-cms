@@ -34,6 +34,19 @@ We will build System A (the energy-driven forager) step by step,
 starting with the bare minimum and layering on components until we
 have a complete, production-quality implementation.
 
+> **Note: System Construction Kit.** This tutorial builds every
+> component from scratch to teach the concepts. In practice, many
+> of these components are available as tested, reusable building blocks
+> in the **System Construction Kit** (`src/axis/systems/construction_kit/`).
+> See the [Construction Kit Reference](../construction-kit/index.md)
+> for a full catalog of available components.
+> The actual System A implementation composes kit components
+> (`VonNeumannSensor`, `HungerDrive`, `SoftmaxPolicy`,
+> `ObservationBuffer`, `handle_consume`, shared config types) instead
+> of implementing them inline. See the
+> [System Developer Manual](../manuals/system-dev-manual.md) Section 10a
+> for details on using the kit.
+
 ---
 
 ## Chapter 1: Understand the Contract
@@ -1877,19 +1890,32 @@ print(f"Termination: {trace.termination_reason}")
 
 ## Chapter 16: Complete File Inventory
 
+The tutorial above builds each component from scratch for learning
+purposes. The actual System A implementation uses components from
+the **System Construction Kit** (`construction_kit/`), so its file
+layout is leaner:
+
 ```
 src/axis/systems/system_a/
     __init__.py              # Package init + register()
-    types.py                 # CellObservation, Observation, AgentState, ObservationBuffer, etc.
-    config.py                # SystemAConfig (AgentConfig + PolicyConfig + TransitionConfig)
-    sensor.py                # SystemASensor -- Von Neumann neighborhood reader
-    drive.py                 # SystemAHungerDrive -- activation + per-action scores
-    policy.py                # SystemAPolicy -- softmax with admissibility masking
+    types.py                 # AgentState only (kit provides observation/buffer/drive types)
+    config.py                # SystemAConfig (imports AgentConfig, PolicyConfig, TransitionConfig from kit)
     transition.py            # SystemATransition -- energy model + buffer + termination
-    actions.py               # handle_consume -- custom action handler
-    observation_buffer.py    # update_observation_buffer() -- FIFO ring buffer
-    system.py                # SystemA -- facade implementing SystemInterface
+    system.py                # SystemA -- facade composing kit components
     visualization.py         # SystemAVisualizationAdapter -- analysis + overlays
+
+src/axis/systems/construction_kit/   # Reusable components (shared with System A+W)
+    observation/sensor.py    # VonNeumannSensor (was SystemASensor)
+    observation/types.py     # CellObservation, Observation
+    drives/hunger.py         # HungerDrive (was SystemAHungerDrive)
+    drives/types.py          # HungerDriveOutput, CuriosityDriveOutput
+    policy/softmax.py        # SoftmaxPolicy (was SystemAPolicy)
+    memory/types.py          # BufferEntry, ObservationBuffer, WorldModelState
+    memory/observation_buffer.py  # update_observation_buffer()
+    energy/functions.py      # clip_energy, compute_vitality, etc.
+    types/config.py          # AgentConfig, PolicyConfig, TransitionConfig
+    types/actions.py         # handle_consume
+```
 
 tests/systems/system_a/
     test_types.py            # Domain type invariants
@@ -1909,42 +1935,50 @@ tests/systems/system_a/
 
 ## Summary: Building a System, Step by Step
 
-1. **Understand the contract** -- `SystemInterface` defines 9 methods.
+1. **Check the Construction Kit** -- before building from scratch,
+   see what reusable components are available in
+   `src/axis/systems/construction_kit/`. Sensors, drives, policies,
+   memory, energy utilities, and shared config types are all provided.
+
+2. **Understand the contract** -- `SystemInterface` defines 9 methods.
    The framework calls `decide()` and `transition()` each step.
 
-2. **Define your agent state** -- what the agent remembers between
+3. **Define your agent state** -- what the agent remembers between
    steps. Use frozen Pydantic models. Exclude position (it belongs
    to the world).
 
-3. **Define your observation** -- what the agent perceives. The sensor
-   translates `WorldView` into this format.
+4. **Define your observation** -- what the agent perceives. Use
+   `VonNeumannSensor` from the kit or build your own sensor.
 
-4. **Build the sensor** -- reads cells from `WorldView`, produces
+5. **Build the sensor** -- reads cells from `WorldView`, produces
    structured observations.
 
-5. **Build the drive** -- converts agent needs + observation into
-   per-action scores. This is where agent personality lives.
+6. **Build the drive** -- converts agent needs + observation into
+   per-action scores. Use `HungerDrive` or `CuriosityDrive` from
+   the kit, or build your own.
 
-6. **Build the policy** -- converts scores into an action choice.
-   Handle admissibility masking and temperature.
+7. **Build the policy** -- converts scores into an action choice.
+   Use `SoftmaxPolicy` from the kit or build your own.
 
-7. **Build the observation buffer** -- short-term memory as a FIFO
-   ring buffer. Pure function, returns new buffer instances.
+8. **Build the observation buffer** -- short-term memory as a FIFO
+   ring buffer. Use `ObservationBuffer` and `update_observation_buffer`
+   from the kit.
 
-8. **Build the custom action handler** -- receives `MutableWorldProtocol`,
-   returns `ActionOutcome`. Put resource extraction here.
+9. **Build the custom action handler** -- receives `MutableWorldProtocol`,
+   returns `ActionOutcome`. Use `handle_consume` from the kit for
+   resource extraction.
 
-9. **Build the transition function** -- updates energy, buffer, and
-   checks for termination after each step.
+10. **Build the transition function** -- updates energy, buffer, and
+    checks for termination after each step.
 
-10. **Build the facade** -- compose all components into a class that
+11. **Build the facade** -- compose all components into a class that
     satisfies `SystemInterface`.
 
-11. **Register** -- add `register()` to `__init__.py`, declare entry
+12. **Register** -- add `register()` to `__init__.py`, declare entry
     point in `pyproject.toml`.
 
-12. **Build the visualization adapter** -- analysis sections for the
+13. **Build the visualization adapter** -- analysis sections for the
     text panel, overlay items for the grid display.
 
-13. **Test each layer** -- unit tests for components, integration test
+14. **Test each layer** -- unit tests for components, integration test
     through the full experiment pipeline.

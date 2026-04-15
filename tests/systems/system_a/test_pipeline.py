@@ -8,10 +8,11 @@ import pytest
 from axis.sdk.position import Position
 from axis.sdk.types import DecideResult, TransitionResult
 from axis.sdk.world_types import BaseWorldConfig
-from axis.systems.system_a.actions import handle_consume
+from axis.systems.construction_kit.types.actions import handle_consume
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
-from axis.systems.system_a.types import AgentState, ObservationBuffer
+from axis.systems.system_a.types import AgentState
+from axis.systems.construction_kit.memory.types import ObservationBuffer
 from axis.world.actions import create_action_registry
 from axis.world.grid_2d.factory import create_world
 from axis.world.grid_2d.factory import create_world
@@ -149,7 +150,7 @@ class TestPipeline:
             new_position=Position(x=2, y=2),
             data={"consumed": True, "resource_consumed": 0.8},
         )
-        from axis.systems.system_a.types import CellObservation, Observation
+        from axis.systems.construction_kit.observation.types import CellObservation, Observation
         obs = Observation(
             current=CellObservation(traversability=1.0, resource=0.0),
             up=CellObservation(traversability=1.0, resource=0.8),

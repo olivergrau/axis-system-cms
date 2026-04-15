@@ -10,14 +10,10 @@ from axis.sdk.interfaces import TransitionInterface
 from axis.sdk.position import Position
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
+from axis.systems.construction_kit.memory.types import BufferEntry, ObservationBuffer
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 from axis.systems.system_a.transition import SystemATransition
-from axis.systems.system_a.types import (
-    AgentState,
-    CellObservation,
-    BufferEntry,
-    ObservationBuffer,
-    Observation,
-)
+from axis.systems.system_a.types import AgentState
 
 
 def _make_transition(
@@ -39,7 +35,8 @@ def _make_transition(
 def _make_state(energy: float = 50.0, buffer_capacity: int = 5) -> AgentState:
     return AgentState(
         energy=energy,
-        observation_buffer=ObservationBuffer(entries=(), capacity=buffer_capacity),
+        observation_buffer=ObservationBuffer(
+            entries=(), capacity=buffer_capacity),
     )
 
 

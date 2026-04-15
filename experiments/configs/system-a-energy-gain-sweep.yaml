@@ -34,7 +34,7 @@ logging:
   enabled: true
   console_enabled: true
   jsonl_enabled: false
-  verbosity: "verbose"
+  verbosity: "compact"
 
 num_episodes_per_run: 5
 

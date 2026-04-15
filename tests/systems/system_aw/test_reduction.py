@@ -13,15 +13,16 @@ from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
-from axis.systems.system_a.types import CellObservation, ObservationBuffer, Observation
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 from axis.systems.system_aw.config import SystemAWConfig
-from axis.systems.system_aw.drive_curiosity import (
+from axis.systems.construction_kit.drives.curiosity import (
     compute_composite_novelty,
     compute_spatial_novelty,
 )
 from axis.systems.system_aw.system import SystemAW
 from axis.systems.system_aw.types import AgentStateAW
-from axis.systems.system_aw.world_model import create_world_model
+from axis.systems.construction_kit.memory.world_model import create_world_model
 from axis.world.grid_2d.model import Cell, CellType, World
 from tests.builders.system_aw_config_builder import SystemAWConfigBuilder
 from tests.builders.system_config_builder import SystemAConfigBuilder

@@ -6,7 +6,7 @@ import pytest
 
 from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.actions import handle_consume
+from axis.systems.construction_kit.types.actions import handle_consume
 from axis.world.grid_2d.model import Cell, CellType, World
 
 

@@ -1,4 +1,4 @@
-"""System A consume action handler."""
+"""Shared action handlers."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ def handle_consume(
     *,
     context: dict[str, Any],
 ) -> ActionOutcome:
-    """System A consume action handler.
+    """Consume action handler.
 
     Extracts resource from the agent's current cell.
     context must contain {"max_consume": float}.

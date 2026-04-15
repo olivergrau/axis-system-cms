@@ -1,25 +1,25 @@
-"""WP-6 unit tests -- SystemAWCuriosityDrive."""
+"""WP-6 unit tests -- CuriosityDrive."""
 
 from __future__ import annotations
 
 import pytest
 
-from axis.systems.system_a.types import (
-    CellObservation,
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.memory.types import (
     BufferEntry,
     ObservationBuffer,
-    Observation,
 )
-from axis.systems.system_aw.drive_curiosity import (
-    SystemAWCuriosityDrive,
+from axis.systems.construction_kit.drives.curiosity import (
+    CuriosityDrive,
     compute_composite_novelty,
     compute_curiosity_activation,
     compute_novelty_saturation,
     compute_sensory_novelty,
     compute_spatial_novelty,
 )
-from axis.systems.system_aw.types import CuriosityDriveOutput, WorldModelState
-from axis.systems.system_aw.world_model import create_world_model
+from axis.systems.construction_kit.drives.types import CuriosityDriveOutput
+from axis.systems.construction_kit.memory.types import WorldModelState
+from axis.systems.construction_kit.memory.world_model import create_world_model
 
 
 def _make_observation(
@@ -162,7 +162,7 @@ class TestActionContributions:
     """Action contribution tests."""
 
     def test_movement_contributions_equal_composite(self) -> None:
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -181,7 +181,7 @@ class TestActionContributions:
             out.composite_novelty[3])
 
     def test_consume_suppressed(self) -> None:
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -191,7 +191,7 @@ class TestActionContributions:
         assert out.action_contributions[4] == pytest.approx(-0.3)
 
     def test_stay_suppressed(self) -> None:
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -205,7 +205,7 @@ class TestFullPipeline:
     """Full pipeline tests."""
 
     def test_full_pipeline_output_type(self) -> None:
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -215,7 +215,7 @@ class TestFullPipeline:
         assert isinstance(out, CuriosityDriveOutput)
 
     def test_full_pipeline_all_fields_present(self) -> None:
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -234,7 +234,7 @@ class TestWorkedExamples:
 
     def test_example_a1_curiosity(self) -> None:
         """A1: e=90, all unvisited, empty observation buffer."""
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -259,7 +259,7 @@ class TestWorkedExamples:
 
     def test_example_b1_curiosity(self) -> None:
         """B1: observation buffer with 3 entries, all neighbors visited once."""
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -306,7 +306,7 @@ class TestWorkedExamples:
 
     def test_example_c1_curiosity(self) -> None:
         """C1: contributions are tiny despite high composite."""
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -341,7 +341,7 @@ class TestReduction:
     """Reduction and boundary condition tests."""
 
     def test_zero_base_curiosity(self) -> None:
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=0.0,
             spatial_sensory_balance=0.5,
             explore_suppression=0.3,
@@ -352,7 +352,7 @@ class TestReduction:
 
     def test_alpha_one_no_memory_dependency(self) -> None:
         """alpha=1.0: composite independent of observation buffer content."""
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=1.0,
             explore_suppression=0.3,
@@ -370,7 +370,7 @@ class TestReduction:
 
     def test_alpha_zero_no_world_model_dependency(self) -> None:
         """alpha=0.0: composite independent of visit counts."""
-        drive = SystemAWCuriosityDrive(
+        drive = CuriosityDrive(
             base_curiosity=1.0,
             spatial_sensory_balance=0.0,
             explore_suppression=0.3,

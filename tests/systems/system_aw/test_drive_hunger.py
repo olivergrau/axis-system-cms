@@ -1,27 +1,23 @@
-"""WP-5 unit tests -- SystemAWHungerDrive."""
+"""WP-5 unit tests -- HungerDrive."""
 
 from __future__ import annotations
 
 import pytest
 
-from axis.systems.system_a.drive import SystemAHungerDrive
-from axis.systems.system_a.types import (
-    AgentState,
-    CellObservation,
-    HungerDriveOutput,
-    ObservationBuffer,
-    Observation,
-)
-from axis.systems.system_aw.drive_hunger import SystemAWHungerDrive
-from axis.systems.system_aw.types import AgentStateAW, WorldModelState
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.drives.types import HungerDriveOutput
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.system_aw.types import AgentStateAW
+from axis.systems.construction_kit.memory.types import WorldModelState
 
 
 def _make_drive(
     consume_weight: float = 2.5,
     stay_suppression: float = 0.1,
     max_energy: float = 100.0,
-) -> SystemAWHungerDrive:
-    return SystemAWHungerDrive(
+) -> HungerDrive:
+    return HungerDrive(
         consume_weight=consume_weight,
         stay_suppression=stay_suppression,
         max_energy=max_energy,
@@ -184,7 +180,7 @@ class TestIdentity:
 
     def test_matches_system_a_drive(self) -> None:
         aw_drive = _make_drive()
-        a_drive = SystemAHungerDrive(
+        a_drive = HungerDrive(
             consume_weight=2.5, stay_suppression=0.1, max_energy=100.0,
         )
         for energy in [0.0, 25.0, 50.0, 75.0, 100.0]:

@@ -9,11 +9,12 @@ import numpy as np
 from axis.sdk.types import DecideResult, TransitionResult
 from axis.sdk.world_types import WorldView
 from axis.systems.system_a.config import SystemAConfig
-from axis.systems.system_a.drive import SystemAHungerDrive
-from axis.systems.system_a.policy import SystemAPolicy
-from axis.systems.system_a.sensor import SystemASensor
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
 from axis.systems.system_a.transition import SystemATransition
-from axis.systems.system_a.types import AgentState, ObservationBuffer
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.system_a.types import AgentState
 
 
 class SystemA:
@@ -25,13 +26,13 @@ class SystemA:
 
     def __init__(self, config: SystemAConfig) -> None:
         self._config = config
-        self._sensor = SystemASensor()
-        self._drive = SystemAHungerDrive(
+        self._sensor = VonNeumannSensor()
+        self._drive = HungerDrive(
             consume_weight=config.policy.consume_weight,
             stay_suppression=config.policy.stay_suppression,
             max_energy=config.agent.max_energy,
         )
-        self._policy = SystemAPolicy(
+        self._policy = SoftmaxPolicy(
             temperature=config.policy.temperature,
             selection_mode=config.policy.selection_mode,
         )
@@ -73,13 +74,15 @@ class SystemA:
     ) -> DecideResult:
         """Phase 1: sensor -> drive -> policy -> action intent."""
         # 1. Observe
-        observation = self._sensor.observe(world_view, world_view.agent_position)
+        observation = self._sensor.observe(
+            world_view, world_view.agent_position)
 
         # 2. Drive
         drive_output = self._drive.compute(agent_state, observation)
 
         # 3. Policy
-        policy_result = self._policy.select(drive_output, observation, rng)
+        policy_result = self._policy.select(
+            drive_output.action_contributions, observation, rng)
 
         # 4. Assemble decision data (for system_data in trace)
         decision_data = {
@@ -109,7 +112,7 @@ class SystemA:
 
     def action_handlers(self) -> dict[str, Any]:
         """Return custom action handlers for ActionRegistry registration."""
-        from axis.systems.system_a.actions import handle_consume
+        from axis.systems.construction_kit.types.actions import handle_consume
 
         return {"consume": handle_consume}
 
@@ -122,7 +125,7 @@ class SystemA:
         return {"max_consume": self._config.transition.max_consume}
 
     @property
-    def sensor(self) -> SystemASensor:
+    def sensor(self) -> VonNeumannSensor:
         """Access the sensor component."""
         return self._sensor
 

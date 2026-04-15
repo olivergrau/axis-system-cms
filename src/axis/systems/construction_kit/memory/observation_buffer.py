@@ -1,8 +1,9 @@
-"""System A observation buffer update function."""
+"""Observation buffer update function."""
 
 from __future__ import annotations
 
-from axis.systems.system_a.types import BufferEntry, ObservationBuffer, Observation
+from axis.systems.construction_kit.memory.types import BufferEntry, ObservationBuffer
+from axis.systems.construction_kit.observation.types import Observation
 
 
 def update_observation_buffer(

@@ -12,33 +12,26 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from axis.systems.system_a.types import (
-    CellObservation,
-    HungerDriveOutput,
-    ObservationBuffer,
-    Observation,
-)
-from axis.systems.system_aw.config import ArbitrationConfig, SystemAWConfig
-from axis.systems.system_aw.drive_arbitration import (
-    compute_action_scores,
-    compute_drive_weights,
-)
-from axis.systems.system_aw.drive_curiosity import (
-    SystemAWCuriosityDrive,
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.drives.types import CuriosityDriveOutput, HungerDriveOutput
+from axis.systems.construction_kit.memory.types import ObservationBuffer, WorldModelState
+from axis.systems.system_aw.config import SystemAWConfig
+from axis.systems.construction_kit.arbitration.scoring import combine_drive_scores
+from axis.systems.construction_kit.arbitration.weights import compute_maslow_weights
+from axis.systems.construction_kit.drives.curiosity import (
+    CuriosityDrive,
     compute_composite_novelty,
     compute_sensory_novelty,
     compute_spatial_novelty,
 )
-from axis.systems.system_aw.drive_hunger import SystemAWHungerDrive
-from axis.systems.system_aw.policy import SystemAWPolicy
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
 from axis.systems.system_aw.system import SystemAW
 from axis.systems.system_aw.transition import SystemAWTransition
 from axis.systems.system_aw.types import (
     AgentStateAW,
-    CuriosityDriveOutput,
-    WorldModelState,
 )
-from axis.systems.system_aw.world_model import (
+from axis.systems.construction_kit.memory.world_model import (
     create_world_model,
     update_world_model,
 )
@@ -66,10 +59,10 @@ C_STAY = 0.5
 KAPPA = 10.0
 
 
-def _arb_config(gamma: float = GAMMA) -> ArbitrationConfig:
-    return ArbitrationConfig(
-        hunger_weight_base=W_H_BASE,
-        curiosity_weight_base=W_C_BASE,
+def _arb_kwargs(gamma: float = GAMMA) -> dict[str, float]:
+    return dict(
+        primary_weight_base=W_H_BASE,
+        secondary_weight_base=W_C_BASE,
         gating_sharpness=gamma,
     )
 
@@ -120,7 +113,7 @@ class TestExampleA1:
 
     def test_a1_drive_evaluation(self) -> None:
         """e=90, E_max=100 -> d_H=0.10, d_C=1.0."""
-        drive = SystemAWHungerDrive(
+        drive = HungerDrive(
             consume_weight=W_CONSUME, stay_suppression=LAMBDA_STAY,
             max_energy=E_MAX,
         )
@@ -132,7 +125,7 @@ class TestExampleA1:
         result = drive.compute(state, self.OBS)
         assert result.activation == pytest.approx(0.10, abs=0.005)
 
-        curiosity = SystemAWCuriosityDrive(
+        curiosity = CuriosityDrive(
             base_curiosity=MU_C, spatial_sensory_balance=ALPHA,
             explore_suppression=LAMBDA_EXPLORE,
         )
@@ -142,7 +135,7 @@ class TestExampleA1:
 
     def test_a1_drive_arbitration(self) -> None:
         """d_H=0.10 -> w_H=0.307, w_C=0.810."""
-        weights = compute_drive_weights(0.10, _arb_config())
+        weights = compute_maslow_weights(0.10, **_arb_kwargs())
         assert weights.hunger_weight == pytest.approx(0.307, abs=0.005)
         assert weights.curiosity_weight == pytest.approx(0.810, abs=0.005)
 
@@ -175,10 +168,10 @@ class TestExampleA1:
     def test_a1_hunger_contributions(self) -> None:
         """Verify all 6 hunger drive action_contributions.
 
-        SystemAHungerDrive returns d_H * phi_H(a) as action_contributions.
+        HungerDrive returns d_H * phi_H(a) as action_contributions.
         d_H=0.10, so contributions = 0.10 * raw phi_H values.
         """
-        drive = SystemAWHungerDrive(
+        drive = HungerDrive(
             consume_weight=W_CONSUME, stay_suppression=LAMBDA_STAY,
             max_energy=E_MAX,
         )
@@ -200,7 +193,7 @@ class TestExampleA1:
 
     def test_a1_curiosity_contributions(self) -> None:
         """Verify all 6 curiosity phi_C values."""
-        curiosity = SystemAWCuriosityDrive(
+        curiosity = CuriosityDrive(
             base_curiosity=MU_C, spatial_sensory_balance=ALPHA,
             explore_suppression=LAMBDA_EXPLORE,
         )
@@ -232,8 +225,13 @@ class TestExampleA1:
             composite_novelty=(0.50, 0.50, 0.65, 0.50),
             action_contributions=(0.50, 0.50, 0.65, 0.50, -0.3, -0.3),
         )
-        weights = compute_drive_weights(0.10, _arb_config())
-        scores = compute_action_scores(h_out, c_out, weights)
+        weights = compute_maslow_weights(0.10, **_arb_kwargs())
+        scores = combine_drive_scores(
+            drive_contributions=[
+                h_out.action_contributions, c_out.action_contributions],
+            drive_activations=[h_out.activation, c_out.activation],
+            drive_weights=[weights.hunger_weight, weights.curiosity_weight],
+        )
         # Exact: UP=0.405, DOWN=0.405, LEFT=0.53571, RIGHT=0.405,
         #        CONSUME=-0.1816, STAY=-0.24607
         assert scores[0] == pytest.approx(0.405, abs=0.005)
@@ -246,7 +244,7 @@ class TestExampleA1:
     def test_a1_probabilities(self) -> None:
         """Verify all 6 probabilities after softmax (beta=2.0)."""
         scores = (0.405, 0.405, 0.53571, 0.405, -0.1816, -0.24607)
-        policy = SystemAWPolicy(temperature=BETA, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=BETA, selection_mode="sample")
         rng = np.random.default_rng(42)
         result = policy.select(scores, self.OBS, rng)
         probs = result.policy_data["probabilities"]
@@ -260,7 +258,7 @@ class TestExampleA1:
     def test_a1_conclusion(self) -> None:
         """Movement collectively > 88%, CONSUME < 7%."""
         scores = (0.405, 0.405, 0.53571, 0.405, -0.1816, -0.24607)
-        policy = SystemAWPolicy(temperature=BETA, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=BETA, selection_mode="sample")
         rng = np.random.default_rng(42)
         result = policy.select(scores, self.OBS, rng)
         probs = result.policy_data["probabilities"]
@@ -289,7 +287,7 @@ class TestExampleB1:
 
     def test_b1_drive_arbitration(self) -> None:
         """d_H=0.50 -> w_H=0.475, w_C=0.250."""
-        weights = compute_drive_weights(0.50, _arb_config())
+        weights = compute_maslow_weights(0.50, **_arb_kwargs())
         assert weights.hunger_weight == pytest.approx(0.475, abs=0.005)
         assert weights.curiosity_weight == pytest.approx(0.250, abs=0.005)
 
@@ -319,8 +317,13 @@ class TestExampleB1:
             composite_novelty=(0.300, 0.450, 0.350, 0.250),
             action_contributions=(0.300, 0.450, 0.350, 0.250, -0.3, -0.3),
         )
-        weights = compute_drive_weights(0.50, _arb_config())
-        scores = compute_action_scores(h_out, c_out, weights)
+        weights = compute_maslow_weights(0.50, **_arb_kwargs())
+        scores = combine_drive_scores(
+            drive_contributions=[
+                h_out.action_contributions, c_out.action_contributions],
+            drive_activations=[h_out.activation, c_out.activation],
+            drive_weights=[weights.hunger_weight, weights.curiosity_weight],
+        )
         # Exact computed: UP=0.06375, DOWN=0.190625, LEFT=0.074375,
         #                 RIGHT=0.053125, CONSUME=0.2925, STAY=-0.0875
         assert scores[0] == pytest.approx(0.064, abs=0.005)
@@ -333,7 +336,7 @@ class TestExampleB1:
     def test_b1_masking(self) -> None:
         """LEFT blocked -> psi(LEFT) = -inf after masking."""
         scores = (0.064, 0.191, 0.074, 0.053, 0.293, -0.088)
-        policy = SystemAWPolicy(temperature=BETA, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=BETA, selection_mode="sample")
         rng = np.random.default_rng(42)
         result = policy.select(scores, self.OBS, rng)
         probs = result.policy_data["probabilities"]
@@ -342,7 +345,7 @@ class TestExampleB1:
     def test_b1_probabilities(self) -> None:
         """CONSUME=0.283, DOWN=0.231, LEFT=0.000."""
         scores = (0.06375, 0.190625, 0.074375, 0.053125, 0.2925, -0.0875)
-        policy = SystemAWPolicy(temperature=BETA, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=BETA, selection_mode="sample")
         rng = np.random.default_rng(42)
         result = policy.select(scores, self.OBS, rng)
         probs = result.policy_data["probabilities"]
@@ -363,7 +366,7 @@ class TestExampleC1:
 
     def test_c1_drive_arbitration(self) -> None:
         """d_H=0.95 -> w_H=0.932, w_C=0.003."""
-        weights = compute_drive_weights(0.95, _arb_config())
+        weights = compute_maslow_weights(0.95, **_arb_kwargs())
         assert weights.hunger_weight == pytest.approx(0.932, abs=0.005)
         assert weights.curiosity_weight == pytest.approx(0.003, abs=0.005)
 
@@ -376,7 +379,7 @@ class TestExampleC1:
             composite_novelty=(0.50, 0.50, 0.50, 0.60),
             action_contributions=(0.50, 0.50, 0.50, 0.60, -0.3, -0.3),
         )
-        weights = compute_drive_weights(0.95, _arb_config())
+        weights = compute_maslow_weights(0.95, **_arb_kwargs())
         # w_C * d_C * phi_C(a) for each action
         for i in range(6):
             contrib = weights.curiosity_weight * c_out.activation * \
@@ -396,8 +399,13 @@ class TestExampleC1:
             composite_novelty=(0.50, 0.50, 0.50, 0.60),
             action_contributions=(0.50, 0.50, 0.50, 0.60, -0.3, -0.3),
         )
-        weights = compute_drive_weights(0.95, _arb_config())
-        scores = compute_action_scores(h_out, c_out, weights)
+        weights = compute_maslow_weights(0.95, **_arb_kwargs())
+        scores = combine_drive_scores(
+            drive_contributions=[
+                h_out.action_contributions, c_out.action_contributions],
+            drive_activations=[h_out.activation, c_out.activation],
+            drive_weights=[weights.hunger_weight, weights.curiosity_weight],
+        )
         # Exact: CONSUME=1.105703
         assert scores[4] == pytest.approx(1.106, abs=0.005)
         # All other scores much smaller
@@ -407,7 +415,7 @@ class TestExampleC1:
     def test_c1_probabilities(self) -> None:
         """CONSUME=0.634, all movements < 0.10."""
         scores = (0.00125, 0.00125, 0.00125, 0.178532, 1.105703, -0.089266)
-        policy = SystemAWPolicy(temperature=BETA, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=BETA, selection_mode="sample")
         rng = np.random.default_rng(42)
         result = policy.select(scores, self.OBS, rng)
         probs = result.policy_data["probabilities"]
@@ -427,7 +435,7 @@ class TestExampleD1:
     def test_d1_step0_consume_dominates(self) -> None:
         """e=40, r_c=0.8 -> CONSUME score=0.614, movement~0.080."""
         d_h = 0.60
-        weights = compute_drive_weights(d_h, _arb_config())
+        weights = compute_maslow_weights(d_h, **_arb_kwargs())
         assert weights.hunger_weight == pytest.approx(0.552, abs=0.005)
         assert weights.curiosity_weight == pytest.approx(0.160, abs=0.005)
 
@@ -442,7 +450,12 @@ class TestExampleD1:
             composite_novelty=(0.50, 0.50, 0.50, 0.50),
             action_contributions=(0.50, 0.50, 0.50, 0.50, -0.3, -0.3),
         )
-        scores = compute_action_scores(h_out, c_out, weights)
+        scores = combine_drive_scores(
+            drive_contributions=[
+                h_out.action_contributions, c_out.action_contributions],
+            drive_activations=[h_out.activation, c_out.activation],
+            drive_weights=[weights.hunger_weight, weights.curiosity_weight],
+        )
         assert scores[4] == pytest.approx(0.614, abs=0.005)  # CONSUME
         assert scores[0] == pytest.approx(0.080, abs=0.005)  # movement
 
@@ -471,7 +484,7 @@ class TestExampleD1:
     def test_d1_step1_movement_dominates(self) -> None:
         """e=47, r_c=0 -> CONSUME negative, movement positive."""
         d_h = 0.53
-        weights = compute_drive_weights(d_h, _arb_config())
+        weights = compute_maslow_weights(d_h, **_arb_kwargs())
         assert weights.hunger_weight == pytest.approx(0.497, abs=0.005)
         assert weights.curiosity_weight == pytest.approx(0.221, abs=0.005)
 
@@ -486,29 +499,34 @@ class TestExampleD1:
             composite_novelty=(0.50, 0.50, 0.50, 0.50),
             action_contributions=(0.50, 0.50, 0.50, 0.50, -0.3, -0.3),
         )
-        scores = compute_action_scores(h_out, c_out, weights)
+        scores = combine_drive_scores(
+            drive_contributions=[
+                h_out.action_contributions, c_out.action_contributions],
+            drive_activations=[h_out.activation, c_out.activation],
+            drive_weights=[weights.hunger_weight, weights.curiosity_weight],
+        )
         assert scores[4] < 0  # CONSUME negative (no resource)
         assert scores[0] > 0  # movement positive
 
     def test_d1_trajectory_summary(self) -> None:
         """4-step trajectory: verify energy and dominant drive at each step."""
         # Step 0: e=40, d_H=0.60, w_C=0.160, Hunger dominant
-        w_d0 = compute_drive_weights(0.60, _arb_config())
+        w_d0 = compute_maslow_weights(0.60, **_arb_kwargs())
         assert w_d0.curiosity_weight == pytest.approx(0.160, abs=0.005)
         # w_H * d_H = 0.552 * 0.60 = 0.3312
         # w_C * d_C = 0.160 * 1.0 = 0.160
         assert w_d0.hunger_weight * 0.60 > w_d0.curiosity_weight * 1.0
 
         # Step 1: e=47, d_H=0.53, w_C=0.221, Curiosity dominant
-        w_d1 = compute_drive_weights(0.53, _arb_config())
+        w_d1 = compute_maslow_weights(0.53, **_arb_kwargs())
         assert w_d1.curiosity_weight == pytest.approx(0.221, abs=0.005)
 
         # Step 2: e=46, d_H=0.54, w_C=0.212
-        w_d2 = compute_drive_weights(0.54, _arb_config())
+        w_d2 = compute_maslow_weights(0.54, **_arb_kwargs())
         assert w_d2.curiosity_weight == pytest.approx(0.212, abs=0.005)
 
         # Step 3: e=45, d_H=0.55, w_C=0.203
-        w_d3 = compute_drive_weights(0.55, _arb_config())
+        w_d3 = compute_maslow_weights(0.55, **_arb_kwargs())
         assert w_d3.curiosity_weight == pytest.approx(0.203, abs=0.005)
 
 
@@ -529,8 +547,7 @@ class TestExampleE1:
             (4.0, 0.344, 0.063),
         ]
         for gamma, exp_wh, exp_wc in expected:
-            config = _arb_config(gamma=gamma)
-            weights = compute_drive_weights(0.50, config)
+            weights = compute_maslow_weights(0.50, **_arb_kwargs(gamma=gamma))
             assert weights.hunger_weight == pytest.approx(
                 exp_wh, abs=0.005), f"gamma={gamma}: w_H"
             assert weights.curiosity_weight == pytest.approx(

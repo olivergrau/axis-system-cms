@@ -54,6 +54,16 @@ nav:
       - "System A+W": manuals/system-aw-manual.md
       - "World Development": manuals/world-dev-manual.md
 
+  - "Construction Kit":
+      - construction-kit/index.md
+      - "Observation": construction-kit/observation.md
+      - "Drives": construction-kit/drives.md
+      - "Policy": construction-kit/policy.md
+      - "Arbitration": construction-kit/arbitration.md
+      - "Energy": construction-kit/energy.md
+      - "Memory": construction-kit/memory.md
+      - "Types": construction-kit/types.md
+
   - Design:
       - system-design/index.md
       - "System A":

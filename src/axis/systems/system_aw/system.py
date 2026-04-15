@@ -7,19 +7,17 @@ from typing import Any
 import numpy as np
 
 from axis.sdk.types import DecideResult, TransitionResult
-from axis.systems.system_a.types import ObservationBuffer
+from axis.systems.construction_kit.memory.types import ObservationBuffer
 from axis.systems.system_aw.config import SystemAWConfig
-from axis.systems.system_aw.drive_arbitration import (
-    compute_action_scores,
-    compute_drive_weights,
-)
-from axis.systems.system_aw.drive_curiosity import SystemAWCuriosityDrive
-from axis.systems.system_aw.drive_hunger import SystemAWHungerDrive
-from axis.systems.system_aw.policy import SystemAWPolicy
-from axis.systems.system_aw.sensor import SystemAWSensor
+from axis.systems.construction_kit.arbitration.scoring import combine_drive_scores
+from axis.systems.construction_kit.arbitration.weights import compute_maslow_weights
+from axis.systems.construction_kit.drives.curiosity import CuriosityDrive
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
 from axis.systems.system_aw.transition import SystemAWTransition
 from axis.systems.system_aw.types import AgentStateAW
-from axis.systems.system_aw.world_model import create_world_model
+from axis.systems.construction_kit.memory.world_model import create_world_model
 
 
 class SystemAW:
@@ -35,19 +33,19 @@ class SystemAW:
 
     def __init__(self, config: SystemAWConfig) -> None:
         self._config = config
-        self._sensor = SystemAWSensor()
-        self._hunger_drive = SystemAWHungerDrive(
+        self._sensor = VonNeumannSensor()
+        self._hunger_drive = HungerDrive(
             consume_weight=config.policy.consume_weight,
             stay_suppression=config.policy.stay_suppression,
             max_energy=config.agent.max_energy,
         )
-        self._curiosity_drive = SystemAWCuriosityDrive(
+        self._curiosity_drive = CuriosityDrive(
             base_curiosity=config.curiosity.base_curiosity,
             spatial_sensory_balance=config.curiosity.spatial_sensory_balance,
             explore_suppression=config.curiosity.explore_suppression,
             novelty_sharpness=config.curiosity.novelty_sharpness,
         )
-        self._policy = SystemAWPolicy(
+        self._policy = SoftmaxPolicy(
             temperature=config.policy.temperature,
             selection_mode=config.policy.selection_mode,
         )
@@ -101,13 +99,28 @@ class SystemAW:
         )
 
         # Step 3: Drive arbitration
-        weights = compute_drive_weights(
-            hunger_output.activation, self._config.arbitration,
+        weights = compute_maslow_weights(
+            hunger_output.activation,
+            primary_weight_base=self._config.arbitration.hunger_weight_base,
+            secondary_weight_base=self._config.arbitration.curiosity_weight_base,
+            gating_sharpness=self._config.arbitration.gating_sharpness,
         )
 
         # Step 4: Action modulation (score combination)
-        scores = compute_action_scores(
-            hunger_output, curiosity_output, weights)
+        scores = combine_drive_scores(
+            drive_contributions=[
+                hunger_output.action_contributions,
+                curiosity_output.action_contributions,
+            ],
+            drive_activations=[
+                hunger_output.activation,
+                curiosity_output.activation,
+            ],
+            drive_weights=[
+                weights.hunger_weight,
+                weights.curiosity_weight,
+            ],
+        )
 
         # Steps 5-6: Admissibility masking + action selection
         policy_result = self._policy.select(scores, observation, rng)
@@ -152,7 +165,7 @@ class SystemAW:
 
     def action_handlers(self) -> dict[str, Any]:
         """Return custom action handlers for ActionRegistry registration."""
-        from axis.systems.system_aw.actions import handle_consume
+        from axis.systems.construction_kit.types.actions import handle_consume
 
         return {"consume": handle_consume}
 

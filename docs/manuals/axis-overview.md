@@ -23,7 +23,8 @@ visualized without modifying a single line of framework code.
 
 ## Core Architecture
 
-AXIS separates concerns into three independent layers:
+AXIS separates concerns into three independent layers, with a reusable
+component library available within the System layer:
 
 ```
 +------------------------------------------------------+
@@ -39,8 +40,25 @@ AXIS separates concerns into three independent layers:
 |  System Layer    |          |   World Layer      |
 |  Sensor, Drives, |          |   Grid topology,   |
 |  Policy, State   |          |   Resources, Regen |
-+------------------+          +--------------------+
++--+---------------+          +--------------------+
+   |
+   | imports (composition, not inheritance)
+   |
++--+-----------------------------+
+|  System Construction Kit       |
+|  Reusable building blocks:     |
+|  Sensors, Drives, Policy,      |
+|  Arbitration, Energy, Memory   |
++--------------------------------+
 ```
+
+The **System Construction Kit** (`systems/construction_kit/`) provides
+tested, reusable implementations of common system-internal mechanisms:
+sensors, drives, policies, arbitration, energy utilities, and memory
+structures. Concrete systems compose these components via plain Python
+construction -- no inheritance hierarchies. Systems may also implement
+their own components from scratch where the kit does not cover their
+needs (e.g., System B implements its own policy and action handler).
 
 All contracts are Python `Protocol` types (structural typing). There are
 no abstract base classes and no inheritance hierarchies. A system is
@@ -75,38 +93,52 @@ of cognitive complexity.
 A reactive agent that senses its immediate neighborhood, evaluates
 actions through a hunger drive, and selects behavior via softmax policy.
 
-- **Actions:** move (4 directions), consume (extract resource from
-  current cell), stay
-- **Sensor:** Reads resource value and traversability for the current
+System A composes its pipeline from **System Construction Kit** components:
+
+- **Sensor:** `VonNeumannSensor` (from `construction_kit.observation`) --
+  Reads resource value and traversability for the current
   cell and four cardinal neighbors.
-- **Observation buffer:** Bounded FIFO ring buffer of recent observations,
-  giving the agent short-term memory of what it has seen.
-- **Hunger drive:** Single drive that scores actions based on resource
+- **Hunger drive:** `HungerDrive` (from `construction_kit.drives`) --
+  Single drive that scores actions based on resource
   availability and energy need. Activation rises as energy drops.
-- **Policy:** Softmax selection over drive-produced action scores with
+- **Policy:** `SoftmaxPolicy` (from `construction_kit.policy`) --
+  Softmax selection over drive-produced action scores with
   configurable temperature. Supports both stochastic sampling and argmax
   modes.
+- **Observation buffer:** `ObservationBuffer` (from `construction_kit.memory`) --
+  Bounded FIFO ring buffer of recent observations,
+  giving the agent short-term memory of what it has seen.
+- **Config types:** `AgentConfig`, `PolicyConfig`, `TransitionConfig`
+  (from `construction_kit.types`) -- shared configuration models.
+- **Consume action:** `handle_consume` (from `construction_kit.types`) --
+  custom action handler for resource extraction.
+- **Actions:** move (4 directions), consume (extract resource from
+  current cell), stay
 - **Energy model:** Movement costs energy. Consuming resources gains
   energy. Episode terminates when energy reaches zero.
+
+System A adds its own `SystemATransition` (energy update + buffer update +
+termination check) and `AgentState` type.
 
 ### System A+W -- Dual-Drive Agent with Curiosity and World Model
 
 Extends System A with a second drive (curiosity) and a spatial world
-model, implementing a minimal motivational hierarchy.
+model, implementing a minimal motivational hierarchy. Like System A,
+it composes components from the Construction Kit.
 
-- **Everything from System A**, plus:
-- **Curiosity drive:** Scores actions by novelty -- a composite of
+- **Everything from System A** (same kit components), plus:
+- **Curiosity drive:** `CuriosityDrive` (from `construction_kit.drives`) --
+  Scores actions by novelty -- a composite of
   spatial novelty (how often a neighboring cell has been visited) and
   sensory novelty (how different current observations are from past
   experience). Tunable alpha blending between the two signals.
-- **Spatial world model:** Dead-reckoning visit-count map maintained
+- **Spatial world model:** `create_world_model`, `update_world_model`
+  (from `construction_kit.memory`) -- Dead-reckoning visit-count map maintained
   in agent-relative coordinates. Tracks where the agent has been without
   requiring absolute position knowledge.
-- **Dynamic drive arbitration:** Maslow-like gating -- hunger suppresses
-  curiosity when energy is low. When the agent is well-fed, curiosity
-  dominates and the agent explores. As energy drops, hunger takes over
-  and the agent shifts to foraging. The transition is smooth and
-  governed by a gating sharpness parameter.
+- **Dynamic drive arbitration:** `compute_maslow_weights`, `combine_drive_scores`
+  (from `construction_kit.arbitration`) -- Maslow-like gating -- hunger suppresses
+  curiosity when energy is low.
 - **Reduction property:** When curiosity weight is set to zero, System
   A+W produces identical behavior to System A. This is verified by
   automated tests.
@@ -135,6 +167,12 @@ registered as a new system type. The SDK provides:
   ``PolicyResult``)
 - Custom action registration via ``action_handlers()``
 - A system developer manual with step-by-step guidance
+
+The **System Construction Kit** (`systems/construction_kit/`) provides
+ready-to-use implementations of common components. New systems can
+compose kit components (sensor, drives, policy, memory, energy utilities)
+instead of building everything from scratch. See the system developer
+manual for guidance on when and how to use kit components.
 
 No framework code needs to be modified.
 
@@ -387,6 +425,9 @@ covering all layers:
   config, sensor, drives, policy, transition, pipeline, and
   visualization adapters. Includes mathematical worked examples and
   the System A+W reduction property verification.
+- **Construction kit tests:** Component-level tests for all kit modules
+  plus architectural dependency constraint tests that verify no
+  cross-layer imports.
 - **World tests:** Action dispatch, dynamics, topology (toroidal wrap,
   signal landscape drift)
 - **Visualization tests:** Adapter protocols, overlay rendering, replay

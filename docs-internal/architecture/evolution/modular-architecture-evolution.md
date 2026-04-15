@@ -46,6 +46,8 @@ The system will be restructured into clearly separated layers:
 ```
 [ System SDK (Contracts & Interfaces) ]
               ↑
+[ System Construction Kit (Reusable Components) ]
+              ↑
 [ System Implementations (A, A+W, ...) ]
 
 [ Experimentation Framework ]
@@ -62,6 +64,13 @@ Additionally:
         ↑
 [ Systems interact via defined world interfaces ]
 ```
+
+The **System Construction Kit** sits between the SDK and concrete
+system implementations. It provides tested, reusable building blocks
+(sensors, drives, policies, arbitration, energy utilities, memory
+structures) that concrete systems compose via plain construction.
+The kit depends only on the SDK; concrete systems import from both
+the SDK and the kit but never from each other.
 
 ---
 

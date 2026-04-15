@@ -5,11 +5,13 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from axis.systems.system_a.config import (
+from axis.systems.construction_kit.types.config import (
     AgentConfig,
     PolicyConfig,
-    SystemAConfig,
     TransitionConfig,
+)
+from axis.systems.system_a.config import (
+    SystemAConfig,
 )
 from tests.builders.system_config_builder import SystemAConfigBuilder
 

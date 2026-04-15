@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from axis.systems.system_aw.types import WorldModelState
-from axis.systems.system_aw.world_model import (
+from axis.systems.construction_kit.memory.types import WorldModelState
+from axis.systems.construction_kit.memory.world_model import (
     all_spatial_novelties,
     create_world_model,
     get_neighbor_position,

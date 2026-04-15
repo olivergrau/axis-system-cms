@@ -13,7 +13,7 @@ from axis.sdk.position import Position
 from axis.sdk.snapshot import WorldSnapshot
 from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
 from axis.sdk.world_types import BaseWorldConfig
-from axis.systems.system_a.actions import handle_consume
+from axis.systems.construction_kit.types.actions import handle_consume
 from axis.systems.system_a.config import SystemAConfig
 from axis.systems.system_a.system import SystemA
 from axis.world.actions import ActionRegistry, create_action_registry

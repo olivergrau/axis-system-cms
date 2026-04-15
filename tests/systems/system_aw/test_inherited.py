@@ -6,16 +6,13 @@ import pytest
 
 from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.sensor import SystemASensor
-from axis.systems.system_a.types import (
-    CellObservation,
-    ObservationBuffer,
-    Observation,
-)
-from axis.systems.system_aw.actions import handle_consume
-from axis.systems.system_aw.observation_buffer import update_observation_buffer
-from axis.systems.system_aw.sensor import SystemAWSensor
-from axis.systems.system_aw.types import AgentStateAW, WorldModelState
+from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.construction_kit.types.actions import handle_consume
+from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer
+from axis.systems.system_aw.types import AgentStateAW
+from axis.systems.construction_kit.memory.types import WorldModelState
 from axis.world.grid_2d.model import Cell, CellType, World
 
 
@@ -33,13 +30,13 @@ def _make_observation() -> Observation:
 
 
 class TestSensor:
-    """SystemAWSensor tests in System A+W context."""
+    """VonNeumannSensor tests in System A+W context."""
 
     def test_sensor_produces_observation(self) -> None:
         grid = _make_grid()
         grid[2][2] = Cell(cell_type=CellType.RESOURCE, resource_value=0.7)
         world = World(grid, Position(x=2, y=2))
-        sensor = SystemAWSensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(world, world.agent_position)
         assert isinstance(obs, Observation)
         assert obs.current.resource == 0.7
@@ -48,13 +45,13 @@ class TestSensor:
     def test_sensor_out_of_bounds(self) -> None:
         grid = _make_grid()
         world = World(grid, Position(x=0, y=0))
-        sensor = SystemAWSensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(world, world.agent_position)
         assert obs.up.traversability == 0.0
         assert obs.left.traversability == 0.0
 
     def test_sensor_is_system_a_sensor(self) -> None:
-        assert SystemAWSensor is SystemASensor
+        assert VonNeumannSensor is VonNeumannSensor
 
 
 class TestObservationBuffer:
@@ -62,14 +59,16 @@ class TestObservationBuffer:
 
     def test_buffer_update_appends(self) -> None:
         mem = ObservationBuffer(entries=(), capacity=5)
-        new_buffer = update_observation_buffer(mem, _make_observation(), timestep=0)
+        new_buffer = update_observation_buffer(
+            mem, _make_observation(), timestep=0)
         assert len(new_buffer.entries) == 1
         assert new_buffer.entries[0].timestep == 0
 
     def test_buffer_update_fifo_overflow(self) -> None:
         mem = ObservationBuffer(entries=(), capacity=2)
         for t in range(3):
-            mem = update_observation_buffer(mem, _make_observation(), timestep=t)
+            mem = update_observation_buffer(
+                mem, _make_observation(), timestep=t)
         assert len(mem.entries) == 2
         assert mem.entries[0].timestep == 1
         assert mem.entries[1].timestep == 2
@@ -118,10 +117,10 @@ class TestImportAccessibility:
     """Verify re-exports are importable."""
 
     def test_imports_accessible(self) -> None:
-        from axis.systems.system_aw.sensor import SystemAWSensor  # noqa: F401
+        from axis.systems.construction_kit.observation.sensor import VonNeumannSensor  # noqa: F401
 
     def test_imports_accessible_observation_buffer(self) -> None:
-        from axis.systems.system_aw.observation_buffer import update_observation_buffer  # noqa: F401
+        from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer  # noqa: F401
 
     def test_imports_accessible_actions(self) -> None:
-        from axis.systems.system_aw.actions import handle_consume  # noqa: F401
+        from axis.systems.construction_kit.types.actions import handle_consume  # noqa: F401

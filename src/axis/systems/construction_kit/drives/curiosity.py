@@ -1,10 +1,11 @@
-"""System A+W curiosity drive -- novelty computation and drive pipeline."""
+"""Curiosity drive -- novelty computation and drive pipeline."""
 
 from __future__ import annotations
 
-from axis.systems.system_a.types import ObservationBuffer, Observation
-from axis.systems.system_aw.types import CuriosityDriveOutput, WorldModelState
-from axis.systems.system_aw.world_model import all_spatial_novelties
+from axis.systems.construction_kit.observation.types import Observation
+from axis.systems.construction_kit.memory.types import ObservationBuffer, WorldModelState
+from axis.systems.construction_kit.drives.types import CuriosityDriveOutput
+from axis.systems.construction_kit.memory.world_model import all_spatial_novelties
 
 
 def compute_spatial_novelty(
@@ -139,8 +140,8 @@ def compute_curiosity_activation(
     return base_curiosity * (1.0 - novelty_saturation)
 
 
-class SystemAWCuriosityDrive:
-    """Curiosity drive for System A+W.
+class CuriosityDrive:
+    """Curiosity drive.
 
     Computes the curiosity drive activation and per-action
     contributions from the composite novelty signal.

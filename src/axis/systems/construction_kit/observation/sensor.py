@@ -1,17 +1,17 @@
-"""System A sensor -- Von Neumann neighborhood observation builder."""
+"""Von Neumann neighborhood sensor implementation."""
 
 from __future__ import annotations
 
 from axis.sdk.position import Position
 from axis.sdk.world_types import WorldView
-from axis.systems.system_a.types import CellObservation, Observation
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 
 # Sentinel for out-of-bounds cells: non-traversable, no resource.
 _OUT_OF_BOUNDS = CellObservation(traversability=0.0, resource=0.0)
 
 
-class SystemASensor:
-    """Von Neumann neighborhood sensor for System A.
+class VonNeumannSensor:
+    """Von Neumann neighborhood sensor.
 
     Satisfies SensorInterface. Produces a 10-dimensional observation
     from the world state around the agent's position.

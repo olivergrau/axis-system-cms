@@ -71,8 +71,17 @@ src/axis/
     framework/              # Execution, persistence, config, CLI
     world/                  # World model, factory, action engine, dynamics
     systems/
-        system_a/           # System A implementation
-        system_a_plus_w/    # System A+W implementation (future)
+        construction_kit/   # Reusable system-internal building blocks
+            observation/    # VonNeumannSensor, CellObservation, Observation
+            drives/         # HungerDrive, CuriosityDrive, drive output types
+            policy/         # SoftmaxPolicy with admissibility masking
+            arbitration/    # Drive weight computation, score combination
+            energy/         # clip_energy, compute_vitality, termination
+            memory/         # ObservationBuffer, world model (visit counts)
+            types/          # Shared config types, action handlers
+        system_a/           # System A implementation (composes kit components)
+        system_aw/          # System A+W implementation (composes kit components)
+        system_b/           # System B implementation (standalone)
     visualization/          # Replay viewer, adapter framework
 ```
 
@@ -123,12 +132,13 @@ Single installable package. Import paths: `from axis.sdk import SystemInterface`
 SDK (interfaces, contracts)          -- depends on nothing
 World Framework                      -- depends on SDK types
 Framework (execution, persistence)   -- depends on SDK, World
-Systems (System A, A+W)             -- depends on SDK, World
+Construction Kit                     -- depends on SDK only
+Systems (System A, A+W)             -- depends on SDK, Construction Kit
 Visualization                        -- depends on SDK (replay contract), Framework (persistence)
 CLI                                  -- depends on Framework, Registry
 ```
 
-Systems never depend on the Framework. The Framework never depends on any specific System. This is the central architectural constraint.
+Systems never depend on the Framework. The Framework never depends on any specific System. The Construction Kit depends only on the SDK, never on the Framework, World, or concrete Systems. Concrete systems never import from each other. These are the central architectural constraints.
 
 ---
 

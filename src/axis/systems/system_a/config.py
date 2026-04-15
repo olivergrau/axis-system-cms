@@ -2,49 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict
 
-
-class AgentConfig(BaseModel):
-    """Agent initialization parameters."""
-
-    model_config = ConfigDict(frozen=True)
-
-    initial_energy: float = Field(..., gt=0)
-    max_energy: float = Field(..., gt=0)
-    buffer_capacity: int = Field(..., gt=0)
-
-    @model_validator(mode="after")
-    def check_energy_bounds(self) -> AgentConfig:
-        if self.initial_energy > self.max_energy:
-            raise ValueError(
-                f"initial_energy ({self.initial_energy}) must be "
-                f"<= max_energy ({self.max_energy})"
-            )
-        return self
-
-
-class PolicyConfig(BaseModel):
-    """Policy and action selection parameters."""
-
-    model_config = ConfigDict(frozen=True)
-
-    selection_mode: str  # "sample" or "argmax"
-    temperature: float = Field(..., gt=0)
-    stay_suppression: float = Field(..., ge=0)
-    consume_weight: float = Field(..., gt=0)
-
-
-class TransitionConfig(BaseModel):
-    """Transition engine cost and energy parameters."""
-
-    model_config = ConfigDict(frozen=True)
-
-    move_cost: float = Field(..., gt=0)
-    consume_cost: float = Field(..., gt=0)
-    stay_cost: float = Field(..., ge=0)
-    max_consume: float = Field(..., gt=0)
-    energy_gain_factor: float = Field(..., ge=0)
+from axis.systems.construction_kit.types.config import (
+    AgentConfig,
+    PolicyConfig,
+    TransitionConfig,
+)
 
 
 class SystemAConfig(BaseModel):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from axis.systems.system_a.config import AgentConfig, PolicyConfig, TransitionConfig
+from axis.systems.construction_kit.types.config import AgentConfig, PolicyConfig, TransitionConfig
 
 
 class CuriosityConfig(BaseModel):

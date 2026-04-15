@@ -22,27 +22,28 @@ from axis.sdk.interfaces import (
 from axis.sdk.position import Position
 from axis.sdk.types import DecideResult, PolicyResult, TransitionResult
 from axis.sdk.world_types import ActionOutcome, CellView
-from axis.systems.system_a.actions import handle_consume
-from axis.systems.system_a.config import (
+from axis.systems.construction_kit.types.actions import handle_consume
+from axis.systems.construction_kit.types.config import (
     AgentConfig,
     PolicyConfig,
-    SystemAConfig,
     TransitionConfig,
 )
-from axis.systems.system_a.drive import SystemAHungerDrive
-from axis.systems.system_a.observation_buffer import update_observation_buffer
-from axis.systems.system_a.policy import SystemAPolicy
-from axis.systems.system_a.sensor import SystemASensor
+from axis.systems.system_a.config import (
+    SystemAConfig,
+)
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 from axis.systems.system_a.system import SystemA
 from axis.systems.system_a.transition import SystemATransition
-from axis.systems.system_a.types import (
-    AgentState,
-    CellObservation,
-    HungerDriveOutput,
+from axis.systems.construction_kit.energy.functions import clip_energy
+from axis.systems.construction_kit.drives.types import HungerDriveOutput
+from axis.systems.system_a.types import AgentState
+from axis.systems.construction_kit.memory.types import (
     BufferEntry,
     ObservationBuffer,
-    Observation,
-    clip_energy,
 )
 from axis.world.grid_2d.model import Cell, CellType, World
 from tests.builders.system_config_builder import SystemAConfigBuilder
@@ -201,17 +202,17 @@ class TestSubInterfaceConformance:
     """Sub-component protocol conformance."""
 
     def test_sensor_interface(self) -> None:
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         assert isinstance(sensor, SensorInterface)
 
     def test_drive_interface(self) -> None:
-        drive = SystemAHungerDrive(
+        drive = HungerDrive(
             consume_weight=1.5, stay_suppression=0.1, max_energy=100.0,
         )
         assert isinstance(drive, DriveInterface)
 
     def test_policy_interface(self) -> None:
-        policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         assert isinstance(policy, PolicyInterface)
 
     def test_transition_interface(self) -> None:
@@ -286,7 +287,7 @@ class TestSensor:
     """Sensor observation tests."""
 
     def test_observation_structure(self, simple_world: World) -> None:
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(simple_world, simple_world.agent_position)
         assert isinstance(obs, Observation)
         assert isinstance(obs.current, CellObservation)
@@ -296,7 +297,7 @@ class TestSensor:
         assert isinstance(obs.right, CellObservation)
 
     def test_empty_cells_traversable(self, simple_world: World) -> None:
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(simple_world, simple_world.agent_position)
         assert obs.current.traversability == 1.0
         assert obs.up.traversability == 1.0
@@ -306,7 +307,7 @@ class TestSensor:
         # Put obstacle above agent (x=2, y=1)
         grid[1][2] = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
         world = World(grid, Position(x=2, y=2))
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(world, world.agent_position)
         assert obs.up.traversability == 0.0
 
@@ -315,7 +316,7 @@ class TestSensor:
         # Put resource to the right (x=3, y=2)
         grid[2][3] = Cell(cell_type=CellType.RESOURCE, resource_value=0.7)
         world = World(grid, Position(x=2, y=2))
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(world, world.agent_position)
         assert obs.right.resource == 0.7
         assert obs.right.traversability == 1.0
@@ -324,7 +325,7 @@ class TestSensor:
         """Agent at corner -- some neighbors are OOB."""
         grid = _make_grid(5, 5)
         world = World(grid, Position(x=0, y=0))
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(world, world.agent_position)
         assert obs.up.traversability == 0.0
         assert obs.up.resource == 0.0
@@ -332,7 +333,7 @@ class TestSensor:
         assert obs.left.resource == 0.0
 
     def test_to_vector(self, simple_world: World) -> None:
-        sensor = SystemASensor()
+        sensor = VonNeumannSensor()
         obs = sensor.observe(simple_world, simple_world.agent_position)
         vec = obs.to_vector()
         assert len(vec) == 10
@@ -347,8 +348,8 @@ class TestSensor:
 class TestDrive:
     """Hunger drive computation."""
 
-    def _make_drive(self) -> SystemAHungerDrive:
-        return SystemAHungerDrive(
+    def _make_drive(self) -> HungerDrive:
+        return HungerDrive(
             consume_weight=1.5, stay_suppression=0.1, max_energy=100.0,
         )
 
@@ -434,45 +435,45 @@ class TestPolicy:
         )
 
     def test_returns_policy_result(self) -> None:
-        policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
-        result = policy.select(self._make_drive_output(),
+        result = policy.select(self._make_drive_output().action_contributions,
                                self._make_observation(), rng)
         assert isinstance(result, PolicyResult)
         assert isinstance(result.action, str)
 
     def test_admissibility_masking(self) -> None:
-        policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
-        result = policy.select(self._make_drive_output(),
+        result = policy.select(self._make_drive_output().action_contributions,
                                self._make_observation(), rng)
         probs = result.policy_data["probabilities"]
         assert probs[2] == 0.0  # left is blocked
 
     def test_argmax_deterministic(self) -> None:
-        policy = SystemAPolicy(temperature=1.0, selection_mode="argmax")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="argmax")
         rng = np.random.default_rng(42)
         actions = set()
         for _ in range(10):
             result = policy.select(
-                self._make_drive_output(), self._make_observation(), rng)
+                self._make_drive_output().action_contributions, self._make_observation(), rng)
             actions.add(result.action)
         assert len(actions) == 1  # always same action
 
     def test_sample_reproducible(self) -> None:
-        policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         drive_out = self._make_drive_output()
         obs = self._make_observation()
         rng1 = np.random.default_rng(123)
         rng2 = np.random.default_rng(123)
-        r1 = policy.select(drive_out, obs, rng1)
-        r2 = policy.select(drive_out, obs, rng2)
+        r1 = policy.select(drive_out.action_contributions, obs, rng1)
+        r2 = policy.select(drive_out.action_contributions, obs, rng2)
         assert r1.action == r2.action
 
     def test_policy_data_keys(self) -> None:
-        policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
-        result = policy.select(self._make_drive_output(),
+        result = policy.select(self._make_drive_output().action_contributions,
                                self._make_observation(), rng)
         data = result.policy_data
         assert "raw_contributions" in data
@@ -744,12 +745,13 @@ class TestImportVerification:
         from axis.systems.system_a import SystemA, SystemAConfig, handle_consume  # noqa: F401
 
     def test_system_a_module_imports(self) -> None:
-        from axis.systems.system_a.types import AgentState, Observation  # noqa: F401
-        from axis.systems.system_a.sensor import SystemASensor  # noqa: F401
-        from axis.systems.system_a.drive import SystemAHungerDrive  # noqa: F401
-        from axis.systems.system_a.policy import SystemAPolicy  # noqa: F401
+        from axis.systems.system_a.types import AgentState  # noqa: F401
+        from axis.systems.construction_kit.observation.types import Observation  # noqa: F401
+        from axis.systems.construction_kit.observation.sensor import VonNeumannSensor  # noqa: F401
+        from axis.systems.construction_kit.drives.hunger import HungerDrive  # noqa: F401
+        from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy  # noqa: F401
         from axis.systems.system_a.transition import SystemATransition  # noqa: F401
-        from axis.systems.system_a.observation_buffer import update_observation_buffer  # noqa: F401
+        from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer  # noqa: F401
 
 
 # ===========================================================================
@@ -795,15 +797,19 @@ class TestObservationBuffer:
 
     def test_append_entry(self) -> None:
         mem = ObservationBuffer(entries=(), capacity=5)
-        new_buffer = update_observation_buffer(mem, self._make_observation(), timestep=0)
+        new_buffer = update_observation_buffer(
+            mem, self._make_observation(), timestep=0)
         assert len(new_buffer.entries) == 1
         assert new_buffer.entries[0].timestep == 0
 
     def test_fifo_overflow(self) -> None:
         mem = ObservationBuffer(entries=(), capacity=2)
-        mem = update_observation_buffer(mem, self._make_observation(), timestep=0)
-        mem = update_observation_buffer(mem, self._make_observation(), timestep=1)
-        mem = update_observation_buffer(mem, self._make_observation(), timestep=2)
+        mem = update_observation_buffer(
+            mem, self._make_observation(), timestep=0)
+        mem = update_observation_buffer(
+            mem, self._make_observation(), timestep=1)
+        mem = update_observation_buffer(
+            mem, self._make_observation(), timestep=2)
         assert len(mem.entries) == 2
         assert mem.entries[0].timestep == 1  # oldest dropped
         assert mem.entries[1].timestep == 2

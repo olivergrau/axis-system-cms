@@ -36,7 +36,15 @@ src/axis/
   plugins.py            Plugin discovery (entry points + YAML)
 
   systems/              Pluggable system implementations
-    system_a/             Energy-driven forager (sensor, drive, policy, transition)
+    construction_kit/     Reusable system-internal building blocks
+      observation/          Von Neumann sensor, cell/observation types
+      drives/               Hunger drive, curiosity drive, drive output types
+      policy/               Softmax policy with admissibility masking
+      arbitration/          Drive weight computation, score combination
+      energy/               Energy clipping, vitality, termination checks
+      memory/               Observation buffer, world model (visit counts)
+      types/                Shared config types, action handlers (consume)
+    system_a/             Energy-driven forager (composes kit components)
     system_aw/            Dual-drive agent with curiosity and world model
     system_b/             Scout agent with scan action
 
@@ -112,8 +120,11 @@ axis experiments run experiments/configs/system-aw-exploration-demo.yaml
 
 ### System A — Energy-Driven Forager
 
-A single-drive agent that seeks resources to maintain energy. Uses a sensor,
-hunger drive, softmax policy, and energy-based transitions.
+A single-drive agent that seeks resources to maintain energy. Composes
+reusable components from the **System Construction Kit**: Von Neumann
+sensor, hunger drive, softmax policy, and shared config/action types.
+System A adds its own transition logic and agent state on top of these
+kit components.
 
 ### System A+W — Dual-Drive Agent with Curiosity and World Model
 
@@ -122,7 +133,7 @@ The agent balances hunger-driven resource-seeking with curiosity-driven explorat
 modulated by a dynamic weight function that implements a Maslow-like hierarchy:
 hunger gates curiosity.
 
-Key additions over System A:
+Key additions over System A (all sourced from the Construction Kit):
 - **Curiosity drive** with composite novelty (spatial + sensory)
 - **Spatial world model** (visit-count map via dead reckoning)
 - **Dynamic drive arbitration** (hunger suppresses curiosity as energy decreases)
@@ -174,8 +185,8 @@ python -m pytest tests/framework/test_cli.py
 ```
 
 - **Python 3.11+** with PySide6, Pydantic v2, NumPy
-- **Testing**: pytest (1800+ tests across framework, SDK, systems, worlds,
-  and visualization)
+- **Testing**: pytest (1800+ tests across framework, SDK, systems, construction
+  kit, worlds, and visualization)
 
 ## Documentation
 

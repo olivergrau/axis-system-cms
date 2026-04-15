@@ -1,4 +1,11 @@
-"""System A policy -- softmax action selection with admissibility masking."""
+"""Softmax action selection with admissibility masking.
+
+Generalized policy that receives pre-computed action scores (as a tuple
+of floats) rather than a specific drive output type. Applies:
+1. Admissibility masking (blocked directions -> -inf)
+2. Softmax with inverse temperature beta
+3. Stochastic (sample) or deterministic (argmax) selection
+"""
 
 from __future__ import annotations
 
@@ -7,16 +14,17 @@ import math
 import numpy as np
 
 from axis.sdk.types import PolicyResult
-from axis.systems.system_a.types import HungerDriveOutput, Observation
+from axis.systems.construction_kit.observation.types import Observation
 
 # Action ordering convention: (up, down, left, right, consume, stay)
-_ACTION_NAMES: tuple[str, ...] = ("up", "down", "left", "right", "consume", "stay")
+_ACTION_NAMES: tuple[str, ...] = (
+    "up", "down", "left", "right", "consume", "stay")
 
 _NEG_INF = float("-inf")
 
 
-class SystemAPolicy:
-    """Softmax policy for System A.
+class SoftmaxPolicy:
+    """Softmax policy for action selection.
 
     Satisfies PolicyInterface. Implements admissibility masking,
     softmax normalization, and stochastic/deterministic selection.
@@ -28,20 +36,19 @@ class SystemAPolicy:
 
     def select(
         self,
-        drive_outputs: HungerDriveOutput,
+        action_scores: tuple[float, ...],
         observation: Observation,
         rng: np.random.Generator,
     ) -> PolicyResult:
         """Run the full policy pipeline: mask -> softmax -> select."""
-        contributions = drive_outputs.action_contributions
         mask = self._compute_admissibility_mask(observation)
-        masked = self._apply_mask(contributions, mask)
-        probs = self._softmax(contributions, self._temperature, mask)
+        masked = self._apply_mask(action_scores, mask)
+        probs = self._softmax(action_scores, self._temperature, mask)
         action_idx = self._select_from_distribution(probs, rng)
         action = _ACTION_NAMES[action_idx]
 
         policy_data = {
-            "raw_contributions": contributions,
+            "raw_contributions": action_scores,
             "admissibility_mask": mask,
             "masked_contributions": masked,
             "probabilities": probs,
@@ -68,12 +75,12 @@ class SystemAPolicy:
 
     @staticmethod
     def _apply_mask(
-        contributions: tuple[float, float, float, float, float, float],
+        scores: tuple[float, float, float, float, float, float],
         mask: tuple[bool, bool, bool, bool, bool, bool],
     ) -> tuple[float, float, float, float, float, float]:
-        """Replace masked action contributions with -inf."""
+        """Replace masked action scores with -inf."""
         return tuple(  # type: ignore[return-value]
-            c if m else _NEG_INF for c, m in zip(contributions, mask)
+            c if m else _NEG_INF for c, m in zip(scores, mask)
         )
 
     @staticmethod

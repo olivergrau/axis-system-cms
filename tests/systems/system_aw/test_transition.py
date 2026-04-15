@@ -7,15 +7,15 @@ import pytest
 from axis.sdk.position import Position
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.types import (
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.memory.types import (
     BufferEntry,
-    CellObservation,
     ObservationBuffer,
-    Observation,
 )
 from axis.systems.system_aw.transition import SystemAWTransition
-from axis.systems.system_aw.types import AgentStateAW, WorldModelState
-from axis.systems.system_aw.world_model import create_world_model
+from axis.systems.system_aw.types import AgentStateAW
+from axis.systems.construction_kit.memory.types import WorldModelState
+from axis.systems.construction_kit.memory.world_model import create_world_model
 
 
 def _make_transition(
@@ -41,7 +41,8 @@ def _make_state(
 ) -> AgentStateAW:
     return AgentStateAW(
         energy=energy,
-        observation_buffer=ObservationBuffer(entries=(), capacity=buffer_capacity),
+        observation_buffer=ObservationBuffer(
+            entries=(), capacity=buffer_capacity),
         world_model=world_model or create_world_model(),
     )
 

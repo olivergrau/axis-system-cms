@@ -9,7 +9,8 @@ from axis.framework.registry import create_system, registered_system_types
 from axis.sdk.position import Position
 from axis.sdk.types import DecideResult, TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.types import CellObservation, ObservationBuffer, Observation
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 from axis.systems.system_aw.config import SystemAWConfig
 from axis.systems.system_aw.system import SystemAW
 from axis.systems.system_aw.types import AgentStateAW

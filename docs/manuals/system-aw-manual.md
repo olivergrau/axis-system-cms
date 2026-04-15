@@ -28,31 +28,38 @@ System A+W uses `system_type: "system_aw"` in experiment configs.
 
 ## 1. Architecture
 
+System A+W composes its pipeline from **System Construction Kit**
+components (sensor, drives, policy, arbitration, memory) plus its own
+transition logic and agent state type.
+
 ```
                     WorldView (read-only, from framework)
                               |
                         ┌─────┴─────┐
-                        │  Sensor   │
+                        │  Sensor   │  ◄── VonNeumannSensor (kit)
                         └─────┬─────┘
-                              │ Observation
+                              │ Observation (kit type)
                     ┌─────────┴─────────┐
                     │                   │
               ┌─────┴─────┐     ┌──────┴──────┐
               │  Hunger   │     │  Curiosity  │
-              │  Drive    │     │  Drive      │◄── World Model
+              │  Drive    │     │  Drive      │◄── World Model (kit)
+              │  (kit)    │     │  (kit)      │
               └─────┬─────┘     └──────┬──────┘
                     │                  │
                     └────────┬─────────┘
                        ┌─────┴─────┐
-                       │ Arbitrate │  (dynamic weights)
+                       │ Arbitrate │  (kit: compute_maslow_weights
+                       │           │   + combine_drive_scores)
                        └─────┬─────┘
                              │ Action scores
                        ┌─────┴─────┐
-                       │  Policy   │  (softmax / argmax)
+                       │  Policy   │  (kit: SoftmaxPolicy)
                        └─────┬─────┘
                              │ Selected action
                        ┌─────┴─────┐
-                       │Transition │──► World Model update
+                       │Transition │──► World Model update (kit)
+                       │ (system_aw)│
                        └───────────┘
 ```
 
@@ -193,7 +200,7 @@ When energy is full, `d_H = 0` (no hunger). When energy is zero,
 | Consume   | `phi_H(consume) = d_H * w_consume * r_current` |
 | Stay      | `phi_H(stay) = -lambda_stay * d_H` |
 
-Source: `src/axis/systems/system_a/drive.py`
+Source: `src/axis/systems/construction_kit/drives/hunger.py`
 
 ### 3.2 Curiosity drive
 
@@ -208,7 +215,7 @@ where `w(neighbor)` is the visit count at the neighboring cell and
 novelty = 1.0. With k=1: `w=1 -> 0.50`, `w=4 -> 0.20`. With k=2:
 `w=1 -> 0.25`, `w=4 -> 0.04`.
 
-Source: `src/axis/systems/system_aw/world_model.py:spatial_novelty()`
+Source: `src/axis/systems/construction_kit/memory/world_model.py:spatial_novelty()`
 
 **Sensory novelty** (per-direction, from observation vs memory):
 
@@ -218,7 +225,7 @@ nu^sensory_dir = |r_dir(t) - mean(r_dir over memory)|
 
 When memory is empty, mean = 0. Detects resource-level surprises.
 
-Source: `src/axis/systems/system_aw/drive_curiosity.py:compute_sensory_novelty()`
+Source: `src/axis/systems/construction_kit/drives/curiosity.py:compute_sensory_novelty()`
 
 **Composite novelty** (alpha-weighted blend):
 
@@ -228,7 +235,7 @@ nu_dir = alpha * nu^spatial_dir + (1 - alpha) * nu^sensory_dir
 
 Controlled by `spatial_sensory_balance` (alpha).
 
-Source: `src/axis/systems/system_aw/drive_curiosity.py:compute_composite_novelty()`
+Source: `src/axis/systems/construction_kit/drives/curiosity.py:compute_composite_novelty()`
 
 **Novelty saturation** (from memory):
 
@@ -247,7 +254,7 @@ d_C = mu_C * (1 - nu_bar_t)
 
 Bounded to [0, mu_C]. High novelty saturation reduces curiosity.
 
-Source: `src/axis/systems/system_aw/drive_curiosity.py:compute_curiosity_activation()`
+Source: `src/axis/systems/construction_kit/drives/curiosity.py:compute_curiosity_activation()`
 
 **Action contributions:**
 
@@ -257,7 +264,7 @@ Source: `src/axis/systems/system_aw/drive_curiosity.py:compute_curiosity_activat
 | Consume   | `phi_C(consume) = -lambda_explore` |
 | Stay      | `phi_C(stay) = -lambda_explore` |
 
-Source: `src/axis/systems/system_aw/drive_curiosity.py:SystemAWCuriosityDrive.compute()`
+Source: `src/axis/systems/construction_kit/drives/curiosity.py:CuriosityDrive.compute()`
 
 ### 3.3 Drive arbitration
 
@@ -272,7 +279,7 @@ When `d_H = 0` (full energy): `w_H = w_H_base`, `w_C = w_C_base`.
 When `d_H = 1` (starving): `w_H = 1.0`, `w_C = 0.0`.
 Higher gamma makes the transition sharper.
 
-Source: `src/axis/systems/system_aw/drive_arbitration.py:compute_drive_weights()`
+Source: `src/axis/systems/construction_kit/arbitration/weights.py:compute_maslow_weights()`
 
 ### 3.4 Action scores
 
@@ -284,7 +291,7 @@ psi(a) = w_H * d_H * phi_H(a) + w_C * d_C * phi_C(a)
 
 These scores are passed to the softmax policy for action selection.
 
-Source: `src/axis/systems/system_aw/drive_arbitration.py:compute_action_scores()`
+Source: `src/axis/systems/construction_kit/arbitration/scoring.py:combine_drive_scores()`
 
 ---
 
@@ -325,7 +332,7 @@ At episode start, the world model is initialized with:
 - `relative_position = (0, 0)`
 - `visit_counts = {(0, 0): 1}`
 
-Source: `src/axis/systems/system_aw/world_model.py`
+Source: `src/axis/systems/construction_kit/memory/world_model.py`
 
 ---
 

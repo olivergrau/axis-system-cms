@@ -1,26 +1,23 @@
-"""WP-2.4 unit tests -- SystemAHungerDrive."""
+"""WP-2.4 unit tests -- HungerDrive."""
 
 from __future__ import annotations
 
 import pytest
 
 from axis.sdk.interfaces import DriveInterface
-from axis.systems.system_a.drive import SystemAHungerDrive
-from axis.systems.system_a.types import (
-    AgentState,
-    CellObservation,
-    HungerDriveOutput,
-    ObservationBuffer,
-    Observation,
-)
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.drives.types import HungerDriveOutput
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.system_a.types import AgentState
 
 
 def _make_drive(
     consume_weight: float = 1.5,
     stay_suppression: float = 0.1,
     max_energy: float = 100.0,
-) -> SystemAHungerDrive:
-    return SystemAHungerDrive(
+) -> HungerDrive:
+    return HungerDrive(
         consume_weight=consume_weight,
         stay_suppression=stay_suppression,
         max_energy=max_energy,
@@ -51,11 +48,12 @@ def _make_observation(
 
 
 class TestDrive:
-    """SystemAHungerDrive unit tests."""
+    """HungerDrive unit tests."""
 
     def test_full_energy_zero_activation(self) -> None:
         drive = _make_drive()
-        output = drive.compute(_make_state(100.0), _make_observation(0.5, 0.5, 0.5, 0.5, 0.5))
+        output = drive.compute(_make_state(
+            100.0), _make_observation(0.5, 0.5, 0.5, 0.5, 0.5))
         assert output.activation == 0.0
         assert all(c == 0.0 for c in output.action_contributions)
 
@@ -77,7 +75,8 @@ class TestDrive:
 
     def test_consume_contribution_weighted(self) -> None:
         drive = _make_drive(consume_weight=1.5)
-        output = drive.compute(_make_state(50.0), _make_observation(current_r=0.5))
+        output = drive.compute(_make_state(
+            50.0), _make_observation(current_r=0.5))
         # s_consume = activation * consume_weight * current_resource = 0.5 * 1.5 * 0.5 = 0.375
         assert output.action_contributions[4] == pytest.approx(0.375)
 

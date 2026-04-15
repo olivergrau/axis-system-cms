@@ -1,12 +1,13 @@
-"""System A hunger drive -- drive activation and per-action contributions."""
+"""Hunger drive -- drive activation and per-action contributions."""
 
 from __future__ import annotations
 
-from axis.systems.system_a.types import HungerDriveOutput, Observation
+from axis.systems.construction_kit.drives.types import HungerDriveOutput
+from axis.systems.construction_kit.observation.types import Observation
 
 
-class SystemAHungerDrive:
-    """Hunger drive for System A.
+class HungerDrive:
+    """Hunger drive.
 
     Satisfies DriveInterface. Computes drive activation and per-action
     contributions based on energy level and observation.
@@ -43,5 +44,6 @@ class SystemAHungerDrive:
 
         return HungerDriveOutput(
             activation=d_h,
-            action_contributions=(s_up, s_down, s_left, s_right, s_consume, s_stay),
+            action_contributions=(s_up, s_down, s_left,
+                                  s_right, s_consume, s_stay),
         )

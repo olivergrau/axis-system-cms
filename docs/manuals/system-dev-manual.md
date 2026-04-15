@@ -970,6 +970,113 @@ with inline logic (like the MockSystem or System B above) is fine.
 
 ---
 
+## 10a. The System Construction Kit
+
+> **Full reference:** [Construction Kit Documentation](../construction-kit/index.md)
+> -- detailed API docs, formulas, and usage examples for every component.
+
+The **System Construction Kit** (`src/axis/systems/construction_kit/`)
+provides tested, reusable implementations of common system-internal
+mechanisms. Instead of building every component from scratch, new
+systems can compose kit components via plain Python construction.
+
+### 10a.1 Available components
+
+| Package | Components | What it provides |
+|---------|-----------|-----------------|
+| `construction_kit.observation` | `VonNeumannSensor`, `CellObservation`, `Observation` | 5-cell Von Neumann neighborhood sensor and observation types |
+| `construction_kit.drives` | `HungerDrive`, `CuriosityDrive`, `HungerDriveOutput`, `CuriosityDriveOutput` | Drive implementations with activation + per-action scoring |
+| `construction_kit.policy` | `SoftmaxPolicy` | Softmax action selection with admissibility masking |
+| `construction_kit.arbitration` | `compute_maslow_weights`, `combine_drive_scores`, `DriveWeights` | Multi-drive weight computation and score combination |
+| `construction_kit.energy` | `clip_energy`, `compute_vitality`, `check_energy_termination`, `get_action_cost` | Energy clamping, vitality calculation, termination checks |
+| `construction_kit.memory` | `ObservationBuffer`, `BufferEntry`, `update_observation_buffer`, `WorldModelState`, `create_world_model`, `update_world_model` | FIFO observation buffer and spatial visit-count world model |
+| `construction_kit.types` | `AgentConfig`, `PolicyConfig`, `TransitionConfig`, `handle_consume` | Shared config models and the consume action handler |
+
+### 10a.2 When to use the kit
+
+**Use kit components** when:
+
+- Your system needs a Von Neumann sensor (5-cell neighborhood) --
+  use `VonNeumannSensor` instead of writing your own
+
+- Your system uses energy-based survival -- use `clip_energy`,
+  `AgentConfig`, `TransitionConfig`
+
+- Your system needs a softmax policy -- use `SoftmaxPolicy`
+
+- Your system has drives that produce per-action scores -- use
+  `HungerDrive` or `CuriosityDrive`
+
+- Your system needs a resource-consuming action -- use `handle_consume`
+
+- Your system needs an observation buffer -- use `ObservationBuffer`
+  and `update_observation_buffer`
+
+**Build your own** when:
+
+- Your system uses a different sensor topology (e.g., System B's
+  3x3 scan)
+
+- Your system uses a different action selection strategy
+
+- Your system has domain-specific drives not covered by the kit
+
+### 10a.3 Example: composing a system from kit components
+
+System A composes its pipeline entirely from kit components plus a
+custom transition:
+
+```python
+from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.memory.types import ObservationBuffer
+from axis.systems.construction_kit.types.actions import handle_consume
+from axis.systems.construction_kit.types.config import (
+    AgentConfig, PolicyConfig, TransitionConfig,
+)
+
+class MySystem:
+    def __init__(self, config):
+        self._sensor = VonNeumannSensor()
+        self._drive = HungerDrive(
+            consume_weight=config.policy.consume_weight,
+            stay_suppression=config.policy.stay_suppression,
+            max_energy=config.agent.max_energy,
+        )
+        self._policy = SoftmaxPolicy(
+            temperature=config.policy.temperature,
+            selection_mode=config.policy.selection_mode,
+        )
+        # ... custom transition logic ...
+
+    def decide(self, world_view, agent_state, rng):
+        observation = self._sensor.observe(world_view, world_view.agent_position)
+        drive_output = self._drive.compute(agent_state, observation)
+        policy_result = self._policy.select(
+            drive_output.action_contributions, observation, rng,
+        )
+        return DecideResult(action=policy_result.action, decision_data={...})
+```
+
+Note: `SoftmaxPolicy.select()` accepts a generic `tuple[float, ...]`
+of action scores, not a specific drive output type. This means you can
+pass scores from any drive or combine scores from multiple drives.
+
+### 10a.4 Dependency rules
+
+The construction kit has strict dependency boundaries:
+
+- Kit components import **only** from the SDK (`axis.sdk`) and from
+  other kit modules. They never import from the framework, world, or
+  concrete system packages.
+- Concrete systems import from the kit and from the SDK, but never
+  from each other.
+- These boundaries are enforced by automated tests in
+  `tests/systems/construction_kit/test_dependency_constraints.py`.
+
+---
+
 ## 11. Testing your system
 
 ### 11.1 Unit testing the system in isolation
@@ -1082,21 +1189,29 @@ def test_system_b_protocol():
 
 ## 12. Checklist: building a new system
 
-1. **Define your agent state type** -- what internal state does your
+1. **Check the Construction Kit** -- before building components from
+   scratch, see if the kit provides what you need (Section 10a).
+   Reusable components: `VonNeumannSensor`, `HungerDrive`,
+   `CuriosityDrive`, `SoftmaxPolicy`, `ObservationBuffer`,
+   `handle_consume`, shared config types, energy utilities.
+
+2. **Define your agent state type** -- what internal state does your
    agent maintain? (energy, memory, scan buffer, belief map, etc.)
 
-2. **Define your config type** -- what parameters can be tuned?
+3. **Define your config type** -- what parameters can be tuned?
    Use Pydantic models with validation for clean error messages.
+   Use `AgentConfig`, `PolicyConfig`, `TransitionConfig` from the
+   kit if they fit your system's needs.
 
-3. **Decide on custom actions** -- what actions beyond
+4. **Decide on custom actions** -- what actions beyond
    up/down/left/right/stay does your agent need? Write a handler
-   for each.
+   for each. Use `handle_consume` from the kit for resource extraction.
 
-4. **Implement `SystemInterface`** -- fill in all 9 methods.
+5. **Implement `SystemInterface`** -- fill in all 9 methods.
 
-5. **Write a factory function** -- `dict[str, Any] → SystemInterface`.
+6. **Write a factory function** -- `dict[str, Any] → SystemInterface`.
 
-6. **Add a `register()` function** to your package's `__init__.py`
+7. **Add a `register()` function** to your package's `__init__.py`
    with idempotency guards.
 
 7. **Register your plugin** -- add an entry point to `pyproject.toml`
@@ -1121,6 +1236,20 @@ from axis.sdk.types import DecideResult, TransitionResult, PolicyResult
 from axis.sdk.world_types import WorldView, CellView, ActionOutcome, BaseWorldConfig
 from axis.sdk.position import Position
 from axis.sdk.actions import BASE_ACTIONS, MOVEMENT_DELTAS
+
+# System Construction Kit (reusable components)
+from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
+from axis.systems.construction_kit.drives.hunger import HungerDrive
+from axis.systems.construction_kit.drives.curiosity import CuriosityDrive
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.arbitration.weights import compute_maslow_weights
+from axis.systems.construction_kit.arbitration.scoring import combine_drive_scores
+from axis.systems.construction_kit.energy.functions import clip_energy, compute_vitality
+from axis.systems.construction_kit.memory.types import ObservationBuffer, WorldModelState
+from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer
+from axis.systems.construction_kit.types.config import AgentConfig, PolicyConfig, TransitionConfig
+from axis.systems.construction_kit.types.actions import handle_consume
 
 # World model (for action handlers -- use protocol methods preferred)
 # Use world.extract_resource() instead of direct Cell/CellType manipulation

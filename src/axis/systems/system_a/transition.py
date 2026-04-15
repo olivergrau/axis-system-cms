@@ -5,8 +5,10 @@ from __future__ import annotations
 from axis.sdk.actions import MOVEMENT_DELTAS, STAY
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.observation_buffer import update_observation_buffer
-from axis.systems.system_a.types import AgentState, Observation, clip_energy
+from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer
+from axis.systems.construction_kit.energy.functions import clip_energy
+from axis.systems.construction_kit.observation.types import Observation
+from axis.systems.system_a.types import AgentState
 
 
 class SystemATransition:
@@ -69,7 +71,8 @@ class SystemATransition:
         new_buffer = update_observation_buffer(
             agent_state.observation_buffer, observation, timestep,
         )
-        new_state = AgentState(energy=new_energy, observation_buffer=new_buffer)
+        new_state = AgentState(
+            energy=new_energy, observation_buffer=new_buffer)
 
         # Phase 6: Termination check
         terminated = new_energy <= 0.0

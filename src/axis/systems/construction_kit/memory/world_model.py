@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from axis.systems.system_aw.types import WorldModelState
+from axis.systems.construction_kit.memory.types import WorldModelState
 
 # Agent-relative direction deltas.
 # UP = (0, +1), DOWN = (0, -1) in the agent's frame.

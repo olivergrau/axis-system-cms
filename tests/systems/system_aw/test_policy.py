@@ -1,4 +1,4 @@
-"""WP-8 unit tests -- SystemAWPolicy."""
+"""WP-8 unit tests -- SoftmaxPolicy."""
 
 from __future__ import annotations
 
@@ -6,13 +6,9 @@ import numpy as np
 import pytest
 
 from axis.sdk.types import PolicyResult
-from axis.systems.system_a.policy import SystemAPolicy
-from axis.systems.system_a.types import (
-    CellObservation,
-    HungerDriveOutput,
-    Observation,
-)
-from axis.systems.system_aw.policy import SystemAWPolicy
+from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
+from axis.systems.construction_kit.drives.types import HungerDriveOutput
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 
 
 def _open_observation() -> Observation:
@@ -36,7 +32,7 @@ class TestBasicBehavior:
     """Basic policy behavior tests."""
 
     def test_uniform_scores_equal_probs(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = policy.select(scores, _open_observation(), rng)
@@ -45,7 +41,7 @@ class TestBasicBehavior:
             assert p == pytest.approx(1.0 / 6, abs=0.001)
 
     def test_high_score_dominates(self) -> None:
-        policy = SystemAWPolicy(temperature=5.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=5.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.0, 0.0, 0.0, 0.0, 10.0, 0.0)
         result = policy.select(scores, _open_observation(), rng)
@@ -53,7 +49,7 @@ class TestBasicBehavior:
         assert probs[4] > 0.99
 
     def test_masked_action_zero_prob(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = policy.select(scores, _blocked_left_observation(), rng)
@@ -61,7 +57,7 @@ class TestBasicBehavior:
         assert probs[2] == 0.0  # LEFT blocked
 
     def test_consume_stay_always_admissible(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = policy.select(scores, _all_blocked_observation(), rng)
@@ -73,7 +69,7 @@ class TestBasicBehavior:
             assert probs[i] == 0.0
 
     def test_argmax_mode(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="argmax")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="argmax")
         rng = np.random.default_rng(42)
         scores = (0.1, 0.2, 0.3, 0.9, 0.0, 0.0)
         actions = set()
@@ -84,7 +80,7 @@ class TestBasicBehavior:
         assert "right" in actions
 
     def test_sample_mode_respects_probs(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         scores = (5.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         counts = [0] * 6
         action_names = ("up", "down", "left", "right", "consume", "stay")
@@ -106,13 +102,13 @@ class TestSystemAEquivalence:
         rng_aw = np.random.default_rng(42)
         rng_a = np.random.default_rng(42)
 
-        aw_policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        aw_policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         aw_result = aw_policy.select(scores, obs, rng_aw)
 
-        a_policy = SystemAPolicy(temperature=1.0, selection_mode="sample")
+        a_policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         drive_out = HungerDriveOutput(
             activation=0.5, action_contributions=scores)
-        a_result = a_policy.select(drive_out, obs, rng_a)
+        a_result = a_policy.select(drive_out.action_contributions, obs, rng_a)
 
         aw_probs = aw_result.policy_data["probabilities"]
         a_probs = a_result.policy_data["probabilities"]
@@ -125,7 +121,7 @@ class TestWorkedExamples:
 
     def test_example_a1_probabilities(self) -> None:
         """A1: actual scores from arbitration."""
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.405, 0.405, 0.527, 0.405, -0.237, -0.243)
         result = policy.select(scores, _open_observation(), rng)
@@ -139,7 +135,7 @@ class TestWorkedExamples:
 
     def test_example_b1_probabilities(self) -> None:
         """B1: LEFT blocked → P(LEFT) = 0."""
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         # B1 approximate scores (from hunger + curiosity combined)
         scores = (0.064, 0.143, 0.074, 0.053, 0.228, -0.088)
@@ -150,7 +146,7 @@ class TestWorkedExamples:
 
     def test_example_c1_probabilities(self) -> None:
         """C1: CONSUME dominates."""
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.002, 0.002, 0.002, 0.170, 1.051, -0.085)
         result = policy.select(scores, _open_observation(), rng)
@@ -162,7 +158,7 @@ class TestEdgeCases:
     """Edge case tests."""
 
     def test_all_negative_scores(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (-1.0, -2.0, -3.0, -4.0, -5.0, -6.0)
         result = policy.select(scores, _open_observation(), rng)
@@ -171,7 +167,7 @@ class TestEdgeCases:
         assert all(p >= 0 for p in probs)
 
     def test_large_score_difference(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (10.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         result = policy.select(scores, _open_observation(), rng)
@@ -180,12 +176,12 @@ class TestEdgeCases:
         assert all(p >= 0 for p in probs)
 
     def test_policy_result_type(self) -> None:
-        policy = SystemAWPolicy(temperature=1.0, selection_mode="sample")
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = policy.select(scores, _open_observation(), rng)
         assert isinstance(result, PolicyResult)
         assert result.action in ("up", "down", "left",
                                  "right", "consume", "stay")
-        assert "raw_scores" in result.policy_data
+        assert "raw_contributions" in result.policy_data
         assert "probabilities" in result.policy_data

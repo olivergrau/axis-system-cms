@@ -5,10 +5,11 @@ from __future__ import annotations
 from axis.sdk.actions import MOVEMENT_DELTAS, STAY
 from axis.sdk.types import TransitionResult
 from axis.sdk.world_types import ActionOutcome
-from axis.systems.system_a.observation_buffer import update_observation_buffer
-from axis.systems.system_a.types import Observation, clip_energy
+from axis.systems.construction_kit.memory.observation_buffer import update_observation_buffer
+from axis.systems.construction_kit.observation.types import Observation
+from axis.systems.construction_kit.energy.functions import clip_energy
 from axis.systems.system_aw.types import AgentStateAW
-from axis.systems.system_aw.world_model import update_world_model
+from axis.systems.construction_kit.memory.world_model import update_world_model
 
 
 class SystemAWTransition:

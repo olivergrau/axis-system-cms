@@ -14,7 +14,7 @@ from axis.framework.run import RunConfig, RunExecutor
 from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome, BaseWorldConfig
 from axis.systems.system_a.system import SystemA
-from axis.systems.system_a.types import CellObservation, Observation
+from axis.systems.construction_kit.observation.types import CellObservation, Observation
 from axis.systems.system_aw.config import SystemAWConfig
 from axis.systems.system_aw.system import SystemAW
 from axis.systems.system_aw.types import AgentStateAW
