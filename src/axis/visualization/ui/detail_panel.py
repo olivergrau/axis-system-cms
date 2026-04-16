@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from axis.visualization.types import CellColorConfig
 from axis.visualization.ui.agent_cell_zoom import AgentCellZoomWidget
+from axis.visualization.ui.prediction_summary_widget import PredictionSummaryWidget
 from axis.visualization.view_models import (
     GridCellViewModel,
     GridViewModel,
@@ -28,11 +29,14 @@ class DetailPanel(QWidget):
         self._content_label = QLabel()
         self._content_label.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._content_label.setWordWrap(True)
+        self._prediction_widget = PredictionSummaryWidget()
+        self._prediction_widget.setVisible(False)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.addWidget(self._zoom_widget)
         layout.addWidget(self._content_label)
+        layout.addWidget(self._prediction_widget)
 
     def set_frame(
         self,
@@ -78,6 +82,7 @@ class DetailPanel(QWidget):
                     lines.append(f"  {row_data.label}: {row_data.value}")
 
         self._content_label.setText("\n".join(lines))
+        self._prediction_widget.set_data(frame.system_widget_data)
 
     @staticmethod
     def _find_cell(

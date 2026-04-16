@@ -35,6 +35,8 @@ def _run_step(
 
     # 2. System decides
     decide_result = system.decide(world, agent_state, rng)
+    decision_data_for_trace = dict(decide_result.decision_data)
+    pre_observation = decision_data_for_trace.pop("_pre_observation", None)
 
     # 3. World advances its own dynamics (e.g. regeneration)
     world.tick()
@@ -48,6 +50,12 @@ def _run_step(
     # 4. Framework applies action
     outcome = registry.apply(
         world, decide_result.action, context=action_context)
+    if pre_observation is not None:
+        outcome = outcome.model_copy(
+            update={
+                "data": {**outcome.data, "_pre_observation": pre_observation},
+            },
+        )
 
     # 5. Capture AFTER_ACTION snapshot
     world_after = world.snapshot()
@@ -76,7 +84,7 @@ def _run_step(
         terminated=transition_result.terminated,
         termination_reason=transition_result.termination_reason,
         system_data={
-            "decision_data": decide_result.decision_data,
+            "decision_data": decision_data_for_trace,
             "trace_data": transition_result.trace_data,
         },
         world_data=world_data,

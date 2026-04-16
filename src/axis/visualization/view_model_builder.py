@@ -139,6 +139,13 @@ class ViewModelBuilder:
 
         overlay_data = self._build_overlays(step_trace, state)
 
+        # -- System widget data (optional) ----------------------------------
+        system_widget_data = None
+        if hasattr(self._system_adapter, "build_system_widget_data"):
+            system_widget_data = self._system_adapter.build_system_widget_data(
+                step_trace,
+            )
+
         # -- Assemble frame -------------------------------------------------
         return ViewerFrameViewModel(
             coordinate=state.coordinate,
@@ -150,6 +157,7 @@ class ViewModelBuilder:
             world_metadata_sections=tuple(world_metadata_sections),
             analysis_sections=tuple(analysis_sections),
             overlay_data=tuple(overlay_data),
+            system_widget_data=system_widget_data,
         )
 
     def _build_grid(

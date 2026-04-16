@@ -113,6 +113,7 @@ class SystemC:
 
         # Step 6: Assemble decision data
         decision_data = {
+            "_pre_observation": observation,
             "observation": observation.model_dump(),
             "drive": {
                 "activation": drive_output.activation,

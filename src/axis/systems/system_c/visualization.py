@@ -86,6 +86,7 @@ class SystemCVisualizationAdapter:
             self._overlay_modulated_contribution(dd, pos),
             self._overlay_consumption_opportunity(dd, pos),
             self._overlay_modulation_factor(dd, pos),
+            self._overlay_neighbor_modulation(dd, pos),
         ]
 
     def available_overlay_types(self) -> list[OverlayTypeDeclaration]:
@@ -137,6 +138,17 @@ class SystemCVisualizationAdapter:
                     "<span style='color:#FF5050'>\u25a0</span>=suppress "
                     "<span style='color:#50FF50'>\u25a0</span>=reinforce "
                     "height=magnitude"
+                ),
+            ),
+            OverlayTypeDeclaration(
+                key="neighbor_modulation",
+                label="Neighbor Modulation",
+                description="Colored tint on neighbor cells showing "
+                            "modulation state per direction.",
+                legend_html=(
+                    "<span style='color:#32DC50'>\u25a0</span>=reinforced "
+                    "<span style='color:#DC3232'>\u25a0</span>=suppressed "
+                    "opacity=strength"
                 ),
             ),
         ]
@@ -347,6 +359,14 @@ class SystemCVisualizationAdapter:
         agent_pos: tuple[int, int],
     ) -> OverlayData:
         drive = decision_data.get("drive", {})
+        raw = list(drive.get("action_contributions", ()))
+        pred = decision_data.get("prediction", {})
+        modulated = list(pred.get("modulated_scores", ()))
+        # Shared scale: max across raw AND modulated so overlays are comparable
+        shared_max = max(
+            max((abs(v) for v in raw), default=1.0),
+            max((abs(v) for v in modulated), default=1.0),
+        ) or 1.0
         return OverlayData(
             overlay_type="drive_contribution",
             items=(
@@ -355,9 +375,9 @@ class SystemCVisualizationAdapter:
                     grid_position=agent_pos,
                     data={
                         "activation": drive.get("activation", 0.0),
-                        "values": list(
-                            drive.get("action_contributions", ())),
+                        "values": raw,
                         "labels": list(ACTION_NAMES),
+                        "max_value": shared_max,
                     },
                 ),
             ),
@@ -367,7 +387,15 @@ class SystemCVisualizationAdapter:
         self, decision_data: dict[str, Any],
         agent_pos: tuple[int, int],
     ) -> OverlayData:
+        drive = decision_data.get("drive", {})
+        raw = list(drive.get("action_contributions", ()))
         pred = decision_data.get("prediction", {})
+        modulated = list(pred.get("modulated_scores", ()))
+        # Same shared scale as raw drive overlay
+        shared_max = max(
+            max((abs(v) for v in raw), default=1.0),
+            max((abs(v) for v in modulated), default=1.0),
+        ) or 1.0
         return OverlayData(
             overlay_type="modulated_contribution",
             items=(
@@ -375,9 +403,10 @@ class SystemCVisualizationAdapter:
                     item_type="bar_chart",
                     grid_position=agent_pos,
                     data={
-                        "values": list(
-                            pred.get("modulated_scores", ())),
+                        "values": modulated,
                         "labels": list(ACTION_NAMES),
+                        "max_value": shared_max,
+                        "bar_color": [255, 140, 0, 220],
                     },
                 ),
             ),
@@ -449,10 +478,93 @@ class SystemCVisualizationAdapter:
                         "values": values,
                         "labels": list(ACTION_NAMES),
                         "baseline": 1.0,
+                        "max_value": 2.0,
+                        "bar_color": [220, 50, 220, 220],
                     },
                 ),
             ),
         )
+
+
+    def _overlay_neighbor_modulation(
+        self, decision_data: dict[str, Any],
+        agent_pos: tuple[int, int],
+    ) -> OverlayData:
+        pred = decision_data.get("prediction", {})
+        drive = decision_data.get("drive", {})
+        modulated = pred.get("modulated_scores", ())
+        raw = drive.get("action_contributions", ())
+
+        items: list[OverlayItem] = []
+        for i, action in enumerate(DIRECTION_ACTIONS):
+            raw_val = raw[i] if i < len(raw) else 0.0
+            mod_val = modulated[i] if i < len(modulated) else 0.0
+            mu = mod_val / raw_val if raw_val != 0 else 1.0
+
+            dx, dy = MOVEMENT_DELTAS[action]
+            neighbor = (agent_pos[0] + dx, agent_pos[1] + dy)
+            items.append(OverlayItem(
+                item_type="modulation_cell",
+                grid_position=neighbor,
+                data={"modulation_factor": mu},
+            ))
+
+        return OverlayData(
+            overlay_type="neighbor_modulation", items=tuple(items))
+
+    # ── System widget data ──────────────────────────────────
+
+    def build_system_widget_data(
+        self, step_trace: BaseStepTrace,
+    ) -> dict[str, Any] | None:
+        """Build structured data for the PredictionSummaryWidget."""
+        dd = step_trace.system_data.get("decision_data", {})
+        pred = dd.get("prediction", {})
+        drive = dd.get("drive", {})
+        modulated = pred.get("modulated_scores", ())
+        raw = drive.get("action_contributions", ())
+        context = pred.get("context", 0)
+        features = pred.get("features", ())
+
+        # Compute per-action modulation factors
+        mod_factors: dict[str, float] = {}
+        for i, action in enumerate(ACTION_NAMES):
+            raw_val = raw[i] if i < len(raw) else 0.0
+            mod_val = modulated[i] if i < len(modulated) else 0.0
+            mod_factors[action] = mod_val / raw_val if raw_val != 0 else 1.0
+
+        # Extract trace values from trace_data if available
+        td = step_trace.system_data.get("trace_data", {})
+        pred_update = td.get("prediction", {})
+
+        # Frustrations and confidences are not directly in trace_data,
+        # but we can derive them from the modulation factors and config.
+        # For now, expose error values as a proxy for trace activity.
+        frustrations: dict[str, float] = {}
+        confidences: dict[str, float] = {}
+        err_pos = pred_update.get("error_positive", 0.0)
+        err_neg = pred_update.get("error_negative", 0.0)
+
+        # Use modulation factor to infer trace direction per action
+        for action in ACTION_NAMES:
+            mu = mod_factors[action]
+            # Approximate: confidence grows when mu > 1, frustration when mu < 1
+            if mu >= 1.0:
+                confidences[action] = min(mu - 1.0, 1.0)
+                frustrations[action] = 0.0
+            else:
+                frustrations[action] = min(1.0 - mu, 1.0)
+                confidences[action] = 0.0
+
+        return {
+            "context": context,
+            "features": features,
+            "modulation_factors": mod_factors,
+            "frustrations": frustrations,
+            "confidences": confidences,
+            "error_positive": err_pos,
+            "error_negative": err_neg,
+        }
 
 
 def _system_c_vis_factory() -> SystemCVisualizationAdapter:

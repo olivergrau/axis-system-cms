@@ -1,0 +1,70 @@
+# System C prediction demo -- tuned to make prediction modulation visible
+#
+# Key insight: the prediction system needs UNPREDICTABLE resource patterns
+# to generate meaningful prediction errors. With sparse, fast-regenerating
+# resources, the agent encounters varying resource landscapes as it moves,
+# producing both positive surprises (unexpected resource found) and negative
+# surprises (expected resource gone). High sensitivities amplify the effect.
+#
+system_type: "system_c"
+experiment_type: "single_run"
+
+general:
+  seed: 42
+
+execution:
+  max_steps: 300
+
+world:
+  world_type: "grid_2d"
+  grid_width: 8
+  grid_height: 8
+  obstacle_density: 0.15
+  # Fast regeneration creates a dynamic landscape -- resources appear
+  # and disappear, making predictions frequently wrong.
+  resource_regen_rate: 0.4
+  regeneration_mode: "sparse_fixed_ratio"
+  regen_eligible_ratio: 0.25
+
+agent_start_position:
+  x: 4
+  y: 4
+
+system:
+  agent:
+    initial_energy: 80.0
+    max_energy: 100.0
+    buffer_capacity: 10
+  policy:
+    selection_mode: "sample"
+    temperature: 0.8
+    stay_suppression: 0.1
+    consume_weight: 2.5
+  transition:
+    move_cost: 0.8
+    consume_cost: 0.5
+    stay_cost: 0.3
+    max_consume: 1.0
+    energy_gain_factor: 12.0
+  prediction:
+    # Fast memory adaptation -- learns and forgets quickly
+    memory_learning_rate: 0.5
+    context_threshold: 0.5
+    # High trace accumulation rates so traces build up fast
+    frustration_rate: 0.3
+    confidence_rate: 0.25
+    # High sensitivities so even moderate traces produce visible mu changes
+    positive_sensitivity: 2.0
+    negative_sensitivity: 3.0
+    modulation_min: 0.2
+    modulation_max: 3.0
+    positive_weights: [0.5, 0.125, 0.125, 0.125, 0.125]
+    negative_weights: [0.5, 0.125, 0.125, 0.125, 0.125]
+
+logging:
+  enabled: true
+  console_enabled: true
+  jsonl_enabled: false
+  verbosity: "compact"
+
+num_episodes_per_run: 3

@@ -5,6 +5,8 @@ Resolves adapters from episode data, builds session, launches UI.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from axis.framework.persistence import ExperimentRepository
 from axis.visualization.errors import StepOutOfBoundsError
 from axis.visualization.registry import (
@@ -81,12 +83,28 @@ def launch_visualization(
     # 7. Ensure QApplication exists before creating any widgets
     import os
     import sys
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QIcon, QPixmap
     from PySide6.QtWidgets import QApplication
 
     if scale != 1.0:
         os.environ["QT_SCALE_FACTOR"] = str(scale)
 
     app = QApplication.instance() or QApplication(sys.argv)
+    app.setDesktopFileName("axis-replay-viewer")
+
+    icon_path = (
+        Path(__file__).resolve().parents[3]
+        / "docs" / "assets" / "images" / "logo_futuristic_elegant.png"
+    )
+    if icon_path.exists():
+        icon = QIcon()
+        pixmap = QPixmap(str(icon_path))
+        for size in (16, 24, 32, 48, 64, 128, 256):
+            icon.addPixmap(
+                pixmap.scaled(size, size, mode=Qt.TransformationMode.SmoothTransformation),
+            )
+        app.setWindowIcon(icon)
 
     # 8. Build window
     phase_names = system_adapter.phase_names()

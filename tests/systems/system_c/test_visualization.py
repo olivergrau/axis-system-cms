@@ -149,7 +149,7 @@ class TestOverlays:
     def test_overlay_count(self) -> None:
         adapter = resolve_system_adapter("system_c")
         overlays = adapter.build_overlays(_make_step_trace())
-        assert len(overlays) == 5
+        assert len(overlays) == 6
 
     def test_overlay_types(self) -> None:
         adapter = resolve_system_adapter("system_c")
@@ -160,14 +160,25 @@ class TestOverlays:
         assert "modulated_contribution" in types
         assert "consumption_opportunity" in types
         assert "modulation_factor" in types
+        assert "neighbor_modulation" in types
 
     def test_available_overlay_types(self) -> None:
         adapter = resolve_system_adapter("system_c")
         decls = adapter.available_overlay_types()
-        assert len(decls) == 5
+        assert len(decls) == 6
         keys = {d.key for d in decls}
         assert "modulation_factor" in keys
         assert "modulated_contribution" in keys
+        assert "neighbor_modulation" in keys
+
+    def test_neighbor_modulation_items(self) -> None:
+        adapter = resolve_system_adapter("system_c")
+        overlays = adapter.build_overlays(_make_step_trace())
+        nm = [o for o in overlays if o.overlay_type == "neighbor_modulation"][0]
+        assert len(nm.items) == 4
+        for item in nm.items:
+            assert item.item_type == "modulation_cell"
+            assert "modulation_factor" in item.data
 
 
 class TestDegradation:
@@ -178,4 +189,38 @@ class TestDegradation:
         sections = adapter.build_step_analysis(trace)
         assert len(sections) >= 5
         overlays = adapter.build_overlays(trace)
-        assert len(overlays) == 5
+        assert len(overlays) == 6
+
+
+class TestSystemWidgetData:
+
+    def test_widget_data_returns_dict(self) -> None:
+        adapter = resolve_system_adapter("system_c")
+        data = adapter.build_system_widget_data(_make_step_trace())
+        assert isinstance(data, dict)
+        assert "context" in data
+        assert "features" in data
+        assert "modulation_factors" in data
+        assert "frustrations" in data
+        assert "confidences" in data
+
+    def test_widget_data_context_value(self) -> None:
+        adapter = resolve_system_adapter("system_c")
+        data = adapter.build_system_widget_data(_make_step_trace())
+        assert data["context"] == 19
+
+    def test_widget_data_modulation_factors(self) -> None:
+        adapter = resolve_system_adapter("system_c")
+        data = adapter.build_system_widget_data(_make_step_trace())
+        mf = data["modulation_factors"]
+        assert isinstance(mf, dict)
+        assert "up" in mf
+        # up: raw=0.15, mod=0.12, mu=0.8
+        assert abs(mf["up"] - 0.8) < 0.01
+
+    def test_widget_data_empty_system_data(self) -> None:
+        adapter = resolve_system_adapter("system_c")
+        trace = _make_step_trace({"decision_data": {}, "trace_data": {}})
+        data = adapter.build_system_widget_data(trace)
+        assert isinstance(data, dict)
+        assert data["context"] == 0

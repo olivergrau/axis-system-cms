@@ -72,13 +72,17 @@ class SystemCTransition:
         new_traces = agent_state.trace_state
         prediction_trace: dict = {}
 
-        if agent_state.last_observation is not None:
+        pre_observation = action_outcome.data.get(
+            "_pre_observation", agent_state.last_observation,
+        )
+
+        if pre_observation is not None:
             # 6a: Extract post-action features from current observation
             post_features = extract_predictive_features(observation)
 
-            # 6b: Extract pre-action context from last_observation
+            # 6b: Extract pre-action context from pre_observation
             pre_features = extract_predictive_features(
-                agent_state.last_observation,
+                pre_observation,
             )
             context = encode_context(
                 pre_features, threshold=pred_cfg.context_threshold,

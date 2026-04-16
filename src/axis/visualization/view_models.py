@@ -113,3 +113,4 @@ class ViewerFrameViewModel(BaseModel):
     # System adapter outputs
     analysis_sections: tuple[AnalysisSection, ...]
     overlay_data: tuple[OverlayData, ...]
+    system_widget_data: dict[str, object] | None = None

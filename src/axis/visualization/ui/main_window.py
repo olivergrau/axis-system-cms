@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QMainWindow, QSplitter, QVBoxLayout, QWidget
 
 from axis.visualization.types import OverlayTypeDeclaration
@@ -34,6 +37,17 @@ class VisualizationMainWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("AXIS Replay Viewer")
         self.resize(1200, 800)
+
+        icon_path = Path(__file__).resolve(
+        ).parents[4] / "docs" / "assets" / "images" / "logo_futuristic_elegant.png"
+        if icon_path.exists():
+            icon = QIcon()
+            pixmap = QPixmap(str(icon_path))
+            for size in (16, 24, 32, 48, 64, 128, 256):
+                icon.addPixmap(
+                    pixmap.scaled(size, size, mode=Qt.TransformationMode.SmoothTransformation),
+                )
+            self.setWindowIcon(icon)
 
         # Create child widgets with adapter parameters
         self._canvas = CanvasWidget(world_adapter)

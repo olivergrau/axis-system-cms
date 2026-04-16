@@ -135,6 +135,12 @@ class OverlayRenderer:
         if n == 0:
             return
 
+        # Normalize values so the longest bar fills the available width.
+        # An explicit max_value in data overrides auto-detection.
+        max_value = item.data.get("max_value", None)
+        if max_value is None or max_value <= 0:
+            max_value = max((abs(v) for v in values), default=1.0) or 1.0
+
         # Adaptive sizing: zoomed view has room for full labels on the left
         zoomed = bw >= 100
         font_size = 9 if zoomed else 7
@@ -146,10 +152,15 @@ class OverlayRenderer:
         y_start = by + bh * 0.15
 
         painter.setFont(QFont("monospace", font_size))
-        bar_color = QColor(100, 180, 255, 150)
+        bar_color = item.data.get("bar_color", None)
+        if bar_color is not None:
+            bar_color = QColor(*bar_color)
+        else:
+            bar_color = QColor(100, 180, 255, 150)
         for i, val in enumerate(values):
             y = y_start + i * bar_h
-            w = max(1.0, abs(val) * max_bar_w)
+            normalized = abs(val) / max_value
+            w = max(1.0, normalized * max_bar_w)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(bar_color)
             painter.drawRect(QRectF(bar_x, y, w, bar_h * 0.8))
@@ -319,6 +330,34 @@ class OverlayRenderer:
         painter.setPen(QPen(color, 2.0))
         painter.drawLine(QPointF(cx, cy), QPointF(ex, ey))
 
+    def _draw_modulation_cell(
+        self, painter: QPainter, item: OverlayItem, layout: CellLayout,
+    ) -> None:
+        """Draw a green/red rectangle over a cell by modulation factor.
+
+        Green (mu > 1) = reinforced, red (mu < 1) = suppressed.
+        Alpha scales with distance from 1.0.
+        """
+        bbox = layout.cell_bounding_boxes.get(item.grid_position)
+        if bbox is None:
+            return
+
+        mu = item.data.get("modulation_factor", 1.0)
+        delta = mu - 1.0
+        if abs(delta) < 0.01:
+            return  # neutral, skip
+
+        intensity = min(abs(delta), 1.0)
+        if delta > 0:
+            color = QColor(50, 220, 80, int(40 + 120 * intensity))
+        else:
+            color = QColor(220, 50, 50, int(40 + 120 * intensity))
+
+        bx, by, bw, bh = bbox
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawRect(QRectF(bx, by, bw, bh))
+
     def _draw_saturation_ring(
         self, painter: QPainter, item: OverlayItem, layout: CellLayout,
     ) -> None:
@@ -367,4 +406,5 @@ class OverlayRenderer:
         "heatmap_cell": _draw_heatmap_cell,
         "novelty_arrow": _draw_novelty_arrow,
         "saturation_ring": _draw_saturation_ring,
+        "modulation_cell": _draw_modulation_cell,
     }

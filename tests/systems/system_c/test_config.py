@@ -45,6 +45,36 @@ class TestPredictionConfig:
         assert cfg.frustration_rate == 0.3
         assert cfg.positive_sensitivity == 2.0
 
+    def test_rejects_wrong_positive_weight_length(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(positive_weights=(1.0, 0.0))
+
+    def test_rejects_wrong_negative_weight_length(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(negative_weights=(1.0, 0.0))
+
+    def test_rejects_negative_weights(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(
+                positive_weights=(0.5, 0.125, 0.125, -0.125, 0.375),
+            )
+
+    def test_rejects_non_normalized_positive_weights(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(
+                positive_weights=(0.5, 0.125, 0.125, 0.125, 0.100),
+            )
+
+    def test_rejects_non_normalized_negative_weights(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(
+                negative_weights=(0.5, 0.125, 0.125, 0.125, 0.100),
+            )
+
+    def test_rejects_inverted_modulation_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(modulation_min=1.2, modulation_max=1.1)
+
 
 class TestSystemCConfig:
     """SystemCConfig parsing and validation."""

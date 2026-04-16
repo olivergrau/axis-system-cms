@@ -121,7 +121,8 @@ class TestDispatch:
         known_types = [
             "direction_arrow", "center_dot", "center_ring", "bar_chart",
             "diamond_marker", "neighbor_dot", "x_marker", "radius_circle",
-            "heatmap_cell", "novelty_arrow",
+            "heatmap_cell", "novelty_arrow", "saturation_ring",
+            "modulation_cell",
         ]
         # Verify all types are in the dispatch table
         for t in known_types:
@@ -385,6 +386,46 @@ class TestSelectedHighlight:
         item = _make_item(
             "center_dot",
             data={"radius": 0.2, "is_selected": True},
+        )
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer._render_item(painter, item, layout)
+        finally:
+            painter.end()
+
+    def test_render_modulation_cell_suppressed(self, qapp) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "modulation_cell",
+            data={"modulation_factor": 0.5},
+        )
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer._render_item(painter, item, layout)
+        finally:
+            painter.end()
+
+    def test_render_modulation_cell_reinforced(self, qapp) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "modulation_cell",
+            data={"modulation_factor": 1.5},
+        )
+        img, painter = _qpainter_on_image(qapp)
+        try:
+            renderer._render_item(painter, item, layout)
+        finally:
+            painter.end()
+
+    def test_render_modulation_cell_neutral_skips(self, qapp) -> None:
+        """Neutral modulation (mu ~= 1.0) should not draw anything."""
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "modulation_cell",
+            data={"modulation_factor": 1.0},
         )
         img, painter = _qpainter_on_image(qapp)
         try:

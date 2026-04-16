@@ -28,7 +28,7 @@ class TestConfigParsing:
         data = _load_yaml("system-c-baseline.yaml")
         config = SystemCConfig(**data["system"])
         assert config.prediction.memory_learning_rate == 0.3
-        assert config.prediction.negative_sensitivity == 1.5
+        assert config.prediction.negative_sensitivity == 2.0
         assert config.agent.initial_energy == 50.0
 
     def test_prediction_section_types(self) -> None:

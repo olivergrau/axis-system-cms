@@ -54,8 +54,15 @@ def modulate_action_scores(
 ) -> tuple[float, ...]:
     """Apply prediction-based modulation to all action scores.
 
-    For each action a:
-        modulated_score(a) = base_score(a) * mu(context, a)
+    For each action a, modulation changes action preference while
+    preserving sign semantics:
+
+    - if base_score >= 0: modulated_score = base_score * mu
+    - if base_score < 0:  modulated_score = base_score / mu
+
+    This ensures that positive surprise strengthens action preference
+    and negative surprise weakens it, even for actions represented by
+    negative baseline penalties (e.g. stay suppression).
 
     Args:
         action_scores: Baseline scores from the drive, one per action.
@@ -81,5 +88,8 @@ def modulate_action_scores(
             modulation_min=modulation_min,
             modulation_max=modulation_max,
         )
-        result.append(score * mu)
+        if score >= 0.0:
+            result.append(score * mu)
+        else:
+            result.append(score / mu)
     return tuple(result)

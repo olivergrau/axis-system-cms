@@ -146,27 +146,11 @@ class TestBufferUpdate:
 
 
 # =========================================================================
-# First-step skip (last_observation is None)
+# First-step behavior without stored last_observation
 # =========================================================================
 
 
-class TestFirstStepSkip:
-
-    def test_memory_unchanged(self) -> None:
-        trans = _transition()
-        state = _state(last_observation=None)
-        result = trans.transition(state, _move_outcome(), _obs(0.5))
-        # Memory should be identical to initial
-        assert (
-            result.new_state.predictive_memory.entries
-            == state.predictive_memory.entries
-        )
-
-    def test_traces_unchanged(self) -> None:
-        trans = _transition()
-        state = _state(last_observation=None)
-        result = trans.transition(state, _move_outcome(), _obs(0.5))
-        assert result.new_state.trace_state == state.trace_state
+class TestFirstStepBehavior:
 
     def test_last_observation_set(self) -> None:
         trans = _transition()
@@ -174,10 +158,31 @@ class TestFirstStepSkip:
         result = trans.transition(_state(), _move_outcome(), obs)
         assert result.new_state.last_observation == obs
 
-    def test_no_prediction_in_trace_data(self) -> None:
+    def test_without_pre_observation_memory_and_traces_stay_unchanged(self) -> None:
         trans = _transition()
-        result = trans.transition(_state(), _move_outcome(), _obs())
+        state = _state(last_observation=None)
+        result = trans.transition(state, _move_outcome(), _obs(0.5))
+        assert result.new_state.predictive_memory.entries == state.predictive_memory.entries
+        assert result.new_state.trace_state == state.trace_state
         assert "prediction" not in result.trace_data
+
+    def test_with_pre_observation_in_action_outcome_first_step_is_learned(self) -> None:
+        trans = _transition()
+        state = _state(last_observation=None)
+        pre_obs = _obs(0.0)
+        post_obs = _obs(0.6, 0.3, 0.0, 0.0, 0.0)
+        outcome = ActionOutcome(
+            action="up",
+            moved=True,
+            new_position=Position(x=2, y=1),
+            data={"_pre_observation": pre_obs},
+        )
+
+        result = trans.transition(state, outcome, post_obs)
+
+        pred = get_prediction(result.new_state.predictive_memory, 0, "up")
+        assert pred[0] > 0.0
+        assert "prediction" in result.trace_data
 
 
 # =========================================================================

@@ -140,3 +140,59 @@ class TestDecideWithTraces:
         up_idx = 0
         assert modulated[up_idx] != pytest.approx(drive_contributions[up_idx])
         assert abs(modulated[up_idx]) < abs(drive_contributions[up_idx])
+
+    def test_positive_confidence_makes_negative_stay_penalty_less_negative(
+        self, system: SystemC, resource_world: World, rng: np.random.Generator,
+    ) -> None:
+        state = system.initialize_state()
+        traces = state.trace_state
+        for _ in range(5):
+            traces = update_traces(
+                traces, context=31, action="stay",
+                scalar_positive=1.0, scalar_negative=0.0,
+                frustration_rate=0.5, confidence_rate=0.5,
+            )
+
+        state_with_traces = AgentStateC(
+            energy=state.energy,
+            observation_buffer=state.observation_buffer,
+            predictive_memory=state.predictive_memory,
+            trace_state=traces,
+            last_observation=state.last_observation,
+        )
+
+        result = system.decide(resource_world, state_with_traces, rng)
+        raw = result.decision_data["drive"]["action_contributions"]
+        modulated = result.decision_data["prediction"]["modulated_scores"]
+
+        stay_idx = 5
+        assert raw[stay_idx] < 0.0
+        assert modulated[stay_idx] > raw[stay_idx]
+
+    def test_frustration_makes_negative_stay_penalty_more_negative(
+        self, system: SystemC, resource_world: World, rng: np.random.Generator,
+    ) -> None:
+        state = system.initialize_state()
+        traces = state.trace_state
+        for _ in range(5):
+            traces = update_traces(
+                traces, context=31, action="stay",
+                scalar_positive=0.0, scalar_negative=1.0,
+                frustration_rate=0.5, confidence_rate=0.5,
+            )
+
+        state_with_traces = AgentStateC(
+            energy=state.energy,
+            observation_buffer=state.observation_buffer,
+            predictive_memory=state.predictive_memory,
+            trace_state=traces,
+            last_observation=state.last_observation,
+        )
+
+        result = system.decide(resource_world, state_with_traces, rng)
+        raw = result.decision_data["drive"]["action_contributions"]
+        modulated = result.decision_data["prediction"]["modulated_scores"]
+
+        stay_idx = 5
+        assert raw[stay_idx] < 0.0
+        assert modulated[stay_idx] < raw[stay_idx]
