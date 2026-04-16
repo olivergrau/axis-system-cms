@@ -10,16 +10,16 @@ execution:
 
 world:
   world_type: "grid_2d"
-  grid_width: 20
-  grid_height: 20
+  grid_width: 10
+  grid_height: 10
   obstacle_density: 0.2
   resource_regen_rate: 0.1
   regeneration_mode: "sparse_fixed_ratio"
   regen_eligible_ratio: 0.10
 
 agent_start_position:
-  x: 10
-  y: 10
+  x: 5
+  y: 5
 
 system:
   agent:

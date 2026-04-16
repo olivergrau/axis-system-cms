@@ -10,6 +10,7 @@ Reference documentation for using and extending the AXIS framework.
 | [CLI User Guide](cli-manual.md) | Running experiments, inspecting results, visualization |
 | [Configuration Reference](config-manual.md) | YAML config format, OFAT sweeps, all parameters |
 | [Visualization](visualization-manual.md) | Interactive viewer, overlays, and replay controls |
+| [Paired Trace Comparison](comparison-manual.md) | Comparing two episode traces: CLI, Python API, metrics |
 
 ## Developer Guides
 

@@ -24,6 +24,7 @@ axis <global-flags> <entity> <action> [arguments]
 |---------------|---------------------------------|
 | `experiments` | `list`, `run`, `resume`, `show` |
 | `runs`        | `list`, `show`                  |
+| `compare`     | *(no sub-action -- runs paired trace comparison)* |
 | `visualize`   | *(no sub-action -- launches viewer)* |
 
 ### Global flags
@@ -847,6 +848,11 @@ axis experiments resume <experiment-id>
 
 # Visualize an episode
 axis visualize --experiment <experiment-id> --run run-0000 --episode 1
+
+# Compare two episode traces (paired comparison)
+axis compare \
+  --reference-experiment <ref-id> --reference-run run-0000 --reference-episode 1 \
+  --candidate-experiment <cand-id> --candidate-run run-0000 --candidate-episode 1
 
 # Get JSON output (any command)
 axis --output json experiments show <experiment-id>

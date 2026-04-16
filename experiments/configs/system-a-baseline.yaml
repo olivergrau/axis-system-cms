@@ -13,9 +13,13 @@ world:
   grid_width: 10
   grid_height: 10
   obstacle_density: 0.2
-  resource_regen_rate: 0.2
+  resource_regen_rate: 0.1
   regeneration_mode: "sparse_fixed_ratio"
-  regen_eligible_ratio: 0.17
+  regen_eligible_ratio: 0.10
+
+agent_start_position:
+  x: 5
+  y: 5
 
 system:
   agent:

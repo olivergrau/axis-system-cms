@@ -62,6 +62,9 @@ examples:
 
   axis visualize --experiment <eid> --run <rid> --episode 1
 
+  axis compare --reference-experiment <eid> --reference-run <rid> --reference-episode 0 \\
+               --candidate-experiment <eid2> --candidate-run <rid2> --candidate-episode 0
+
   Use --output json on any command for machine-readable output.
   Use --root <path> to point to a non-default repository location.
 """,
@@ -94,7 +97,6 @@ examples:
     run_p.add_argument(
         "config_path", help="Path to experiment config (YAML or JSON)")
 
-
     resume_p = exp_action.add_parser(
         "resume", parents=[common], help="Resume an incomplete experiment")
     resume_p.add_argument(
@@ -125,6 +127,26 @@ examples:
     show_run_p.add_argument(
         "--experiment", required=True, help="Experiment ID the run belongs to",
     )
+
+    # -- compare -------------------------------------------------------------
+    cmp_parser = entity_sub.add_parser(
+        "compare", parents=[common],
+        help="Compare two episode traces (paired trace comparison)",
+    )
+    cmp_parser.add_argument(
+        "--reference-experiment", required=True, help="Reference experiment ID")
+    cmp_parser.add_argument(
+        "--reference-run", required=True, help="Reference run ID")
+    cmp_parser.add_argument(
+        "--reference-episode", type=int, required=True,
+        help="Reference episode index (0-based)")
+    cmp_parser.add_argument(
+        "--candidate-experiment", required=True, help="Candidate experiment ID")
+    cmp_parser.add_argument(
+        "--candidate-run", required=True, help="Candidate run ID")
+    cmp_parser.add_argument(
+        "--candidate-episode", type=int, required=True,
+        help="Candidate episode index (0-based)")
 
     # -- visualize -----------------------------------------------------------
     viz_parser = entity_sub.add_parser(
@@ -441,6 +463,118 @@ def _cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
             )
 
 
+def _cmd_compare(args: argparse.Namespace, repo, output: str) -> None:
+    """Run paired trace comparison between two episodes."""
+    from axis.framework.comparison import compare_episode_traces
+
+    ref_trace = repo.load_episode_trace(
+        args.reference_experiment, args.reference_run, args.reference_episode,
+    )
+    cand_trace = repo.load_episode_trace(
+        args.candidate_experiment, args.candidate_run, args.candidate_episode,
+    )
+
+    ref_config = None
+    cand_config = None
+    ref_meta = None
+    cand_meta = None
+    try:
+        ref_config = repo.load_run_config(
+            args.reference_experiment, args.reference_run)
+    except Exception:
+        pass
+    try:
+        cand_config = repo.load_run_config(
+            args.candidate_experiment, args.candidate_run)
+    except Exception:
+        pass
+    try:
+        ref_meta = repo.load_run_metadata(
+            args.reference_experiment, args.reference_run)
+    except Exception:
+        pass
+    try:
+        cand_meta = repo.load_run_metadata(
+            args.candidate_experiment, args.candidate_run)
+    except Exception:
+        pass
+
+    result = compare_episode_traces(
+        ref_trace,
+        cand_trace,
+        reference_run_config=ref_config,
+        candidate_run_config=cand_config,
+        reference_run_metadata=ref_meta,
+        candidate_run_metadata=cand_meta,
+        reference_episode_index=args.reference_episode,
+        candidate_episode_index=args.candidate_episode,
+    )
+
+    if output == "json":
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
+    else:
+        _print_comparison_text(result)
+
+
+def _print_comparison_text(result) -> None:
+    """Pretty-print a PairedTraceComparisonResult in text mode."""
+    print(f"Comparison: {result.result_mode.value}")
+    i = result.identity
+    print(f"  Reference: {i.reference_system_type}", end="")
+    if i.reference_run_id:
+        print(f" run={i.reference_run_id}", end="")
+    print()
+    print(f"  Candidate: {i.candidate_system_type}", end="")
+    if i.candidate_run_id:
+        print(f" run={i.candidate_run_id}", end="")
+    print()
+
+    v = result.validation
+    if not v.is_valid_pair:
+        print(f"  Validation FAILED: {', '.join(v.errors)}")
+        return
+
+    if result.alignment:
+        a = result.alignment
+        print(
+            f"  Alignment: {a.aligned_steps} aligned steps "
+            f"(ref={a.reference_total_steps}, cand={a.candidate_total_steps})")
+
+    if result.metrics:
+        m = result.metrics
+        ad = m.action_divergence
+        print(
+            f"  Action divergence: first={ad.first_action_divergence_step}, "
+            f"mismatch={ad.action_mismatch_count} "
+            f"({ad.action_mismatch_rate:.1%})")
+        pd = m.position_divergence
+        print(
+            f"  Position divergence: mean={pd.mean_trajectory_distance:.2f}, "
+            f"max={pd.max_trajectory_distance}")
+        vd = m.vitality_divergence
+        print(
+            f"  Vitality divergence: mean={vd.mean_absolute_difference:.4f}, "
+            f"max={vd.max_absolute_difference:.4f}")
+
+    if result.outcome:
+        o = result.outcome
+        print(
+            f"  Outcome: ref={o.reference_total_steps} steps "
+            f"({o.reference_termination_reason}), "
+            f"cand={o.candidate_total_steps} steps "
+            f"({o.candidate_termination_reason})")
+        print(
+            f"  Vitality delta: {o.final_vitality_delta:+.4f}, "
+            f"longer survivor: {o.longer_survivor}")
+
+    if result.system_specific_analysis:
+        for key, data in result.system_specific_analysis.items():
+            print(f"  Extension [{key}]:")
+            if isinstance(data, dict):
+                for k, val in data.items():
+                    print(f"    {k}: {val}")
+
+
 def _cmd_visualize(args: argparse.Namespace, repo) -> None:
     """Launch the interactive visualization viewer."""
     from axis.visualization.launch import launch_visualization
@@ -477,6 +611,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.entity == "visualize":
             _cmd_visualize(args, repo)
+            return 0
+
+        if args.entity == "compare":
+            _cmd_compare(args, repo, args.output)
             return 0
 
         if not getattr(args, "action", None):
