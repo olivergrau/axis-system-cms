@@ -32,6 +32,7 @@ src/axis/
     experiment.py         ExperimentExecutor, OFAT, resume
     persistence.py        ExperimentRepository (file-based)
     registry.py           System registry (register_system, create_system)
+    comparison/           Paired trace comparison and run-level analysis
 
   plugins.py            Plugin discovery (entry points + YAML)
 
@@ -88,6 +89,14 @@ axis runs show <run_id> --experiment <eid>     Inspect a specific run
 
 axis visualize --experiment <eid> --run <rid> --episode 1
                                                Open interactive episode viewer
+
+axis compare --reference-experiment <eid> --reference-run <rid> \
+             --candidate-experiment <eid> --candidate-run <rid>
+                                               Compare all episodes across two runs
+
+axis compare --reference-experiment <eid> --reference-run <rid> --reference-episode 1 \
+             --candidate-experiment <eid> --candidate-run <rid> --candidate-episode 1
+                                               Compare a single episode pair
 ```
 
 Use `--output json` on any command for machine-readable output.
@@ -107,6 +116,7 @@ Ready-to-use configs ship at `experiments/configs/`:
 | `system-aw-exploration-demo.yaml` | Exploration demo (20x20, high curiosity, verbose) |
 | `system-b-sdk-demo.yaml` | System B scout agent on a signal landscape |
 | `system-c-baseline.yaml` | System C predictive modulation baseline |
+| `system-c-prediction-demo.yaml` | System C prediction demo with verbose output |
 
 ```bash
 axis experiments run experiments/configs/system-a-baseline.yaml
@@ -225,8 +235,8 @@ python -m pytest tests/framework/test_cli.py
 ```
 
 - **Python 3.11+** with PySide6, Pydantic v2, NumPy
-- **Testing**: pytest (1900+ tests across framework, SDK, systems, construction
-  kit, worlds, and visualization)
+- **Testing**: pytest (2000+ tests across framework, SDK, systems, construction
+  kit, worlds, visualization, and comparison)
 
 ## Documentation
 
@@ -284,6 +294,7 @@ Reference documentation for using and extending the framework.
 | `manuals/system-dev-manual.md` | Building custom systems |
 | `manuals/system-aw-manual.md` | System A+W configuration and behavior |
 | `manuals/world-dev-manual.md` | Building custom worlds |
+| `manuals/comparison-manual.md` | Paired trace comparison and run analysis |
 
 ### Specifications and Design
 
