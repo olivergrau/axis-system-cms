@@ -160,3 +160,57 @@ class PairedTraceComparisonResult(BaseModel):
     metrics: GenericComparisonMetrics | None = None
     outcome: OutcomeComparison | None = None
     system_specific_analysis: dict[str, Any] | None = None
+
+
+# ---------------------------------------------------------------------------
+# Run-level models
+# ---------------------------------------------------------------------------
+
+
+class MetricSummaryStats(BaseModel):
+    """Descriptive statistics over N episode values."""
+
+    model_config = _FROZEN
+
+    mean: float = 0.0
+    std: float = 0.0
+    min: float = 0.0
+    max: float = 0.0
+    n: int = 0
+
+
+class RunComparisonSummary(BaseModel):
+    """Statistical summary across all paired episodes in a run."""
+
+    model_config = _FROZEN
+
+    num_episodes_compared: int = 0
+    num_valid_pairs: int = 0
+    num_invalid_pairs: int = 0
+
+    action_mismatch_rate: MetricSummaryStats = MetricSummaryStats()
+    mean_trajectory_distance: MetricSummaryStats = MetricSummaryStats()
+    mean_vitality_difference: MetricSummaryStats = MetricSummaryStats()
+    final_vitality_delta: MetricSummaryStats = MetricSummaryStats()
+    total_steps_delta: MetricSummaryStats = MetricSummaryStats()
+
+    reference_survival_rate: float = 0.0
+    candidate_survival_rate: float = 0.0
+    candidate_longer_count: int = 0
+    reference_longer_count: int = 0
+    equal_count: int = 0
+
+
+class RunComparisonResult(BaseModel):
+    """Full run-level comparison: per-episode results + summary."""
+
+    model_config = _FROZEN
+
+    reference_experiment_id: str | None = None
+    candidate_experiment_id: str | None = None
+    reference_run_id: str
+    candidate_run_id: str
+    reference_system_type: str
+    candidate_system_type: str
+    episode_results: tuple[PairedTraceComparisonResult, ...] = ()
+    summary: RunComparisonSummary = RunComparisonSummary()

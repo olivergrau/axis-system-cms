@@ -466,3 +466,104 @@ class TestSystemCExtension:
         result = compare_episode_traces(ref, cand)
         sc = result.system_specific_analysis["system_c_prediction"]
         assert sc["mean_modulation_delta"] == pytest.approx(0.5)
+
+
+# ===================================================================
+# Run-level comparison tests
+# ===================================================================
+
+class TestRunSummary:
+    def test_summary_stats_math(self):
+        from axis.framework.comparison.summary import _stats
+        s = _stats([1.0, 2.0, 3.0, 4.0, 5.0])
+        assert s.mean == pytest.approx(3.0)
+        assert s.min == pytest.approx(1.0)
+        assert s.max == pytest.approx(5.0)
+        assert s.n == 5
+        assert s.std > 0
+
+    def test_summary_single_value(self):
+        from axis.framework.comparison.summary import _stats
+        s = _stats([42.0])
+        assert s.mean == pytest.approx(42.0)
+        assert s.std == 0.0
+        assert s.n == 1
+
+    def test_summary_empty(self):
+        from axis.framework.comparison.summary import _stats
+        s = _stats([])
+        assert s.n == 0
+
+    def test_compute_run_summary(self):
+        from axis.framework.comparison.summary import compute_run_summary
+        # 3 episode comparisons
+        results = []
+        for i in range(3):
+            ref, cand = make_divergent_pair(
+                n_steps=10, diverge_at=2 + i)
+            r = compare_episode_traces(ref, cand)
+            results.append(r)
+
+        summary = compute_run_summary(results)
+        assert summary.num_episodes_compared == 3
+        assert summary.num_valid_pairs == 3
+        assert summary.num_invalid_pairs == 0
+        assert summary.action_mismatch_rate.n == 3
+        assert summary.action_mismatch_rate.mean > 0
+
+    def test_summary_with_invalid_pair(self):
+        from axis.framework.comparison.summary import compute_run_summary
+        # 2 valid + 1 invalid
+        results = []
+        for _ in range(2):
+            ref, cand = make_identical_pair(3)
+            results.append(compare_episode_traces(ref, cand))
+
+        # Invalid: world type mismatch
+        ref = make_episode([make_step(0)], world_type="grid_2d")
+        cand = make_episode([make_step(0)], system_type="system_c", world_type="hex")
+        results.append(compare_episode_traces(ref, cand))
+
+        summary = compute_run_summary(results)
+        assert summary.num_episodes_compared == 3
+        assert summary.num_valid_pairs == 2
+        assert summary.num_invalid_pairs == 1
+
+    def test_survival_counting(self):
+        from axis.framework.comparison.summary import compute_run_summary
+        # ref dies, cand survives
+        ref = make_episode(
+            [make_step(i) for i in range(3)],
+            termination_reason="energy_depleted",
+        )
+        cand = make_episode(
+            [make_step(i) for i in range(5)],
+            system_type="system_c",
+            termination_reason="max_steps_reached",
+        )
+        results = [compare_episode_traces(ref, cand)]
+        summary = compute_run_summary(results)
+        assert summary.reference_survival_rate == 0.0
+        assert summary.candidate_survival_rate == 1.0
+        assert summary.candidate_longer_count == 1
+
+    def test_run_comparison_result_json(self):
+        from axis.framework.comparison.types import RunComparisonResult, RunComparisonSummary
+        from axis.framework.comparison.summary import compute_run_summary
+        results = []
+        for _ in range(2):
+            ref, cand = make_identical_pair(3)
+            results.append(compare_episode_traces(ref, cand))
+        summary = compute_run_summary(results)
+        run_result = RunComparisonResult(
+            reference_run_id="run-0000",
+            candidate_run_id="run-0000",
+            reference_system_type="system_a",
+            candidate_system_type="system_c",
+            episode_results=tuple(results),
+            summary=summary,
+        )
+        data = run_result.model_dump(mode="json")
+        restored = RunComparisonResult.model_validate(data)
+        assert restored.summary.num_valid_pairs == 2
+        assert len(restored.episode_results) == 2

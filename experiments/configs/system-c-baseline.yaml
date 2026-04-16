@@ -55,4 +55,4 @@ logging:
   jsonl_enabled: false
   verbosity: "compact"
 
-num_episodes_per_run: 5
+num_episodes_per_run: 20

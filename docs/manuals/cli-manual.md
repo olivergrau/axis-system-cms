@@ -854,6 +854,11 @@ axis compare \
   --reference-experiment <ref-id> --reference-run run-0000 --reference-episode 1 \
   --candidate-experiment <cand-id> --candidate-run run-0000 --candidate-episode 1
 
+# Compare full runs with statistical summary
+axis compare \
+  --reference-experiment <ref-id> --reference-run run-0000 \
+  --candidate-experiment <cand-id> --candidate-run run-0000
+
 # Get JSON output (any command)
 axis --output json experiments show <experiment-id>
 

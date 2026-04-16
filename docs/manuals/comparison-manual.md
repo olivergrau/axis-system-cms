@@ -85,11 +85,28 @@ are captured separately in the outcome comparison.
 There is no padding or extrapolation -- the tool never invents data for
 steps that did not occur.
 
+### 1.5 Comparison modes
+
+The comparison tool supports two modes:
+
+| Mode | Scope | CLI syntax |
+|------|-------|------------|
+| **Episode** | Compare a single pair of episodes | `axis compare --reference-episode N --candidate-episode N ...` |
+| **Run** | Compare all matched episodes across two runs, with statistical summary | `axis compare ...` (omit `--*-episode` flags) |
+
+In run mode, episodes are paired by index (1, 2, ..., min(n_ref, n_cand)).
+Each pair is validated independently -- if one episode fails validation
+(e.g. due to a seed mismatch), it is counted as invalid but the other
+pairs still proceed. The run-level result includes both the individual
+per-episode comparisons and an aggregate statistical summary.
+
 ---
 
 ## 2. CLI usage
 
 ### 2.1 Command syntax
+
+**Single episode:**
 
 ```
 axis compare \
@@ -98,16 +115,29 @@ axis compare \
   [--output text|json] [--root <path>]
 ```
 
+**Full run (all episodes):**
+
+```
+axis compare \
+  --reference-experiment <eid> --reference-run <rid> \
+  --candidate-experiment <eid> --candidate-run <rid> \
+  [--output text|json] [--root <path>]
+```
+
 | Flag                       | Required | Description |
 |----------------------------|----------|-------------|
 | `--reference-experiment`   | yes      | Experiment ID for the reference trace |
 | `--reference-run`          | yes      | Run ID within the reference experiment |
-| `--reference-episode`      | yes      | Episode index (matches file numbering, typically 1-based) |
+| `--reference-episode`      | no       | Episode index (omit for full-run comparison) |
 | `--candidate-experiment`   | yes      | Experiment ID for the candidate trace |
 | `--candidate-run`          | yes      | Run ID within the candidate experiment |
-| `--candidate-episode`      | yes      | Episode index for the candidate trace |
+| `--candidate-episode`      | no       | Episode index (omit for full-run comparison) |
 | `--output`                 | no       | `text` (default) or `json` |
 | `--root`                   | no       | Repository root (default: `./experiments/results`) |
+
+> **Note:** `--reference-episode` and `--candidate-episode` must both be
+> provided (single-episode mode) or both omitted (run-level mode).
+> Providing only one is an error.
 
 ### 2.2 Example: comparing System A vs System C
 
@@ -148,7 +178,46 @@ Comparison: comparison_succeeded
     mean_modulation_delta: 0.0057
 ```
 
-### 2.3 JSON output
+### 2.3 Example: full-run comparison
+
+Omit the episode flags to compare all episodes at once:
+
+```
+$ axis compare \
+    --reference-experiment ed3efb3e... --reference-run run-0000 \
+    --candidate-experiment 46fb8c97... --candidate-run run-0000
+```
+
+Output:
+
+```
+Run Comparison: system_a vs system_c
+  Reference: experiment=ed3efb3e... run=run-0000
+  Candidate: experiment=46fb8c97... run=run-0000
+  Episodes: 5 compared, 5 valid, 0 invalid
+
+  --- Per-episode results ---
+  Episode 1: mismatch=19.6%, pos_div=2.34, steps=163/200, survivor=candidate
+  Episode 2: mismatch=0.0%, pos_div=0.00, steps=108/108, survivor=equal
+  Episode 3: mismatch=2.4%, pos_div=0.05, steps=125/124, survivor=reference
+  Episode 4: mismatch=13.0%, pos_div=0.73, steps=146/200, survivor=candidate
+  Episode 5: mismatch=16.0%, pos_div=1.72, steps=200/200, survivor=equal
+
+  --- Statistical summary ---
+  Action mismatch rate: mean=0.1021, std=0.0859, min=0.0000, max=0.1963 (n=5)
+  Mean trajectory distance: mean=0.9690, std=1.0363, min=0.0000, max=2.3436 (n=5)
+  Mean vitality difference: mean=0.0391, std=0.0369, min=0.0000, max=0.0790 (n=5)
+  Final vitality delta: mean=+0.0790, std=0.2093, min=-0.0850, max=+0.4450 (n=5)
+  Total steps delta: mean=+18.0000, std=25.8167, min=-1.0000, max=+54.0000 (n=5)
+  Survival rates: reference=20%, candidate=60%
+  Longer survivor: candidate=2, reference=1, equal=2
+```
+
+The per-episode table gives a quick overview. The statistical summary
+aggregates across all valid pairs, showing mean, standard deviation,
+minimum, and maximum for each metric.
+
+### 2.4 JSON output
 
 Use `--output json` for machine-readable output:
 
@@ -170,7 +239,7 @@ axis compare ... --output json | jq '.outcome'
 axis compare ... --output json | jq '.metrics.action_divergence.action_mismatch_rate'
 ```
 
-### 2.4 Validation failures
+### 2.5 Validation failures
 
 When pairing constraints are violated, the comparison reports the
 failure and stops:
@@ -271,33 +340,36 @@ from axis.framework.comparison.types import PairedTraceComparisonResult
 restored = PairedTraceComparisonResult.model_validate(data)
 ```
 
-### 3.5 Batch comparison across all episodes
+### 3.5 Run-level comparison
+
+For comparing all episodes at once, use `compare_runs()`:
 
 ```python
-ref_eid = "ed3efb3e..."
-cand_eid = "46fb8c97..."
+from axis.framework.comparison import compare_runs
+from axis.framework.persistence import ExperimentRepository
+from pathlib import Path
 
-ref_config = repo.load_run_config(ref_eid, "run-0000")
-cand_config = repo.load_run_config(cand_eid, "run-0000")
+repo = ExperimentRepository(Path("experiments/results"))
 
-episodes = repo.list_episode_files(ref_eid, "run-0000")
-for ep_idx in range(1, len(episodes) + 1):
-    ref = repo.load_episode_trace(ref_eid, "run-0000", ep_idx)
-    cand = repo.load_episode_trace(cand_eid, "run-0000", ep_idx)
-    result = compare_episode_traces(
-        ref, cand,
-        reference_run_config=ref_config,
-        candidate_run_config=cand_config,
-        reference_episode_index=ep_idx,
-        candidate_episode_index=ep_idx,
-    )
-    ad = result.metrics.action_divergence
-    o = result.outcome
-    print(
-        f"Episode {ep_idx}: mismatch={ad.action_mismatch_rate:.1%}, "
-        f"survivor={o.longer_survivor}, "
-        f"vitality_delta={o.final_vitality_delta:+.3f}"
-    )
+result = compare_runs(
+    repo,
+    reference_experiment_id="ed3efb3e...",
+    reference_run_id="run-0000",
+    candidate_experiment_id="46fb8c97...",
+    candidate_run_id="run-0000",
+)
+
+s = result.summary
+print(f"Valid pairs: {s.num_valid_pairs}/{s.num_episodes_compared}")
+print(f"Mismatch rate: {s.action_mismatch_rate.mean:.1%} +/- {s.action_mismatch_rate.std:.1%}")
+print(f"Survival: ref={s.reference_survival_rate:.0%}, cand={s.candidate_survival_rate:.0%}")
+print(f"Vitality delta: {s.final_vitality_delta.mean:+.3f}")
+
+# Access individual episode results
+for r in result.episode_results:
+    ep = r.identity.reference_episode_index
+    if r.metrics:
+        print(f"  Episode {ep}: {r.metrics.action_divergence.action_mismatch_rate:.1%}")
 ```
 
 ---
@@ -443,6 +515,48 @@ prefix):
 candidate survived to `max_steps_reached` while the reference died of
 `energy_depleted`, the candidate's system clearly provided a survival
 advantage in this episode.
+
+### 4.9 Run-level statistical summary
+
+When comparing full runs, the summary aggregates scalar metrics
+across all valid episode pairs. Each metric is reported with
+descriptive statistics:
+
+| Statistic | Meaning |
+|-----------|---------|
+| `mean`    | Average across all valid episode pairs |
+| `std`     | Standard deviation (0 if only 1 pair) |
+| `min`     | Minimum value across all pairs |
+| `max`     | Maximum value across all pairs |
+| `n`       | Number of valid pairs contributing |
+
+The summary includes these aggregated metrics:
+
+| Metric                     | Per-episode source |
+|----------------------------|--------------------|
+| `action_mismatch_rate`     | `metrics.action_divergence.action_mismatch_rate` |
+| `mean_trajectory_distance` | `metrics.position_divergence.mean_trajectory_distance` |
+| `mean_vitality_difference` | `metrics.vitality_divergence.mean_absolute_difference` |
+| `final_vitality_delta`     | `outcome.final_vitality_delta` (signed) |
+| `total_steps_delta`        | `outcome.total_steps_delta` (signed) |
+
+Additional summary fields:
+
+| Field                     | Description |
+|---------------------------|-------------|
+| `num_episodes_compared`   | Total episode pairs attempted |
+| `num_valid_pairs`         | Pairs that passed validation |
+| `num_invalid_pairs`       | Pairs that failed validation |
+| `reference_survival_rate` | Fraction of valid pairs where the reference reached `max_steps_reached` |
+| `candidate_survival_rate` | Fraction of valid pairs where the candidate reached `max_steps_reached` |
+| `candidate_longer_count`  | Pairs where the candidate survived longer |
+| `reference_longer_count`  | Pairs where the reference survived longer |
+| `equal_count`             | Pairs with equal total steps |
+
+**How to read it:** The mean and std give you the central tendency and
+spread. Compare `candidate_survival_rate` to `reference_survival_rate`
+for the clearest signal of which system performs better. A positive
+`final_vitality_delta.mean` means the candidate was healthier on average.
 
 ---
 
@@ -605,23 +719,20 @@ axis experiments run experiments/configs/system-c-baseline.yaml
 axis experiments list
 ```
 
-3. Compare matching episodes:
+3. Compare the full run (all episodes with summary):
+
+```bash
+axis compare \
+  --reference-experiment <system-a-id> --reference-run run-0000 \
+  --candidate-experiment <system-c-id> --candidate-run run-0000
+```
+
+4. Or compare a single episode:
 
 ```bash
 axis compare \
   --reference-experiment <system-a-id> --reference-run run-0000 --reference-episode 1 \
   --candidate-experiment <system-c-id> --candidate-run run-0000 --candidate-episode 1
-```
-
-4. Compare all episodes in a batch:
-
-```bash
-for ep in 1 2 3 4 5; do
-  echo "=== Episode $ep ==="
-  axis compare \
-    --reference-experiment <system-a-id> --reference-run run-0000 --reference-episode $ep \
-    --candidate-experiment <system-c-id> --candidate-run run-0000 --candidate-episode $ep
-done
 ```
 
 ### 8.2 Exporting comparison data for analysis
@@ -652,6 +763,8 @@ axis compare ... --output json | jq '{
 ---
 
 ## 9. Result schema reference
+
+### 9.1 Episode-level result
 
 The complete `PairedTraceComparisonResult` model:
 
@@ -725,3 +838,42 @@ PairedTraceComparisonResult
 When `result_mode` is `"comparison_failed_validation"`, the
 `alignment`, `metrics`, `outcome`, and `system_specific_analysis`
 fields are `null`.
+
+### 9.2 Run-level result schema
+
+The `RunComparisonResult` model (returned by `compare_runs()`):
+
+```
+RunComparisonResult
+ ├── reference_experiment_id: str | null
+ ├── candidate_experiment_id: str | null
+ ├── reference_run_id: str
+ ├── candidate_run_id: str
+ ├── reference_system_type: str
+ ├── candidate_system_type: str
+ ├── episode_results: [PairedTraceComparisonResult, ...]
+ └── summary: RunComparisonSummary
+      ├── num_episodes_compared: int
+      ├── num_valid_pairs: int
+      ├── num_invalid_pairs: int
+      ├── action_mismatch_rate: MetricSummaryStats
+      ├── mean_trajectory_distance: MetricSummaryStats
+      ├── mean_vitality_difference: MetricSummaryStats
+      ├── final_vitality_delta: MetricSummaryStats
+      ├── total_steps_delta: MetricSummaryStats
+      ├── reference_survival_rate: float
+      ├── candidate_survival_rate: float
+      ├── candidate_longer_count: int
+      ├── reference_longer_count: int
+      └── equal_count: int
+
+MetricSummaryStats
+ ├── mean: float
+ ├── std: float
+ ├── min: float
+ ├── max: float
+ └── n: int
+```
+
+Each `episode_results` entry is a full `PairedTraceComparisonResult`
+(see section 9.1). The `summary` aggregates only over valid pairs.

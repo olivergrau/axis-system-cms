@@ -131,22 +131,22 @@ examples:
     # -- compare -------------------------------------------------------------
     cmp_parser = entity_sub.add_parser(
         "compare", parents=[common],
-        help="Compare two episode traces (paired trace comparison)",
+        help="Compare two episode traces or full runs (paired trace comparison)",
     )
     cmp_parser.add_argument(
         "--reference-experiment", required=True, help="Reference experiment ID")
     cmp_parser.add_argument(
         "--reference-run", required=True, help="Reference run ID")
     cmp_parser.add_argument(
-        "--reference-episode", type=int, required=True,
-        help="Reference episode index (0-based)")
+        "--reference-episode", type=int, default=None,
+        help="Reference episode index (omit for full-run comparison)")
     cmp_parser.add_argument(
         "--candidate-experiment", required=True, help="Candidate experiment ID")
     cmp_parser.add_argument(
         "--candidate-run", required=True, help="Candidate run ID")
     cmp_parser.add_argument(
-        "--candidate-episode", type=int, required=True,
-        help="Candidate episode index (0-based)")
+        "--candidate-episode", type=int, default=None,
+        help="Candidate episode index (omit for full-run comparison)")
 
     # -- visualize -----------------------------------------------------------
     viz_parser = entity_sub.add_parser(
@@ -464,7 +464,27 @@ def _cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
 
 
 def _cmd_compare(args: argparse.Namespace, repo, output: str) -> None:
-    """Run paired trace comparison between two episodes."""
+    """Run paired trace comparison between two episodes or full runs."""
+    ref_ep = args.reference_episode
+    cand_ep = args.candidate_episode
+
+    # Validate: both or neither episode flags must be provided.
+    if (ref_ep is None) != (cand_ep is None):
+        print(
+            "Error: --reference-episode and --candidate-episode must both be "
+            "provided (single-episode mode) or both omitted (run-level mode).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if ref_ep is not None:
+        _cmd_compare_episode(args, repo, output)
+    else:
+        _cmd_compare_runs(args, repo, output)
+
+
+def _cmd_compare_episode(args: argparse.Namespace, repo, output: str) -> None:
+    """Single-episode comparison (existing behavior)."""
     from axis.framework.comparison import compare_episode_traces
 
     ref_trace = repo.load_episode_trace(
@@ -514,6 +534,120 @@ def _cmd_compare(args: argparse.Namespace, repo, output: str) -> None:
         print(json.dumps(result.model_dump(mode="json"), indent=2))
     else:
         _print_comparison_text(result)
+
+
+def _cmd_compare_runs(args: argparse.Namespace, repo, output: str) -> None:
+    """Full-run comparison with statistical summary."""
+    from axis.framework.comparison import compare_runs
+
+    result = compare_runs(
+        repo,
+        args.reference_experiment, args.reference_run,
+        args.candidate_experiment, args.candidate_run,
+    )
+
+    if output == "json":
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
+    else:
+        _print_run_comparison_text(result)
+
+
+def _print_run_comparison_text(result) -> None:
+    """Pretty-print a RunComparisonResult in text mode."""
+    s = result.summary
+    print(
+        f"Run Comparison: {result.reference_system_type} vs "
+        f"{result.candidate_system_type}")
+    print(
+        f"  Reference: experiment={result.reference_experiment_id} "
+        f"run={result.reference_run_id}")
+    print(
+        f"  Candidate: experiment={result.candidate_experiment_id} "
+        f"run={result.candidate_run_id}")
+    print(
+        f"  Episodes: {s.num_episodes_compared} compared, "
+        f"{s.num_valid_pairs} valid, {s.num_invalid_pairs} invalid")
+    print()
+
+    if s.num_valid_pairs == 0:
+        print("  No valid pairs to summarise.")
+        return
+
+    print("  --- Per-episode results ---")
+    for r in result.episode_results:
+        ep = r.identity.reference_episode_index
+        if r.result_mode.value != "comparison_succeeded":
+            print(f"  Episode {ep}: VALIDATION FAILED ({', '.join(r.validation.errors)})")
+            continue
+        m = r.metrics
+        o = r.outcome
+        assert m is not None and o is not None
+        print(
+            f"  Episode {ep}: mismatch={m.action_divergence.action_mismatch_rate:.1%}, "
+            f"pos_div={m.position_divergence.mean_trajectory_distance:.2f}, "
+            f"steps={o.reference_total_steps}/{o.candidate_total_steps}, "
+            f"survivor={o.longer_survivor}")
+    print()
+
+    print("  --- Statistical summary (across all valid episode pairs) ---")
+    print()
+    _print_metric("Action mismatch rate", s.action_mismatch_rate)
+    print(
+        "      How often the two agents chose different actions at the same "
+        "timestep.")
+    print(
+        "      0% = identical behavior, 100% = every decision differed.")
+    print()
+    _print_metric("Mean trajectory distance", s.mean_trajectory_distance)
+    print(
+        "      Average Manhattan distance (grid cells) between the two agents "
+        "per episode.")
+    print(
+        "      0 = agents always on the same cell, higher = paths diverged "
+        "on the grid.")
+    print()
+    _print_metric("Mean vitality difference", s.mean_vitality_difference)
+    print(
+        "      Average absolute difference in health (vitality) between the "
+        "agents per episode.")
+    print(
+        "      0 = identical health curves, higher = one agent was "
+        "consistently healthier.")
+    print()
+    _print_metric("Final vitality delta", s.final_vitality_delta, signed=True)
+    print(
+        "      Candidate's final vitality minus reference's final vitality.")
+    print(
+        "      Positive = candidate ended healthier, "
+        "negative = reference ended healthier.")
+    print()
+    _print_metric("Total steps delta", s.total_steps_delta, signed=True)
+    print(
+        "      Candidate's episode length minus reference's episode length.")
+    print(
+        "      Positive = candidate survived longer, "
+        "negative = reference survived longer.")
+    print()
+    print(
+        f"  Survival rates: reference={s.reference_survival_rate:.0%}, "
+        f"candidate={s.candidate_survival_rate:.0%}")
+    print(
+        "      Fraction of episodes where the agent reached max_steps "
+        "(was not terminated early).")
+    print()
+    print(
+        f"  Longer survivor: candidate={s.candidate_longer_count}, "
+        f"reference={s.reference_longer_count}, equal={s.equal_count}")
+    print(
+        "      Per-episode count of which system lasted more steps.")
+
+
+def _print_metric(label: str, stats, *, signed: bool = False) -> None:
+    fmt = "+.4f" if signed else ".4f"
+    print(
+        f"  {label}: mean={stats.mean:{fmt}}, std={stats.std:.4f}, "
+        f"min={stats.min:{fmt}}, max={stats.max:{fmt}} (n={stats.n})"
+    )
 
 
 def _print_comparison_text(result) -> None:
