@@ -47,8 +47,7 @@ def select(
    observation's traversability values.
 2. **Mask application** -- sets scores for inadmissible actions to $-\infty$.
 3. **Softmax** -- numerically stable exponential normalization:
-
-    $$P(a_i) = \frac{e^{\beta \cdot (s_i - s_{max})}}{\sum_j e^{\beta \cdot (s_j - s_{max})}}$$
+   $P(a_i) = \frac{e^{\beta \cdot (s_i - s_{max})}}{\sum_j e^{\beta \cdot (s_j - s_{max})}}$
 
     where $\beta = 1 / \text{temperature}$ and the sum runs over
     admissible actions only. Masked actions receive probability 0.

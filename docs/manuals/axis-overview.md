@@ -155,6 +155,27 @@ how to build a custom system from scratch.
 - **Purpose:** Demonstrates the system development API: custom action
   registration, action context, and visualization adapter integration.
 
+### System C -- Predictive Action Modulation
+
+System C extends System A with a prediction-based modulation factor
+that learns action reliability from experience. Like System A, it
+composes components from the Construction Kit.
+
+- **Everything from System A** (same kit components), plus:
+- **Predictive memory:** `PredictiveMemory` (from `construction_kit.prediction`) --
+  Stores expected next-step features per (context, action) pair.
+  Context is a 5-bit binary encoding of local resource availability.
+- **Dual traces:** `TraceState`, `update_traces` (from `construction_kit.traces`) --
+  Frustration and confidence traces that accumulate from signed
+  prediction errors via asymmetric EMA learning.
+- **Exponential modulation:** `compute_modulation`, `modulate_action_scores`
+  (from `construction_kit.modulation`) -- Loss-averse exponential
+  modulation that suppresses unreliable actions and reinforces
+  positively surprising ones.
+- **Reduction property:** When prediction sensitivities are zeroed
+  (λ+ = λ- = 0), System C produces identical behavior to System A.
+  This is verified by automated tests.
+
 ### Building Custom Systems
 
 Any Python class that satisfies the ``SystemInterface`` protocol can be
@@ -337,6 +358,10 @@ and 6 overlay types (adding visit count heatmap and novelty field arrows).
 **System B** contributes 5 analysis sections and 2 overlay types (action
 weight arrows and scan result circle).
 
+**System C** contributes up to 7 analysis sections (adding prediction &
+modulation and predictive update sections) and 5 overlay types (adding
+modulated score bar chart and modulation factor display).
+
 ### Overlays
 
 Overlays are semi-transparent graphical indicators drawn on top of the
@@ -438,7 +463,7 @@ covering all layers:
 
 ## Included Experiment Configurations
 
-Seven ready-to-run configurations ship with the framework:
+Eight ready-to-run configurations ship with the framework:
 
 | Config File | Description |
 |-------------|-------------|
@@ -449,6 +474,7 @@ Seven ready-to-run configurations ship with the framework:
 | ``system-aw-curiosity-sweep.yaml`` | OFAT sweep over curiosity strength |
 | ``system-aw-exploration-demo.yaml`` | 20x20 exploration demo (high curiosity) |
 | ``system-b-sdk-demo.yaml`` | System B scout on signal landscape |
+| ``system-c-baseline.yaml`` | System C predictive modulation baseline |
 
 ---
 

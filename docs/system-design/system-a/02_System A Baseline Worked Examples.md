@@ -130,13 +130,10 @@ $$
 
 ##### 2.4 Coupling Function
 
-- For **CONSUME**:  
-
-    $$  
-    \phi_H(\text{CONSUME}, u_t) = w_{consume} \cdot r_c(t)  
-    $$
+- For **CONSUME**:
+  $\phi_H(\text{CONSUME}, u_t) = w_{consume} \cdot r_c(t)$
     
-- For **movement actions**:  
+For **movement actions**:
 
 $$
 \phi_H(\text{UP}, u_t)=r_{up}(t)
@@ -333,8 +330,7 @@ $$
 ##### 7.3 Action Probabilities
 For each of:
 
-- UP, DOWN, LEFT, RIGHT, CONSUME:
-    
+For UP, DOWN, LEFT, RIGHT, and CONSUME:
 
 $$
 P(a) = \frac{1}{5.367879} \approx 0.186293  
@@ -3348,9 +3344,7 @@ We also assume:
 * all relevant cells are traversable,
 * no obstacles are present,
 * local regeneration is disabled for the episode by setting:
-  $$
-  \alpha_i=0
-  $$
+  $\alpha_i=0$
   for the cells involved.
 
 This keeps the arithmetic transparent and isolates the action-transition logic. All of this is consistent with the environment and sensor definitions.

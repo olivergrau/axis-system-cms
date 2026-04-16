@@ -99,33 +99,28 @@ CuriosityDrive(
 Runs the full curiosity pipeline:
 
 1. **Spatial novelty** (per direction):
-
-    $$\nu^{\text{spatial}}_{\text{dir}} = \frac{1}{(1 + w(\text{neighbor}))^k}$$
+   $\nu^{\text{spatial}}_{\text{dir}} = \frac{1}{(1 + w(\text{neighbor}))^k}$
 
     where $w$ is the visit count from the world model and $k$ is
     `novelty_sharpness`.
 
 2. **Sensory novelty** (per direction):
-
-    $$\nu^{\text{sensory}}_{\text{dir}} = |r_{\text{dir}}(t) - \overline{r}_{\text{dir}}|$$
+   $\nu^{\text{sensory}}_{\text{dir}} = |r_{\text{dir}}(t) - \overline{r}_{\text{dir}}|$
 
     where $\overline{r}_{\text{dir}}$ is the mean resource value at
     that direction across the observation buffer.
 
 3. **Composite novelty** (alpha-weighted blend):
-
-    $$\nu_{\text{dir}} = \alpha \cdot \nu^{\text{spatial}}_{\text{dir}} + (1 - \alpha) \cdot \nu^{\text{sensory}}_{\text{dir}}$$
+   $\nu_{\text{dir}} = \alpha \cdot \nu^{\text{spatial}}_{\text{dir}} + (1 - \alpha) \cdot \nu^{\text{sensory}}_{\text{dir}}$
 
 4. **Novelty saturation** (from buffer):
-
-    $$\bar{\nu}_t = \text{mean over buffer entries of } \sigma_j$$
+   $\bar{\nu}_t = \text{mean over buffer entries of } \sigma_j$
 
     where $\sigma_j$ is the mean per-direction absolute deviation of
     resource values from their means.
 
 5. **Drive activation:**
-
-    $$d_C = \mu_C \cdot (1 - \bar{\nu}_t)$$
+   $d_C = \mu_C \cdot (1 - \bar{\nu}_t)$
 
 6. **Action contributions:**
 

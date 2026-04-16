@@ -43,9 +43,13 @@ src/axis/
       arbitration/          Drive weight computation, score combination
       energy/               Energy clipping, vitality, termination checks
       memory/               Observation buffer, world model (visit counts)
+      prediction/           Predictive memory, context encoding, error decomposition
+      traces/               Dual-trace dynamics (frustration, confidence)
+      modulation/           Action score modulation from traces
       types/                Shared config types, action handlers (consume)
     system_a/             Energy-driven forager (composes kit components)
     system_aw/            Dual-drive agent with curiosity and world model
+    system_c/             Predictive action modulation agent
     system_b/             Scout agent with scan action
 
   world/                Pluggable world implementations
@@ -102,6 +106,7 @@ Ready-to-use configs ship at `experiments/configs/`:
 | `system-aw-curiosity-sweep.yaml` | OFAT sweep over curiosity strength (μ_C = 0.0 to 1.0) |
 | `system-aw-exploration-demo.yaml` | Exploration demo (20x20, high curiosity, verbose) |
 | `system-b-sdk-demo.yaml` | System B scout agent on a signal landscape |
+| `system-c-baseline.yaml` | System C predictive modulation baseline |
 
 ```bash
 axis experiments run experiments/configs/system-a-baseline.yaml
@@ -156,6 +161,41 @@ system:
 
 Design documents: `docs/system-design/system-a+w/`
 
+### System C — Predictive Action Modulation
+
+System C extends System A with a prediction-based modulation factor that
+learns action reliability from experience:
+
+$$\psi_C(a) = d_H(t) \cdot \phi_H(a, u_t) \cdot \mu_H(s_t, a)$$
+
+The agent builds a predictive memory of expected outcomes per (context, action)
+pair. When predictions are violated, dual traces (frustration and confidence)
+accumulate and modulate future action scores -- suppressing unreliable actions
+and reinforcing positively surprising ones.
+
+Key additions over System A (all sourced from the Construction Kit):
+- **Predictive memory** with binary context encoding (32 discrete states)
+- **Dual traces** (frustration/confidence) with asymmetric EMA learning
+- **Exponential modulation** with loss-averse parameterization (λ- > λ+)
+
+When prediction sensitivities are zeroed (λ+ = λ- = 0), System C reduces
+exactly to System A.
+
+System C configuration adds an optional `prediction` sub-section:
+
+```yaml
+system:
+  prediction:
+    memory_learning_rate: 0.3       # η_q: predictive memory learning rate
+    context_threshold: 0.5          # binary threshold for context encoding
+    frustration_rate: 0.2           # η_f: frustration trace EMA rate
+    confidence_rate: 0.15           # η_c: confidence trace EMA rate
+    positive_sensitivity: 1.0       # λ+: confidence modulation strength
+    negative_sensitivity: 1.5       # λ-: frustration modulation strength
+    modulation_min: 0.3             # μ_min: modulation floor
+    modulation_max: 2.0             # μ_max: modulation ceiling
+```
+
 ### System B — Scout Agent
 
 A scan-based scout agent that operates on signal landscapes.
@@ -185,7 +225,7 @@ python -m pytest tests/framework/test_cli.py
 ```
 
 - **Python 3.11+** with PySide6, Pydantic v2, NumPy
-- **Testing**: pytest (1800+ tests across framework, SDK, systems, construction
+- **Testing**: pytest (1900+ tests across framework, SDK, systems, construction
   kit, worlds, and visualization)
 
 ## Documentation

@@ -43,6 +43,7 @@ nav:
       - tutorials/index.md
       - "Building a System": tutorials/building-a-system.md
       - "Building a World": tutorials/building-a-world.md
+      - "Understanding Prediction-Error-Driven Behavior": tutorials/prediction-error-tutorial.md
 
   - Manuals:
       - manuals/index.md
@@ -63,18 +64,28 @@ nav:
       - "Energy": construction-kit/energy.md
       - "Memory": construction-kit/memory.md
       - "Types": construction-kit/types.md
+      - "Prediction": construction-kit/prediction.md
+      - "Traces": construction-kit/traces.md
+      - "Modulation": construction-kit/modulation.md
 
   - Design:
       - system-design/index.md
       - "System A":
+          - system-design/system-a/index.md
           - "Formal Specification": system-design/system-a/01_System A Baseline.md
           - "Worked Examples": system-design/system-a/02_System A Baseline Worked Examples.md
       - "System A+W":
+          - system-design/system-a+w/index.md
           - "Formal Model": system-design/system-a+w/01_System A+W Model.md
           - "Worked Examples": system-design/system-a+w/02_System A+W Worked Examples.md
       - "System B":
+          - system-design/system-b/index.md
           - "Formal Model": system-design/system-b/01_System B Model.md
           - "Worked Examples": system-design/system-b/02_System B Worked Examples.md
+      - "System C":
+          - system-design/system-c/index.md
+          - "Formal Model": system-design/system-c/01_System C Model.md
+          - "Worked Examples": system-design/system-c/02_System C Worked Examples.md
 
 plugins:
   - search

@@ -35,6 +35,7 @@ axis experiments run experiments/configs/system-aw-baseline.yaml
 | **System A** | Energy-driven forager with hunger drive and softmax policy |
 | **System A+W** | Dual-drive agent adding curiosity and spatial world model |
 | **System B** | Scout agent with scan action on signal landscapes |
+| **System C** | Predictive hunger agent with local predictive memory and action-level modulation |
 
 ## Plugin System
 

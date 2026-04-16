@@ -62,9 +62,9 @@ class TestCrossSystemBoundaries:
     def test_no_cross_system_imports(self) -> None:
         """All shared code should come from the construction kit."""
         violations: list[str] = []
-        for system_name in ("system_a", "system_aw", "system_b"):
+        for system_name in ("system_a", "system_aw", "system_b", "system_c"):
             other_systems = [
-                s for s in ("system_a", "system_aw", "system_b")
+                s for s in ("system_a", "system_aw", "system_b", "system_c")
                 if s != system_name
             ]
             for other in other_systems:
@@ -88,6 +88,9 @@ class TestNoCircularDependencies:
         import axis.systems.construction_kit.energy
         import axis.systems.construction_kit.memory
         import axis.systems.construction_kit.types
+        import axis.systems.construction_kit.prediction
+        import axis.systems.construction_kit.traces
+        import axis.systems.construction_kit.modulation
 
 
 class TestUpstreamBoundaries:

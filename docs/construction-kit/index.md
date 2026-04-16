@@ -29,14 +29,9 @@ The framework never sees the kit -- it only sees `SystemInterface`.
 | [Energy](energy.md) | `clip_energy`, `compute_vitality`, `check_energy_termination`, `get_action_cost` | Energy clamping, vitality, termination, action costs |
 | [Memory](memory.md) | `ObservationBuffer`, `WorldModelState`, `update_observation_buffer`, `create_world_model`, `update_world_model` | FIFO observation buffer and spatial visit-count world model |
 | [Types](types.md) | `AgentConfig`, `PolicyConfig`, `TransitionConfig`, `handle_consume` | Shared config models and consume action handler |
-
-### Phase 2 (planned)
-
-| Package | Purpose |
-|---------|---------|
-| `prediction` | Predictive memory and prediction error processing |
-| `traces` | Trace dynamics and bounded accumulation |
-| `modulation` | Action score modulation functions |
+| [Prediction](prediction.md) | `extract_predictive_features`, `encode_context`, `PredictiveMemory`, `compute_prediction_error` | Predictive memory, context encoding, and signed error decomposition |
+| [Traces](traces.md) | `TraceState`, `create_trace_state`, `update_traces` | Dual-trace dynamics (frustration/confidence) with EMA accumulation |
+| [Modulation](modulation.md) | `compute_modulation`, `modulate_action_scores` | Exponential action score modulation from trace state |
 
 ---
 
@@ -70,21 +65,24 @@ These constraints are verified by 7 automated tests in
 
 ## Which Systems Use Which Components?
 
-| Component | System A | System A+W | System B |
-|-----------|:--------:|:----------:|:--------:|
-| `VonNeumannSensor` | yes | yes | -- |
-| `HungerDrive` | yes | yes | -- |
-| `CuriosityDrive` | -- | yes | -- |
-| `SoftmaxPolicy` | yes | yes | -- |
-| `compute_maslow_weights` | -- | yes | -- |
-| `combine_drive_scores` | -- | yes | -- |
-| `ObservationBuffer` | yes | yes | -- |
-| `WorldModelState` | -- | yes | -- |
-| `clip_energy` | yes | yes | -- |
-| `AgentConfig` | yes | yes | -- |
-| `PolicyConfig` | yes | yes | -- |
-| `TransitionConfig` | yes | yes | -- |
-| `handle_consume` | yes | yes | -- |
+| Component | System A | System A+W | System C | System B |
+|-----------|:--------:|:----------:|:--------:|:--------:|
+| `VonNeumannSensor` | yes | yes | yes | -- |
+| `HungerDrive` | yes | yes | yes | -- |
+| `CuriosityDrive` | -- | yes | -- | -- |
+| `SoftmaxPolicy` | yes | yes | yes | -- |
+| `compute_maslow_weights` | -- | yes | -- | -- |
+| `combine_drive_scores` | -- | yes | -- | -- |
+| `ObservationBuffer` | yes | yes | yes | -- |
+| `WorldModelState` | -- | yes | -- | -- |
+| `PredictiveMemory` | -- | -- | yes | -- |
+| `TraceState` | -- | -- | yes | -- |
+| `modulate_action_scores` | -- | -- | yes | -- |
+| `clip_energy` | yes | yes | yes | -- |
+| `AgentConfig` | yes | yes | yes | -- |
+| `PolicyConfig` | yes | yes | yes | -- |
+| `TransitionConfig` | yes | yes | yes | -- |
+| `handle_consume` | yes | yes | yes | -- |
 
 System B implements its own sensor, policy, and action handler (scan),
 and does not use any kit components.

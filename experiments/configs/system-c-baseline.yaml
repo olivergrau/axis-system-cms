@@ -1,0 +1,54 @@
+# System C baseline experiment
+system_type: "system_c"
+experiment_type: "single_run"
+
+general:
+  seed: 42
+
+execution:
+  max_steps: 200
+
+world:
+  world_type: "grid_2d"
+  grid_width: 10
+  grid_height: 10
+  obstacle_density: 0.2
+  resource_regen_rate: 0.2
+  regeneration_mode: "sparse_fixed_ratio"
+  regen_eligible_ratio: 0.17
+
+system:
+  agent:
+    initial_energy: 50.0
+    max_energy: 100.0
+    buffer_capacity: 25
+  policy:
+    selection_mode: "sample"
+    temperature: 1.0
+    stay_suppression: 0.1
+    consume_weight: 2.5
+  transition:
+    move_cost: 1.0
+    consume_cost: 1.0
+    stay_cost: 0.5
+    max_consume: 1.0
+    energy_gain_factor: 10.0
+  prediction:
+    memory_learning_rate: 0.3
+    context_threshold: 0.5
+    frustration_rate: 0.2
+    confidence_rate: 0.15
+    positive_sensitivity: 1.0
+    negative_sensitivity: 1.5
+    modulation_min: 0.3
+    modulation_max: 2.0
+    positive_weights: [0.5, 0.125, 0.125, 0.125, 0.125]
+    negative_weights: [0.5, 0.125, 0.125, 0.125, 0.125]
+
+logging:
+  enabled: true
+  console_enabled: true
+  jsonl_enabled: false
+  verbosity: "compact"
+
+num_episodes_per_run: 5

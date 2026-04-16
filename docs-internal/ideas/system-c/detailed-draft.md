@@ -917,48 +917,151 @@ System C remains mechanistic and local.
 
 ---
 
-## 15. Remaining Specification Parameters
+## 15. Resolved Specification Parameters
 
-The model is now mathematically closed.
+The model is now mathematically closed and all concrete parameter values have been fixed.
 
-The remaining work for the formal spec is no longer architectural.
+The decisions below were made with two guiding principles:
 
-It consists of fixing concrete encoding and parameter values.
+- **conservative behavioral range** -- prediction should observably influence the agent without overriding its drives
+- **biological plausibility** -- where a choice exists, prefer asymmetries that align with known learning dynamics (loss aversion, cautious generalization)
 
-### 15.1 Context Quantization
+### 15.1 Drive Scope
 
-The discretization map $C(y_t)$ is fixed in role but not yet in exact encoding scheme.
-
-The formal spec should define:
-
-- the number of bins or context classes
-- the exact encoding of the local predictive context
-
-### 15.2 Neighborhood Aggregation Weights
-
-The aggregation structure is fixed, but the concrete values of:
+The first System C implementation targets **hunger-only** with a single drive:
 
 $$
-w_j^{-}, \quad w_j^{+}
+\alpha_H(t) = 1
 $$
 
-must still be assigned numerically in the formal spec.
+This isolates the predictive extension cleanly. The only behavioral difference between System C and System A is the prediction-based modulation $\mu_H$. This makes experimental comparison straightforward: any divergence in behavior can be attributed to prediction, not to drive interaction effects.
 
-### 15.3 Modulation Bounds
+A future System C+W variant can extend to dual-drive (hunger + curiosity) without changing the predictive architecture.
 
-The clipped modulation structure is fixed, but the concrete values of:
+### 15.2 Context Quantization
+
+The discretization map $C(y_t)$ uses **binary thresholding per cell**:
 
 $$
-\mu_{\min}, \quad \mu_{\max}
+C(y_t)_j = \begin{cases} 1 & \text{if } y_{t,j} \ge 0.5 \\ 0 & \text{otherwise} \end{cases}
+\qquad j \in \{c, up, down, left, right\}
 $$
 
-must still be assigned numerically in the formal spec.
+This yields:
+
+$$
+|\mathcal{S}| = 2^5 = 32
+$$
+
+The total memory footprint is $32 \times |\mathcal{A}|$ entries for each of $q_t$, $f_t$, and $c_t$.
+
+**Rationale:** The grid world's resource distribution is naturally sparse -- cells are either empty or carry a resource. Binary quantization captures the decision-relevant structure (is there something here or not?) without introducing bins that are rarely visited. With 32 contexts and 6 actions, the agent has 192 context-action pairs -- dense enough to learn from within a typical 200-step episode, sparse enough to store as a flat table.
+
+### 15.3 Predictive Memory Initialization
+
+All predictive memory entries are initialized to zero:
+
+$$
+q_0(s, a) = \mathbf{0} \in \mathcal{Y} \qquad \forall (s, a) \in \mathcal{S} \times \mathcal{A}
+$$
+
+**Rationale:** The agent starts expecting nothing. Any resource encountered becomes a positive surprise, which naturally reinforces early exploration. This is both the simplest initialization and the most biologically plausible one -- a naive agent has no innate expectations about its environment. It also avoids biasing the agent toward specific regions of the grid before it has gathered any experience.
+
+The frustration and confidence traces are likewise initialized to zero:
+
+$$
+f_0(s, a) = 0, \qquad c_0(s, a) = 0 \qquad \forall (s, a)
+$$
+
+This ensures that $\mu_H(s, a) = 1$ at the start, giving exact System A behavior at $t = 0$.
+
+### 15.4 Modulation Bounds
+
+$$
+\mu_{\min} = 0.3, \qquad \mu_{\max} = 2.0
+$$
+
+**Rationale:** These bounds define the behavioral range of predictive modulation. At the floor, an action's score is reduced to 30% of its baseline value -- substantial suppression, but the action is never fully eliminated from the softmax distribution. At the ceiling, an action can be boosted to double its baseline score -- a meaningful preference, but one that still respects the drive signal and observation structure.
+
+This conservative range ensures that prediction **nudges** behavior rather than **overriding** it. The agent's drives and current perception remain the dominant forces; prediction acts as a learned confidence bias on top of that.
+
+### 15.5 Learning Rates
+
+$$
+\eta_q = 0.3, \qquad \eta_f = 0.2, \qquad \eta_c = 0.15
+$$
+
+**Rationale:** The three learning rates are intentionally asymmetric:
+
+- **Predictive memory** ($\eta_q = 0.3$) learns fastest. The agent needs accurate expectations to compute meaningful prediction errors. With $\eta_q = 0.3$, the expectation converges within roughly 5--7 visits to a context-action pair.
+
+- **Frustration trace** ($\eta_f = 0.2$) learns somewhat slower. Negative experiences should accumulate reliably but not cause immediate, permanent avoidance from a single bad outcome.
+
+- **Confidence trace** ($\eta_c = 0.15$) is the slowest. Positive reinforcement builds more gradually than negative -- the agent becomes cautious faster than it becomes confident. This reflects a **loss-aversion asymmetry** observed in biological learning systems: organisms are generally quicker to learn what to avoid than what to approach.
+
+### 15.6 Sensitivity Parameters
+
+$$
+\lambda_{+} = 1.0, \qquad \lambda_{-} = 1.5
+$$
+
+**Rationale:** These scale the traces inside the exponential modulation factor:
+
+$$
+\tilde{\mu}_H(s, a) = \exp(\lambda_{+} c_t(s, a) - \lambda_{-} f_t(s, a))
+$$
+
+The asymmetry ($\lambda_{-} > \lambda_{+}$) reinforces the loss-averse character of the learning rates: not only does frustration accumulate faster, it also has a stronger per-unit effect on the modulation factor. This means the agent is quicker to suppress unreliable actions than to boost promising ones.
+
+With the conservative modulation bounds $[0.3, 2.0]$:
+
+- A frustration trace of $f_t \approx 0.8$ reaches the suppression floor $\mu_{\min} = 0.3$
+- A confidence trace of $c_t \approx 0.7$ reaches the reinforcement ceiling $\mu_{\max} = 2.0$
+
+These thresholds are reachable within a typical episode but require several consistent experiences, not a single outlier.
+
+### 15.7 Neighborhood Aggregation Weights
+
+The scalar prediction error aggregation uses center-heavy weighting:
+
+$$
+w_c^{\pm} = 0.5, \qquad w_{up}^{\pm} = w_{down}^{\pm} = w_{left}^{\pm} = w_{right}^{\pm} = 0.125
+$$
+
+Both positive and negative aggregation use the same weight structure.
+
+**Rationale:** The center cell is where the agent directly acts -- it is the cell where `consume` extracts resources and where the agent stands. Changes at the center cell are the most decision-relevant signal for hunger-driven behavior. The four neighbors provide environmental context (did nearby resources also change?) but carry less direct causal attribution.
+
+The 0.5 / 0.125 split ensures that:
+
+- a center-cell surprise alone produces a scalar error of 0.5 at maximum
+- a full-neighborhood surprise (all five cells) produces a scalar error of 1.0 at maximum
+- directional patterns (e.g., only left-cell resource changed) contribute a modest 0.125 signal
+
+### 15.8 Summary Parameter Table
+
+| Parameter | Symbol | Value | Role |
+|-----------|--------|-------|------|
+| Drive scope | $\alpha_H$ | $1$ | Single-drive hunger-only |
+| Context bins | $|\mathcal{S}|$ | $32$ | Binary per cell, threshold 0.5 |
+| Memory init | $q_0$ | $\mathbf{0}$ | No initial expectations |
+| Modulation floor | $\mu_{\min}$ | $0.3$ | Maximum suppression |
+| Modulation ceiling | $\mu_{\max}$ | $2.0$ | Maximum reinforcement |
+| Memory learning rate | $\eta_q$ | $0.3$ | Expectation convergence |
+| Frustration learning rate | $\eta_f$ | $0.2$ | Negative trace accumulation |
+| Confidence learning rate | $\eta_c$ | $0.15$ | Positive trace accumulation |
+| Positive sensitivity | $\lambda_{+}$ | $1.0$ | Confidence-to-modulation scaling |
+| Negative sensitivity | $\lambda_{-}$ | $1.5$ | Frustration-to-modulation scaling |
+| Center aggregation weight | $w_c^{\pm}$ | $0.5$ | Prediction error at own cell |
+| Neighbor aggregation weight | $w_{dir}^{\pm}$ | $0.125$ | Prediction error at adjacent cells |
 
 ---
 
 ## 16. Current Architectural Verdict
 
-The consolidated System C model is now internally coherent if it is read under the following commitments:
+The consolidated System C model is now internally coherent and fully parameterized.
+
+It is read under the following commitments:
 
 - prediction is retrospective, not counterfactual
 - predictive memory is separate from episodic memory
@@ -967,5 +1070,8 @@ The consolidated System C model is now internally coherent if it is read under t
 - negative surprise damps action preference
 - positive surprise reinforces action preference
 - prediction acts on action expression, not drive magnitude
+- all specification parameters are fixed (Section 15)
 
 Under these commitments, System C is a genuine extension of AXIS rather than a disguised shift to planning or RL.
+
+The model is ready for a formal engineering specification mapping its components to the AXIS SDK and Construction Kit.

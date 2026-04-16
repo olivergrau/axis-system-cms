@@ -11,3 +11,4 @@ plugins:
   - axis.world.grid_2d
   - axis.world.toroidal
   - axis.world.signal_landscape
+  - axis.systems.system_c

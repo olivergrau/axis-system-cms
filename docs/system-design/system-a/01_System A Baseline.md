@@ -540,15 +540,11 @@ A key design principle is:
 
 The consequences of an action are determined by the system dynamics:
 
-- **World Transition**  
-    $$
-    s_{t+1}^{world} = F_{world}(s_t^{world}, a_t)  
-    $$
+- **World Transition**:
+  $s_{t+1}^{world} = F_{world}(s_t^{world}, a_t)$
     
-- **Agent Transition**  
-    $$ 
-    x_{t+1} = F_{agent}(x_t, u_t, a_t)  
-    $$
+- **Agent Transition**:
+  $x_{t+1} = F_{agent}(x_t, u_t, a_t)$
     
 
 ---

@@ -24,3 +24,9 @@ These documents define the mathematical models that the code implements.
 | [Formal Model](system-b/01_System B Model.md) | Full model: scan action, signal landscape, weight computation |
 | [Worked Examples](system-b/02_System B Worked Examples.md) | Numerical walkthroughs of System B behavior |
 
+## System C -- Predictive Hunger Agent
+
+| Document | Content |
+|---|---|
+| [Formal Model](system-c/01_System C Model.md) | Full model: predictive memory, signed prediction error, bounded action-level modulation |
+| [Worked Examples](system-c/02_System C Worked Examples.md) | Numerical walkthroughs of disappointment and positive-surprise learning |
