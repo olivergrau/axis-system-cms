@@ -12,3 +12,6 @@ src/axis.egg-info/
 build/
 .vscode/
 *.egg-info/
+Agents.md
+resume.txt
+workspaces/
