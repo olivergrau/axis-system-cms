@@ -4,7 +4,8 @@
 > [CLI Manual](cli-manual.md) |
 > [Configuration Reference](config-manual.md) |
 > [Visualization Manual](visualization-manual.md) |
-> [System Developer Manual](system-dev-manual.md)
+> [System Developer Manual](system-dev-manual.md) |
+> [Comparison Extension Manual](comparison-extension-manual.md)
 
 ## Overview
 

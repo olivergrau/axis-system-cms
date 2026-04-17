@@ -5,24 +5,25 @@ from __future__ import annotations
 from typing import Any
 
 from axis.framework.comparison.types import AlignmentSummary
+from axis.sdk.comparison import ComparisonExtensionProtocol
 from axis.sdk.trace import BaseEpisodeTrace
 
-# Registry: system_type -> callable(ref, cand, alignment) -> dict
-_EXTENSION_REGISTRY: dict[
-    str,
-    # Callable[[BaseEpisodeTrace, BaseEpisodeTrace, AlignmentSummary], dict]
-    Any,
-] = {}
+_EXTENSION_REGISTRY: dict[str, ComparisonExtensionProtocol] = {}
 
 
 def register_extension(
     system_type: str,
 ) -> Any:  # decorator
     """Decorator to register a comparison extension for a system type."""
-    def decorator(func: Any) -> Any:
+    def decorator(func: ComparisonExtensionProtocol) -> ComparisonExtensionProtocol:
         _EXTENSION_REGISTRY[system_type] = func
         return func
     return decorator
+
+
+def registered_extensions() -> tuple[str, ...]:
+    """Return the system types that have a registered comparison extension."""
+    return tuple(_EXTENSION_REGISTRY.keys())
 
 
 def build_system_specific_analysis(

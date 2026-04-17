@@ -25,9 +25,6 @@ from axis.framework.persistence import ExperimentRepository, RunMetadata
 from axis.framework.run import RunConfig
 from axis.sdk.trace import BaseEpisodeTrace
 
-# Ensure System C extension is registered on import.
-import axis.framework.comparison.system_c_extension as _  # noqa: F401
-
 
 def compare_episode_traces(
     reference_trace: BaseEpisodeTrace,

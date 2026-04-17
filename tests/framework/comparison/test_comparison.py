@@ -11,6 +11,9 @@ from axis.framework.comparison.extensions import (
     _EXTENSION_REGISTRY,
     build_system_specific_analysis,
 )
+
+# Ensure system_c comparison extension is registered for tests.
+import axis.systems.system_c.comparison  # noqa: F401
 from axis.framework.comparison.metrics import (
     compute_action_divergence,
     compute_position_divergence,

@@ -5,7 +5,8 @@
 > [Configuration Reference](config-manual.md) |
 > [System A+W Manual](system-aw-manual.md) |
 > [System Developer Manual](system-dev-manual.md) |
-> [World Developer Manual](world-dev-manual.md)
+> [World Developer Manual](world-dev-manual.md) |
+> [Visualization Extension Manual](visualization-extension-manual.md)
 >
 > **Tutorials:**
 > [Building a System](../tutorials/building-a-system.md) |

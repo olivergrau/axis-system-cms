@@ -10,3 +10,5 @@ src/experiments/
 site/
 src/axis.egg-info/
 build/
+.vscode/
+*.egg-info/

@@ -3,6 +3,7 @@
 > **Related manuals:**
 > [Configuration Reference](config-manual.md) |
 > [Visualization Manual](visualization-manual.md) |
+> [Paired Trace Comparison](comparison-manual.md) |
 > [System Developer Manual](system-dev-manual.md) |
 > [World Developer Manual](world-dev-manual.md)
 >

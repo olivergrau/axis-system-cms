@@ -1,4 +1,8 @@
-"""System C prediction-specific comparison extension (WP-10)."""
+"""System C prediction-specific comparison extension (WP-10).
+
+This module is imported as a side effect from ``system_c.register()``
+so that the extension is available whenever the system_c plugin is loaded.
+"""
 
 from __future__ import annotations
 

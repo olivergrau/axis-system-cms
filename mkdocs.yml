@@ -55,6 +55,8 @@ nav:
       - "System Development": manuals/system-dev-manual.md
       - "System A+W": manuals/system-aw-manual.md
       - "World Development": manuals/world-dev-manual.md
+      - "Visualization Extensions": manuals/visualization-extension-manual.md
+      - "Comparison Extensions": manuals/comparison-extension-manual.md
 
   - "Construction Kit":
       - construction-kit/index.md

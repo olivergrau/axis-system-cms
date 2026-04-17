@@ -295,6 +295,8 @@ Reference documentation for using and extending the framework.
 | `manuals/system-aw-manual.md` | System A+W configuration and behavior |
 | `manuals/world-dev-manual.md` | Building custom worlds |
 | `manuals/comparison-manual.md` | Paired trace comparison and run analysis |
+| `manuals/visualization-extension-manual.md` | Building system-specific visualization adapters |
+| `manuals/comparison-extension-manual.md` | Building system-specific comparison extensions |
 
 ### Specifications and Design
 

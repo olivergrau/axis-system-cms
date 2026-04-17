@@ -12,7 +12,9 @@
 >
 > **Related:** [System Developer Manual](../manuals/system-dev-manual.md) |
 > [World Developer Manual](../manuals/world-dev-manual.md) |
-> [Building a World Tutorial](building-a-world.md)
+> [Building a World Tutorial](building-a-world.md) |
+> [Visualization Extension Manual](../manuals/visualization-extension-manual.md) |
+> [Comparison Extension Manual](../manuals/comparison-extension-manual.md)
 
 ---
 

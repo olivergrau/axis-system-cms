@@ -19,6 +19,8 @@ Reference documentation for using and extending the AXIS framework.
 | [System Development](system-dev-manual.md) | Building custom systems -- implementing SystemInterface |
 | [System A+W](system-aw-manual.md) | System A+W configuration, behavior analysis, and tuning |
 | [World Development](world-dev-manual.md) | Building custom worlds -- implementing MutableWorldProtocol |
+| [Visualization Extensions](visualization-extension-manual.md) | Building system-specific visualization adapters |
+| [Comparison Extensions](comparison-extension-manual.md) | Building system-specific comparison extensions |
 
 ## See Also
 

@@ -412,6 +412,7 @@ Both sources feed registry-based factories with protocol validation:
 | New world type | ``register_world()`` | ``MutableWorldProtocol`` |
 | System visualization | ``register_system_visualization()`` | ``SystemVisualizationAdapter`` |
 | World visualization | ``register_world_visualization()`` | ``WorldVisualizationAdapter`` |
+| Comparison extension | ``register_extension()`` | ``ComparisonExtensionProtocol`` |
 | Custom actions | ``action_handlers()`` | Handler function |
 
 Each plugin package provides a `register()` function in its `__init__.py`.

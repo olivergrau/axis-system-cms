@@ -4,7 +4,9 @@
 > [CLI User Manual](cli-manual.md) |
 > [Configuration Reference](config-manual.md) |
 > [Visualization Manual](visualization-manual.md) |
-> [World Developer Manual](world-dev-manual.md)
+> [World Developer Manual](world-dev-manual.md) |
+> [Visualization Extension Manual](visualization-extension-manual.md) |
+> [Comparison Extension Manual](comparison-extension-manual.md)
 >
 > **Tutorials:**
 > [Building a System](../tutorials/building-a-system.md) |
@@ -1224,6 +1226,14 @@ def test_system_b_protocol():
    `execute_experiment`.
 
 9. **Run** -- `axis experiments run my-config.yaml`.
+
+10. **(Optional) Build a visualization adapter** -- if your system has
+    custom analysis or overlay needs, see the
+    [Visualization Extension Developer Manual](visualization-extension-manual.md).
+
+11. **(Optional) Build a comparison extension** -- if your system has
+    domain-specific internals worth analyzing in paired trace comparisons,
+    see the [Comparison Extension Developer Manual](comparison-extension-manual.md).
 
 ---
 
