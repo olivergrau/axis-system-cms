@@ -1,6 +1,6 @@
 # AXIS -- Autonomous Experimentation Framework
 
-**Version 0.2.0** | Python 3.11+
+**Version 0.2.x** | Python 3.11+
 
 ---
 
@@ -30,7 +30,8 @@ component library available within the System layer:
 +------------------------------------------------------+
 |                    Framework Layer                    |
 |  Experiment orchestration, episode execution loop,   |
-|  configuration, persistence, CLI, visualization      |
+|  configuration, persistence, CLI, visualization,     |
+|  workspaces, paired trace comparison                 |
 +------------------------------------------------------+
         |                               |
   SystemInterface                MutableWorldProtocol
@@ -284,6 +285,130 @@ All commands support ``--output json`` for scripted analysis.
 
 ---
 
+## Paired Trace Comparison
+
+AXIS includes a structured comparison system for analyzing behavioral
+differences between two runs -- either from different systems or from
+the same system with different parameters.
+
+### Running a Comparison
+
+```
+axis compare --reference-experiment <eid> --reference-run <rid> \
+             --candidate-experiment <eid> --candidate-run <rid>
+```
+
+The comparison aligns episodes by index, walks through each timestep,
+and computes per-episode metrics:
+
+- **Action mismatch rate** -- fraction of timesteps where the two agents
+  chose different actions.
+- **Mean trajectory distance** -- average Manhattan distance between the
+  two agents per episode.
+- **Mean vitality difference** -- average absolute difference in health
+  between the agents.
+- **Final vitality delta** -- candidate's final vitality minus reference's.
+- **Total steps delta** -- difference in episode length (survival).
+
+A statistical summary aggregates these across all episode pairs (mean,
+std, min, max).
+
+### System-Specific Extensions
+
+Each system type can register a comparison extension that adds
+domain-specific analysis to the standard comparison output. Extensions
+implement ``ComparisonExtensionProtocol`` and are discovered through
+the plugin system.
+
+---
+
+## Experiment Workspaces
+
+Workspaces are structured containers that bundle intent, configuration,
+execution outputs, comparisons, and notes into a single coherent
+directory. They provide repeatable workflows for common research and
+development tasks.
+
+### Workspace Types
+
+| Class | Type | Purpose |
+|---|---|---|
+| `investigation` | `single_system` | Study one system under varying parameters |
+| `investigation` | `system_comparison` | Compare two systems under identical conditions |
+| `development` | `system_development` | Build and validate a new system |
+| `development` | `world_development` | Build and validate a new world |
+
+### Workspace Structure
+
+```
+my-workspace/
+  workspace.yaml          # Manifest (identity, classification, artifact tracking)
+  README.md               # Description
+  notes.md                # Working notes
+  configs/                # Executable config files
+  results/                # Execution result artifacts
+  comparisons/            # Comparison outputs (self-contained JSON envelopes)
+  measurements/           # Processed metrics
+  exports/                # Curated export artifacts
+  concept/                # Conceptual modeling (development only)
+  engineering/            # Engineering planning (development only)
+```
+
+### Workspace CLI
+
+```
+axis workspaces scaffold                       Interactive workspace creation
+axis workspaces show <path>                    Inspect state and artifacts
+axis workspaces run <path>                     Execute workspace configs
+axis workspaces compare <path>                 Compare workspace experiments
+axis workspaces comparison-result <path>       Display comparison results
+axis workspaces check <path>                   Validate workspace structure
+axis workspaces set-candidate <path> <config>  Set candidate config (development)
+```
+
+### Manifest and Artifact Tracking
+
+The ``workspace.yaml`` manifest is the authoritative source of workspace
+identity. It tracks primary configs, results, comparisons, and
+measurements as workspace-relative paths. Each entry under
+``primary_results`` is annotated with the config file, role (baseline
+or candidate), and timestamp.
+
+The framework automatically updates the manifest after each run and
+comparison. Comparison files are sequentially numbered
+(``comparison-001.json``, ``comparison-002.json``, ...) and embed full
+config copies, making each comparison self-contained and reproducible.
+
+### Investigation Workflows
+
+**Single system** workspaces support iterative parameter exploration:
+run a baseline, modify a parameter, run again, compare. Auto-resolution
+uses manifest ordering (first result = reference, most recent = candidate).
+
+**System comparison** workspaces run two systems under identical
+conditions (same seed, same world). Auto-resolution maps experiments
+by system type to reference and candidate roles.
+
+### Development Workflows
+
+**System development** workspaces provide a structured baseline/candidate
+workflow:
+
+1. Scaffold the workspace with a baseline config.
+2. Run the baseline to establish the reference point.
+3. Create a candidate config with the changes under test.
+4. Register it with ``axis workspaces set-candidate``.
+5. Run the candidate with ``--candidate-only``.
+6. Compare baseline vs candidate.
+7. Iterate: tweak candidate, re-run, re-compare.
+
+The workspace tracks baseline results, candidate results, and comparison
+history separately. The ``show`` command displays the current development
+state (pre-candidate or post-candidate) and which experiments were used
+in the last comparison.
+
+---
+
 ## Data Persistence
 
 All experiment data is persisted as structured JSON files in a
@@ -442,11 +567,15 @@ world from scratch.
 
 ## Testing
 
-The project includes a comprehensive test suite with 1800+ tests
+The project includes a comprehensive test suite with 2000+ tests
 covering all layers:
 
 - **Framework tests:** CLI, configuration parsing, experiment execution,
   OFAT integration, persistence, registry, runner, error handling
+- **Workspace tests:** Scaffold, execute, compare, sync, validation,
+  drift detection, development workflow (baseline/candidate)
+- **Comparison tests:** Paired trace comparison, run-level analysis,
+  comparison resolution, system-specific extensions
 - **System tests:** Per-system unit and integration tests covering
   config, sensor, drives, policy, transition, pipeline, and
   visualization adapters. Includes mathematical worked examples and
@@ -501,11 +630,14 @@ research. It supports the full experimental lifecycle:
 
 1. **Design** an agent system by implementing a protocol.
 2. **Configure** experiments in YAML with single-run or OFAT sweeps.
-3. **Run** experiments from the CLI with deterministic reproducibility.
-4. **Inspect** results via CLI queries or direct JSON access.
-5. **Visualize** recorded episodes step-by-step with interactive overlays
+3. **Organize** work in structured workspaces with built-in workflows for
+   investigation and development.
+4. **Run** experiments from the CLI with deterministic reproducibility.
+5. **Compare** runs with paired trace comparison and statistical analysis.
+6. **Inspect** results via CLI queries or direct JSON access.
+7. **Visualize** recorded episodes step-by-step with interactive overlays
    that reveal decision internals.
-6. **Iterate** by adding new systems, worlds, or visualization adapters
+8. **Iterate** by adding new systems, worlds, or visualization adapters
    without touching framework code.
 
-The framework is at version 0.2.0 and under active development.
+The framework is at version 0.2.3 and under active development.

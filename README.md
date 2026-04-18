@@ -33,6 +33,7 @@ src/axis/
     persistence.py        ExperimentRepository (file-based)
     registry.py           System registry (register_system, create_system)
     comparison/           Paired trace comparison and run-level analysis
+    workspaces/           Experiment workspaces (scaffold, execute, compare, sync)
 
   plugins.py            Plugin discovery (entry points + YAML)
 
@@ -97,6 +98,16 @@ axis compare --reference-experiment <eid> --reference-run <rid> \
 axis compare --reference-experiment <eid> --reference-run <rid> --reference-episode 1 \
              --candidate-experiment <eid> --candidate-run <rid> --candidate-episode 1
                                                Compare a single episode pair
+
+axis workspaces scaffold                       Create a new experiment workspace
+axis workspaces show <path>                    Inspect workspace state and artifacts
+axis workspaces run <path>                     Execute workspace configs
+axis workspaces run <path> --baseline-only     Run only baseline (development)
+axis workspaces run <path> --candidate-only    Run only candidate (development)
+axis workspaces set-candidate <path> <config>  Set candidate config (development)
+axis workspaces compare <path>                 Compare workspace experiments
+axis workspaces comparison-result <path>       Display comparison results
+axis workspaces check <path>                   Validate workspace structure
 ```
 
 Use `--output json` on any command for machine-readable output.
@@ -220,6 +231,8 @@ A scan-based scout agent that operates on signal landscapes.
   and OFAT (one-factor-at-a-time) sweep modes.
 - **Run**: Multiple episodes with a shared configuration and independent seeds.
 - **Episode**: One agent lifetime from initialization to termination.
+- **Workspace**: Structured container bundling intent, configs, results,
+  comparisons, and notes for a coherent research or development task.
 
 ## Development
 
@@ -280,6 +293,9 @@ with tests alongside each chapter.
 |---|---|
 | `tutorials/building-a-system.md` | System A from scratch (16 chapters) |
 | `tutorials/building-a-world.md` | Grid 2D world from scratch (12 chapters) |
+| `tutorials/workspace-single-system.md` | Investigating a single system with a workspace |
+| `tutorials/workspace-system-comparison.md` | Comparing two systems with a workspace |
+| `tutorials/workspace-system-development.md` | Developing a system with baseline/candidate workflow |
 
 ### Manuals
 
@@ -297,6 +313,7 @@ Reference documentation for using and extending the framework.
 | `manuals/comparison-manual.md` | Paired trace comparison and run analysis |
 | `manuals/visualization-extension-manual.md` | Building system-specific visualization adapters |
 | `manuals/comparison-extension-manual.md` | Building system-specific comparison extensions |
+| `manuals/workspace-manual.md` | Experiment workspaces: scaffold, run, compare, iterate |
 
 ### Specifications and Design
 

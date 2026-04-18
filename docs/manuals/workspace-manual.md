@@ -32,6 +32,8 @@ axis workspaces show workspaces/my-workspace
 
 Displays identity, classification, status, and declared artifacts with existence checks. Each entry under `primary_configs`, `primary_results`, `primary_comparisons`, and `primary_measurements` is shown with an `[OK]` or `[MISSING]` marker indicating whether the referenced file or directory exists on disk.
 
+For development workspaces, the output also shows the current development state (pre-candidate / post-candidate), baseline and candidate configs, results lists, and the current validation comparison. When a validation comparison exists, the reference and candidate experiment IDs used in that comparison are displayed, so you can trace exactly which runs were compared.
+
 ### Execute workspace configs
 
 ```bash
@@ -90,7 +92,7 @@ axis workspaces comparison-result workspaces/my-workspace --number 2
 
 The output includes the comparison metrics (same format as `axis compare`) followed by a summary of the reference and candidate configurations that were in effect when the comparison was run.
 
-This command is only valid for `system_comparison` and `system_development` workspaces.
+This command is only valid for `system_comparison`, `system_development`, and `single_system` workspaces.
 
 ### Visualize from a workspace
 
@@ -213,23 +215,244 @@ axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --numbe
 
 ### Investigation / Single System
 
-**Purpose**: Study a single system's behavior under specific conditions to answer a question like *"How does system_a behave on a dense grid?"* or *"What is the survival rate at different energy levels?"*.
+**Purpose**: Study a single system's behavior under varying configurations to answer questions like *"How does changing consume_weight affect system_a's survival rate?"* or *"What is system_a's behavior on a dense grid?"*.
 
 **Manifest requirements**: `question`, `system_under_test`.
 
-*Workflow documentation to be added once the single-system analysis commands are refined.*
+#### Step-by-step workflow
+
+**1. Scaffold the workspace**
+
+```bash
+axis workspaces scaffold
+```
+
+Choose `investigation` / `single_system`. The scaffolder creates one baseline config in `configs/`.
+
+**2. Configure and run the baseline**
+
+Edit the config in `configs/` to set up the baseline parameters, then execute:
+
+```bash
+axis workspaces run workspaces/my-workspace
+```
+
+Results are written to `results/` and `primary_results` is updated in the manifest.
+
+**3. Modify config and run again**
+
+Change the parameters you want to investigate in the config file, then run again:
+
+```bash
+axis workspaces run workspaces/my-workspace
+```
+
+Each run creates a new experiment with its own ID. Results accumulate — previous runs are never overwritten.
+
+**4. Compare**
+
+```bash
+axis workspaces compare workspaces/my-workspace
+```
+
+Auto-resolution uses manifest ordering: the first recorded experiment becomes the reference, the most recent becomes the candidate. This naturally compares the baseline against your latest run.
+
+For explicit control over which runs to compare:
+
+```bash
+axis workspaces compare workspaces/my-workspace \
+  --reference-experiment <baseline-eid> \
+  --candidate-experiment <modified-eid>
+```
+
+At least two runs must exist before comparison is possible.
+
+**5. Analyze**
+
+```bash
+axis workspaces comparison-result workspaces/my-workspace
+```
+
+Displays per-episode metrics, statistical summary, and the full configurations for both runs. Since configs are embedded as copies, you can see exactly which parameter changes produced the observed differences.
+
+**6. Iterate**
+
+Modify configs, run again, compare again. Each comparison is numbered and preserved with its own config snapshot.
+
+#### Example: investigating consume_weight on system_a
+
+```bash
+# Scaffold
+axis workspaces scaffold
+# → workspace_id: system-a-consume-weight
+# → class: investigation, type: single_system
+# → system_under_test: system_a
+
+# Run baseline (consume_weight=2.5)
+axis workspaces run workspaces/system-a-consume-weight
+
+# Edit config: change consume_weight to 5.0
+# Run modified version
+axis workspaces run workspaces/system-a-consume-weight
+
+# Compare baseline vs modified
+axis workspaces compare workspaces/system-a-consume-weight
+
+# Inspect the comparison
+axis workspaces comparison-result workspaces/system-a-consume-weight
+
+# Try another value: consume_weight=1.0
+# Edit config, run, compare
+axis workspaces run workspaces/system-a-consume-weight
+axis workspaces compare workspaces/system-a-consume-weight \
+  --reference-experiment <baseline-eid> \
+  --candidate-experiment <latest-eid>
+
+# Review both comparisons
+axis workspaces comparison-result workspaces/system-a-consume-weight --number 1
+axis workspaces comparison-result workspaces/system-a-consume-weight --number 2
+```
 
 ---
 
 ### Development / System Development
 
-**Purpose**: Develop and iterate on a new system implementation. The workspace provides a structured environment for conceptual modeling, engineering planning, baseline testing, and validation.
+**Purpose**: Develop and iterate on a new system implementation. The workspace provides a structured baseline/candidate workflow for testing changes against a known baseline.
 
 **Manifest requirements**: `development_goal`, `artifact_kind` (= `system`), `artifact_under_development`.
 
 **Additional directories**: `concept/` for conceptual modeling, `engineering/` for engineering specs and work packages.
 
-*Workflow documentation to be added once the development lifecycle commands are refined.*
+**Development-specific manifest fields** (set automatically at scaffold time):
+
+| Field | Description |
+|---|---|
+| `baseline_config` | Path to the baseline config file |
+| `candidate_config` | Path to the candidate config file (null until created) |
+| `baseline_results` | List of workspace-relative paths to baseline run results |
+| `candidate_results` | List of workspace-relative paths to candidate run results |
+| `current_candidate_result` | Latest candidate run result path |
+| `current_validation_comparison` | Latest comparison result path |
+
+**Development state**: The workspace is either in **pre-candidate** state (only baseline, no `candidate_config`) or **post-candidate** state (both baseline and candidate configs present). The `axis workspaces show` command displays the current state.
+
+#### Step-by-step workflow
+
+**1. Scaffold the workspace**
+
+```bash
+axis workspaces scaffold
+```
+
+Choose `development` / `system_development`. The scaffolder creates:
+- A baseline config `configs/baseline-<artifact_name>.yaml`
+- Development directories `concept/` and `engineering/`
+- Manifest with `baseline_config` set, `candidate_config` null (pre-candidate state)
+
+**2. Document and plan**
+
+Use `concept/` for conceptual modeling (design docs, diagrams) and `engineering/` for engineering specs and work packages.
+
+**3. Run the baseline**
+
+```bash
+axis workspaces run workspaces/my-dev-workspace
+# or explicitly:
+axis workspaces run workspaces/my-dev-workspace --baseline-only
+```
+
+In pre-candidate state, only the baseline is run. Results are recorded in both `primary_results` and `baseline_results`.
+
+**4. Create the candidate**
+
+Copy and modify the baseline config to create a candidate:
+
+```bash
+cp workspaces/my-dev-workspace/configs/baseline-system_d.yaml \
+   workspaces/my-dev-workspace/configs/candidate-system_d.yaml
+```
+
+Edit the candidate config with your changes, then register it with the workspace:
+
+```bash
+axis workspaces set-candidate workspaces/my-dev-workspace configs/candidate-system_d.yaml
+```
+
+This sets `candidate_config` in the manifest and adds the config to `primary_configs`. The workspace is now in **post-candidate** state.
+
+**5. Run the candidate**
+
+```bash
+axis workspaces run workspaces/my-dev-workspace --candidate-only
+```
+
+Or run both baseline and candidate together:
+
+```bash
+axis workspaces run workspaces/my-dev-workspace
+```
+
+Results are recorded in `candidate_results` and `current_candidate_result` is set.
+
+**6. Compare baseline vs candidate**
+
+```bash
+axis workspaces compare workspaces/my-dev-workspace
+```
+
+Auto-resolution uses the latest baseline result as reference and `current_candidate_result` as candidate. A comparison envelope is written to `comparisons/comparison-001.json`.
+
+**7. Analyze**
+
+```bash
+axis workspaces comparison-result workspaces/my-dev-workspace
+```
+
+Shows per-episode metrics, statistical summary, and the full configs for both sides.
+
+**8. Iterate**
+
+Modify the candidate config, re-run with `--candidate-only`, and compare again. Each comparison is numbered and preserved. The `current_candidate_result` always points to the latest candidate run.
+
+#### Example: developing system_d
+
+```bash
+# Scaffold
+axis workspaces scaffold
+# → workspace_id: develop-system-d
+# → class: development, type: system_development
+# → artifact_kind: system, artifact_under_development: system_d
+
+# Run baseline
+axis workspaces run workspaces/develop-system-d
+
+# Design and implement system_d changes...
+
+# Create candidate config
+cp workspaces/develop-system-d/configs/baseline-system_d.yaml \
+   workspaces/develop-system-d/configs/candidate-system_d.yaml
+# Edit candidate config with system_d changes
+
+# Register candidate config
+axis workspaces set-candidate workspaces/develop-system-d configs/candidate-system_d.yaml
+
+# Run candidate
+axis workspaces run workspaces/develop-system-d --candidate-only
+
+# Compare
+axis workspaces compare workspaces/develop-system-d
+
+# Inspect
+axis workspaces comparison-result workspaces/develop-system-d
+
+# Iterate: modify candidate, re-run, re-compare
+axis workspaces run workspaces/develop-system-d --candidate-only
+axis workspaces compare workspaces/develop-system-d
+axis workspaces comparison-result workspaces/develop-system-d --number 2
+
+# Check workspace state at any time
+axis workspaces show workspaces/develop-system-d
+```
 
 ---
 
@@ -393,6 +616,9 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `axis workspaces check <path>` | Validate workspace structure and manifest |
 | `axis workspaces show <path>` | Display workspace summary with artifact existence checks |
 | `axis workspaces run <path>` | Execute all workspace configs |
+| `axis workspaces run <path> --baseline-only` | Run only baseline config (system_development) |
+| `axis workspaces run <path> --candidate-only` | Run only candidate config (system_development) |
+| `axis workspaces set-candidate <path> <config>` | Set candidate config for a development workspace |
 | `axis workspaces compare <path>` | Run workspace comparison (sequential, self-contained) |
 | `axis workspaces comparison-result <path>` | Display stored comparison result(s) |
 | `axis visualize --workspace <path> --episode N` | Visualize from workspace |
@@ -405,4 +631,6 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--reference-experiment <id>` | `compare` | Explicit reference experiment ID |
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
 | `--number <N>` | `comparison-result` | Select a specific comparison by number |
+| `--baseline-only` | `run` | Run only baseline config (system_development) |
+| `--candidate-only` | `run` | Run only candidate config (system_development) |
 | `--experiment <id>` | `visualize --workspace` | Select a specific experiment to visualize |

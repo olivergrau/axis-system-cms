@@ -207,6 +207,12 @@ examples:
     )
     ws_run_p.add_argument(
         "workspace_path", help="Path to workspace directory")
+    ws_run_p.add_argument(
+        "--baseline-only", action="store_true", default=False,
+        help="Run only the baseline config (system_development)")
+    ws_run_p.add_argument(
+        "--candidate-only", action="store_true", default=False,
+        help="Run only the candidate config (system_development)")
 
     ws_cmp_p = ws_action.add_parser(
         "compare", parents=[common], help="Run workspace comparison",
@@ -230,6 +236,17 @@ examples:
         "--number", type=int, default=None,
         help="Comparison number to display (e.g. 1, 2). "
              "If omitted, lists all or shows the only one.")
+
+    ws_sc_p = ws_action.add_parser(
+        "set-candidate", parents=[common],
+        help="Set the candidate config for a development workspace",
+    )
+    ws_sc_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_sc_p.add_argument(
+        "config_path",
+        help="Workspace-relative path to the candidate config file "
+             "(e.g. configs/candidate-system_demo.yaml)")
 
     return parser
 
@@ -900,7 +917,11 @@ def _cmd_workspaces_scaffold(output: str) -> None:
         ).ask() or f"new_{kind}"
 
     manifest = WorkspaceManifest.model_validate(manifest_data)
-    target = Path("workspaces") / workspace_id
+
+    target_dir = questionary.text(
+        "Parent directory:", default="workspaces",
+    ).ask() or "workspaces"
+    target = Path(target_dir) / workspace_id
     result = scaffold_workspace(target, manifest)
 
     if output == "json":
@@ -974,9 +995,42 @@ def _cmd_workspaces_show(workspace_path: str, output: str) -> None:
             "Primary comparisons", summary.primary_comparisons)
         _print_artifact_section(
             "Primary measurements", summary.primary_measurements)
+        if summary.development_state:
+            print(f"  Development state: {summary.development_state}")
+            if summary.baseline_config:
+                print(f"  Baseline config: {summary.baseline_config}")
+            if summary.candidate_config:
+                print(f"  Candidate config: {summary.candidate_config}")
+            _print_artifact_section(
+                "Baseline results", summary.baseline_results)
+            _print_artifact_section(
+                "Candidate results", summary.candidate_results)
+            if summary.current_candidate_result:
+                marker = "OK" if summary.current_candidate_result.exists else "MISSING"
+                print(f"  Current candidate result: [{marker}] {summary.current_candidate_result.path}")
+            if summary.current_validation_comparison:
+                marker = "OK" if summary.current_validation_comparison.exists else "MISSING"
+                print(f"  Current validation comparison: [{marker}] {summary.current_validation_comparison.path}")
+                # Show which baseline was used in the last comparison
+                if summary.current_validation_comparison.exists:
+                    _print_comparison_targets(ws, summary.current_validation_comparison.path)
         if summary.check_result:
             status = "VALID" if summary.check_result.is_valid else "INVALID"
             print(f"  Validation: {status}")
+
+
+def _print_comparison_targets(ws: Path, comparison_path: str) -> None:
+    """Print the reference/candidate experiment IDs from a comparison file."""
+    cmp_file = ws / comparison_path
+    try:
+        data = json.loads(cmp_file.read_text())
+        cr = data.get("comparison_result", {})
+        ref_eid = cr.get("reference_experiment_id", "?")
+        cand_eid = cr.get("candidate_experiment_id", "?")
+        print(f"    Reference used: {ref_eid}")
+        print(f"    Candidate used: {cand_eid}")
+    except Exception:
+        pass
 
 
 def _print_artifact_section(label: str, entries: list) -> None:
@@ -988,24 +1042,73 @@ def _print_artifact_section(label: str, entries: list) -> None:
     print(f"  {label}: {found}/{len(entries)} present")
     for e in entries:
         marker = "OK" if e.exists else "MISSING"
-        print(f"    [{marker}] {e.path}")
+        extra = ""
+        annotations = []
+        if getattr(e, "config", None):
+            annotations.append(e.config)
+        if getattr(e, "role", None):
+            annotations.append(f"role={e.role}")
+        if getattr(e, "timestamp", None):
+            annotations.append(e.timestamp)
+        if annotations:
+            extra = f"  ({', '.join(annotations)})"
+        print(f"    [{marker}] {e.path}{extra}")
+
+
+def _cmd_workspaces_set_candidate(
+    workspace_path: str, config_path: str, output: str,
+) -> None:
+    """Set the candidate config for a development workspace."""
+    import yaml
+
+    ws = Path(workspace_path)
+    manifest_file = ws / "workspace.yaml"
+    data = yaml.safe_load(manifest_file.read_text())
+
+    wtype = data.get("workspace_type", "")
+    if wtype not in ("system_development", "world_development"):
+        raise ValueError(
+            f"set-candidate is only valid for development workspaces, "
+            f"not '{wtype}'"
+        )
+
+    # Validate the config file exists
+    if not (ws / config_path).exists():
+        raise ValueError(
+            f"Config file does not exist: {ws / config_path}"
+        )
+
+    data["candidate_config"] = config_path
+
+    # Ensure it's also in primary_configs
+    primary_configs = data.get("primary_configs") or []
+    if config_path not in primary_configs:
+        primary_configs.append(config_path)
+        data["primary_configs"] = primary_configs
+
+    manifest_file.write_text(
+        yaml.dump(data, default_flow_style=False, sort_keys=False))
+
+    print(f"Candidate config set: {config_path}")
 
 
 def _cmd_workspaces_run(
     workspace_path: str, output: str,
+    run_filter: str | None = None,
 ) -> None:
     """Execute workspace configs."""
     from axis.framework.workspaces.execute import execute_workspace
     from axis.framework.workspaces.sync import sync_manifest_after_run
 
     ws = Path(workspace_path)
-    exec_results = execute_workspace(ws)
+    exec_results = execute_workspace(ws, run_filter=run_filter)
 
     # Sync manifest with actual produced artifact paths.
     for er in exec_results:
         run_ids = [rr.run_id for rr in er.experiment_result.run_results]
         sync_manifest_after_run(
             ws, er.experiment_result.experiment_id, run_ids, er.role,
+            config_path=er.config_path,
         )
 
     if output == "json":
@@ -1061,11 +1164,12 @@ def _cmd_workspaces_comparison_result(
     if manifest.workspace_type not in (
         WorkspaceType.SYSTEM_COMPARISON,
         WorkspaceType.SYSTEM_DEVELOPMENT,
+        WorkspaceType.SINGLE_SYSTEM,
     ):
         print(
             f"Error: comparison-result is only valid for "
-            f"system_comparison or system_development workspaces, "
-            f"got '{manifest.workspace_type}'.",
+            f"system_comparison, system_development, or single_system "
+            f"workspaces, got '{manifest.workspace_type}'.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -1146,16 +1250,23 @@ def _cmd_workspaces_comparison_result(
 
 
 def _print_config_summary(config: dict, indent: int = 4) -> None:
-    """Print a full experiment config as flattened key-value pairs."""
+    """Print a full experiment config as flattened key-value pairs.
+
+    Excludes the ``logging`` section and keys with None values.
+    """
     prefix = " " * indent
+    _EXCLUDED_SECTIONS = {"logging"}
 
     def _flatten(obj: dict, path: str = "") -> None:
         for key, value in obj.items():
             full_key = f"{path}.{key}" if path else key
+            top_level_key = full_key.split(".")[0]
+            if top_level_key in _EXCLUDED_SECTIONS:
+                continue
+            if value is None:
+                continue
             if isinstance(value, dict):
                 _flatten(value, full_key)
-            elif isinstance(value, list):
-                print(f"{prefix}{full_key}: {value}")
             else:
                 print(f"{prefix}{full_key}: {value}")
 
@@ -1228,7 +1339,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.action == "show":
                 _cmd_workspaces_show(args.workspace_path, output)
             elif args.action == "run":
-                _cmd_workspaces_run(args.workspace_path, output)
+                run_filter = None
+                if getattr(args, "baseline_only", False):
+                    run_filter = "baseline"
+                elif getattr(args, "candidate_only", False):
+                    run_filter = "candidate"
+                _cmd_workspaces_run(
+                    args.workspace_path, output, run_filter=run_filter)
             elif args.action == "compare":
                 _cmd_workspaces_compare(
                     args.workspace_path, output,
@@ -1242,6 +1359,9 @@ def main(argv: list[str] | None = None) -> int:
                     args.workspace_path, output,
                     comparison_number=getattr(args, "number", None),
                 )
+            elif args.action == "set-candidate":
+                _cmd_workspaces_set_candidate(
+                    args.workspace_path, args.config_path, output)
             else:
                 parser.print_help()
                 return 1

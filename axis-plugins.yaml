@@ -12,3 +12,4 @@ plugins:
   - axis.world.toroidal
   - axis.world.signal_landscape
   - axis.systems.system_c
+  - axis.systems.system_demo
