@@ -156,6 +156,16 @@ Optional later actions:
 - `axis workspaces export`
 - `axis workspaces link-results`
 
+### 5.3 CLI Role
+
+The CLI remains a delegating entrypoint only.
+
+This means:
+
+- `src/axis/framework/cli.py` owns argument parsing and command dispatch
+- workspace business logic does not live in the CLI
+- workspace behavior is delegated into `src/axis/framework/workspaces/`
+
 ---
 
 ## 6. Scaffolding Support
@@ -307,6 +317,14 @@ This means:
 
 That matches the current AXIS tool style better.
 
+### Dependency decision
+
+The workspace scaffolding implementation should assume these additional
+packages are available:
+
+- `questionary`
+- `rich`
+
 ---
 
 ## 7. Validation and Consistency Checks
@@ -400,6 +418,25 @@ This immediately gives:
 - clear validation errors
 - structured CLI feedback
 - a stable internal representation for future workspace-aware tooling
+
+### YAML library decision for manifest mutation
+
+Workspace creation and mutation need two different YAML concerns:
+
+- reading and validating YAML content
+- updating `workspace.yaml` while preserving readability
+
+`PyYAML` is sufficient for loading and basic parsing, but it does not preserve
+comments or formatting during writeback.
+
+For manifest synchronization and scaffolded manifest generation, the
+recommended decision is:
+
+- keep `PyYAML` for basic read paths
+- use `ruamel.yaml` for write paths that must preserve comments, ordering, and readability
+
+This should be treated as an explicit implementation dependency for the
+workspace feature set.
 
 ---
 
@@ -545,9 +582,14 @@ Suggested initial modules:
 | `types.py` | Workspace manifest model(s) |
 | `validation.py` | Structural and consistency checks |
 | `scaffold.py` | Workspace skeleton generation |
-| `execution.py` | Workspace-aware run and compare orchestration |
+| `resolution.py` | Workspace run-resolution helpers |
+| `execute.py` | Workspace-aware run orchestration |
+| `visualization.py` | Workspace-aware replay target resolution |
+| `compare_resolution.py` | Workspace-aware comparison target resolution |
+| `compare.py` | Workspace-aware comparison orchestration |
+| `sync.py` | Controlled manifest update helpers |
+| `drift.py` | Stronger post-execution consistency helpers |
 | `summary.py` | Workspace summary helpers |
-| `cli.py` | CLI-facing helpers |
 | `__init__.py` | Exports |
 
 This keeps workspace support separate from:
@@ -560,6 +602,12 @@ while still placing it close enough to the framework tooling layer.
 
 Helper artifact parsing, if added, should remain optional and subordinate to the typed manifest layer.
 
+The central CLI module remains:
+
+- `src/axis/framework/cli.py`
+
+It should delegate into `framework/workspaces/` rather than hosting workspace logic itself.
+
 ---
 
 ## 12. First Work Package Direction
@@ -569,13 +617,30 @@ If this concept moves into implementation, the first work packages should be:
 1. Workspace manifest type model
 2. Workspace checker
 3. Workspace scaffolder
-4. Workspace-aware execution and comparison routing
-5. CLI integration
-6. Link validation for framework-root mode and workspace-owned mode
+4. Workspace summary / show
+5. Workspace run resolution
+6. Workspace execution routing
+7. Workspace visualization resolution
+8. Workspace compare resolution
+9. Workspace comparison routing
+10. Manifest synchronization
+11. Drift detection
+12. Integration hardening
 
 This order is important.
 
 The checker and typed manifest should come before the scaffolder, so the scaffolder can be built against a validated target structure.
+
+CLI integration is intentionally not a standalone work package in this model.
+
+Instead, CLI delegation is introduced incrementally in the workspace-facing
+feature packages:
+
+- scaffold
+- show
+- run
+- visualize
+- compare
 
 ---
 

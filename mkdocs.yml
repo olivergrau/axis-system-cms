@@ -57,6 +57,7 @@ nav:
       - "World Development": manuals/world-dev-manual.md
       - "Visualization Extensions": manuals/visualization-extension-manual.md
       - "Comparison Extensions": manuals/comparison-extension-manual.md
+      - "Experiment Workspaces": manuals/workspace-manual.md
 
   - "Construction Kit":
       - construction-kit/index.md

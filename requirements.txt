@@ -17,3 +17,9 @@ pyyaml>=6.0,<7.0
 typing-extensions>=4.8,<5.0
 
 PySide6>=6.6,<7
+
+questionary>=2.0,<3.0
+
+rich>=13.7,<14.0
+
+ruamel.yaml>=0.18,<0.19

@@ -54,6 +54,10 @@ At minimum support:
 3. Integrate those rules into workspace execution and comparison flows.
 4. Keep updates explicit and deterministic.
 
+Use:
+
+- `ruamel.yaml` for write paths that must preserve readability of `workspace.yaml`
+
 ---
 
 ## Design Notes
@@ -61,6 +65,7 @@ At minimum support:
 - Do not silently mutate unrelated manifest fields.
 - Avoid generic arbitrary YAML rewriting; work through the typed manifest model.
 - If update policy is ambiguous, fail explicitly rather than guessing.
+- Do not use plain `PyYAML` for writeback in this WP; it does not preserve comments and formatting adequately for workspace manifests.
 
 ---
 

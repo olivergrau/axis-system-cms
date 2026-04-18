@@ -59,6 +59,11 @@ For config generation:
 Interactive prompt handling belongs to the CLI layer, but the logic that
 builds the workspace contents belongs here.
 
+The interactive CLI flow is expected to use:
+
+- `questionary` for prompts
+- `rich` for terminal formatting
+
 ---
 
 ## Design Notes
@@ -67,6 +72,7 @@ builds the workspace contents belongs here.
   - fail if target path already exists unless later WPs define overwrite flags
 - Do not embed terminal prompt logic in this module.
 - Use framework-side helper functions to render default file contents.
+- The implementation of this WP assumes `questionary` and `rich` are available as dependencies for the workspace feature set.
 
 ---
 

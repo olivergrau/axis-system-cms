@@ -25,6 +25,7 @@ import argparse
 import json
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -154,9 +155,15 @@ examples:
         help="Launch interactive episode viewer",
     )
     viz_parser.add_argument(
-        "--experiment", required=True, help="Experiment ID")
+        "--experiment", default=None, help="Experiment ID")
     viz_parser.add_argument(
-        "--run", required=True, help="Run ID within the experiment")
+        "--run", default=None, help="Run ID within the experiment")
+    viz_parser.add_argument(
+        "--workspace", default=None,
+        help="Workspace path (alternative to --experiment/--run)")
+    viz_parser.add_argument(
+        "--role", default=None,
+        help="Role filter for workspace visualization (reference/candidate)")
     viz_parser.add_argument(
         "--episode", type=int, required=True, help="Episode index (1-based)",
     )
@@ -170,6 +177,59 @@ examples:
         "--scale", type=float, default=1.0,
         help="UI scale factor (default: 1.0). E.g. 1.5 for a larger window.",
     )
+
+    # -- workspaces ------------------------------------------------------------
+    ws_parser = entity_sub.add_parser(
+        "workspaces",
+        help="Manage experiment workspaces (scaffold, check, show, run, compare)",
+    )
+    ws_action = ws_parser.add_subparsers(dest="action", title="actions")
+
+    ws_action.add_parser(
+        "scaffold", parents=[common],
+        help="Interactively create a new workspace",
+    )
+
+    ws_check_p = ws_action.add_parser(
+        "check", parents=[common], help="Validate a workspace",
+    )
+    ws_check_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+
+    ws_show_p = ws_action.add_parser(
+        "show", parents=[common], help="Show workspace summary",
+    )
+    ws_show_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+
+    ws_run_p = ws_action.add_parser(
+        "run", parents=[common], help="Execute workspace configs",
+    )
+    ws_run_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+
+    ws_cmp_p = ws_action.add_parser(
+        "compare", parents=[common], help="Run workspace comparison",
+    )
+    ws_cmp_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_cmp_p.add_argument(
+        "--reference-experiment", default=None,
+        help="Experiment ID for reference side (must exist in workspace results)")
+    ws_cmp_p.add_argument(
+        "--candidate-experiment", default=None,
+        help="Experiment ID for candidate side (must exist in workspace results)")
+
+    ws_cr_p = ws_action.add_parser(
+        "comparison-result", parents=[common],
+        help="Display stored workspace comparison result(s)",
+    )
+    ws_cr_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_cr_p.add_argument(
+        "--number", type=int, default=None,
+        help="Comparison number to display (e.g. 1, 2). "
+             "If omitted, lists all or shows the only one.")
 
     return parser
 
@@ -713,12 +773,393 @@ def _cmd_visualize(args: argparse.Namespace, repo) -> None:
     """Launch the interactive visualization viewer."""
     from axis.visualization.launch import launch_visualization
 
+    experiment = args.experiment
+    run = args.run
     episode_index = args.episode
+
+    # Workspace mode: resolve from workspace.
+    if args.workspace:
+        from axis.framework.workspaces.visualization import (
+            resolve_visualization_target,
+        )
+        ws_experiment = args.experiment
+        experiment, run, episode_index = resolve_visualization_target(
+            Path(args.workspace), episode_index,
+            role=args.role, experiment=ws_experiment,
+        )
+        # Visualization uses workspace-local repo.
+        from axis.framework.persistence import ExperimentRepository
+        repo = ExperimentRepository(Path(args.workspace) / "results")
+
+    if not experiment or not run:
+        print(
+            "Error: Provide --experiment and --run, or --workspace.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     sys.exit(launch_visualization(
-        repo, args.experiment, args.run, episode_index,
+        repo, experiment, run, episode_index,
         start_step=args.step, start_phase=args.phase,
         scale=args.scale,
     ))
+
+
+# ---------------------------------------------------------------------------
+# Workspace command handlers
+# ---------------------------------------------------------------------------
+
+
+def _cmd_workspaces_scaffold(output: str) -> None:
+    """Interactive workspace scaffolding."""
+    import questionary
+    from rich.console import Console
+
+    from axis.framework.workspaces.scaffold import scaffold_workspace
+    from axis.framework.workspaces.types import (
+        ArtifactKind,
+        WorkspaceClass,
+        WorkspaceLifecycleStage,
+        WorkspaceManifest,
+        WorkspaceStatus,
+        WorkspaceType,
+    )
+
+    console = Console()
+    console.print("[bold]AXIS Workspace Scaffolder[/bold]\n")
+
+    workspace_id = questionary.text("Workspace ID:").ask()
+    if not workspace_id:
+        print("Aborted.", file=sys.stderr)
+        sys.exit(1)
+
+    title = questionary.text("Title:").ask() or workspace_id
+
+    ws_class = questionary.select(
+        "Workspace class:",
+        choices=[c.value for c in WorkspaceClass],
+    ).ask()
+
+    valid_types = {
+        "development": ["system_development", "world_development"],
+        "investigation": ["single_system", "system_comparison"],
+    }
+    ws_type = questionary.select(
+        "Workspace type:",
+        choices=valid_types.get(ws_class, []),
+    ).ask()
+
+    status = questionary.select(
+        "Status:",
+        choices=[s.value for s in WorkspaceStatus],
+        default="draft",
+    ).ask()
+
+    lifecycle = questionary.select(
+        "Lifecycle stage:",
+        choices=[s.value for s in WorkspaceLifecycleStage],
+        default="idea",
+    ).ask()
+
+    # Type-specific fields.
+    manifest_data: dict = {
+        "workspace_id": workspace_id,
+        "title": title,
+        "workspace_class": ws_class,
+        "workspace_type": ws_type,
+        "status": status,
+        "lifecycle_stage": lifecycle,
+        "created_at": datetime.now().strftime("%Y-%m-%d"),
+    }
+
+    if ws_class == "investigation":
+        manifest_data["question"] = questionary.text("Research question:").ask() or ""
+    else:
+        manifest_data["development_goal"] = questionary.text(
+            "Development goal:",
+        ).ask() or ""
+
+    if ws_type == "single_system":
+        manifest_data["system_under_test"] = questionary.text(
+            "System under test:",
+        ).ask() or "system_a"
+
+    elif ws_type == "system_comparison":
+        manifest_data["reference_system"] = questionary.text(
+            "Reference system:",
+        ).ask() or "system_a"
+        manifest_data["candidate_system"] = questionary.text(
+            "Candidate system:",
+        ).ask() or "system_a"
+
+    elif ws_type in ("system_development", "world_development"):
+        kind = "system" if ws_type == "system_development" else "world"
+        manifest_data["artifact_kind"] = kind
+        manifest_data["artifact_under_development"] = questionary.text(
+            f"Artifact under development ({kind}):",
+        ).ask() or f"new_{kind}"
+
+    manifest = WorkspaceManifest.model_validate(manifest_data)
+    target = Path("workspaces") / workspace_id
+    result = scaffold_workspace(target, manifest)
+
+    if output == "json":
+        print(json.dumps({"workspace_path": str(result)}))
+    else:
+        console.print(f"\n[green]Workspace created:[/green] {result}")
+
+
+def _cmd_workspaces_check(workspace_path: str, output: str) -> None:
+    """Validate a workspace."""
+    from axis.framework.workspaces.validation import check_workspace
+    from axis.framework.workspaces.drift import detect_drift
+
+    ws = Path(workspace_path)
+    result = check_workspace(ws)
+    drift_issues = detect_drift(ws)
+
+    if output == "json":
+        data = result.model_dump(mode="json")
+        data["drift_issues"] = [
+            i.model_dump(mode="json") for i in drift_issues
+        ]
+        print(json.dumps(data, indent=2))
+    else:
+        if result.is_valid and not drift_issues:
+            print(f"Workspace '{ws.name}': VALID")
+        elif result.is_valid:
+            print(f"Workspace '{ws.name}': VALID (with drift warnings)")
+        else:
+            print(f"Workspace '{ws.name}': INVALID")
+
+        for issue in result.issues:
+            print(f"  [{issue.severity}] {issue.message}")
+        for issue in drift_issues:
+            print(f"  [drift:{issue.severity}] {issue.message}")
+
+
+def _cmd_workspaces_show(workspace_path: str, output: str) -> None:
+    """Show workspace summary."""
+    from axis.framework.workspaces.summary import summarize_workspace
+
+    ws = Path(workspace_path)
+    summary = summarize_workspace(ws)
+
+    if output == "json":
+        print(json.dumps(summary.model_dump(mode="json"), indent=2))
+    else:
+        print(f"Workspace: {summary.workspace_id}")
+        print(f"  Title: {summary.title}")
+        print(f"  Class: {summary.workspace_class}")
+        print(f"  Type: {summary.workspace_type}")
+        print(f"  Status: {summary.status}")
+        print(f"  Lifecycle: {summary.lifecycle_stage}")
+        if summary.description:
+            print(f"  Description: {summary.description}")
+        if summary.question:
+            print(f"  Question: {summary.question}")
+        if summary.development_goal:
+            print(f"  Goal: {summary.development_goal}")
+        if summary.system_under_test:
+            print(f"  System under test: {summary.system_under_test}")
+        if summary.reference_system:
+            print(f"  Reference: {summary.reference_system}")
+        if summary.candidate_system:
+            print(f"  Candidate: {summary.candidate_system}")
+        if summary.artifact_under_development:
+            print(f"  Artifact: {summary.artifact_under_development}")
+        _print_artifact_section("Primary configs", summary.primary_configs)
+        _print_artifact_section("Primary results", summary.primary_results)
+        _print_artifact_section(
+            "Primary comparisons", summary.primary_comparisons)
+        _print_artifact_section(
+            "Primary measurements", summary.primary_measurements)
+        if summary.check_result:
+            status = "VALID" if summary.check_result.is_valid else "INVALID"
+            print(f"  Validation: {status}")
+
+
+def _print_artifact_section(label: str, entries: list) -> None:
+    """Print a primary artifact section with existence markers."""
+    if not entries:
+        print(f"  {label}: (none declared)")
+        return
+    found = sum(1 for e in entries if e.exists)
+    print(f"  {label}: {found}/{len(entries)} present")
+    for e in entries:
+        marker = "OK" if e.exists else "MISSING"
+        print(f"    [{marker}] {e.path}")
+
+
+def _cmd_workspaces_run(
+    workspace_path: str, output: str,
+) -> None:
+    """Execute workspace configs."""
+    from axis.framework.workspaces.execute import execute_workspace
+    from axis.framework.workspaces.sync import sync_manifest_after_run
+
+    ws = Path(workspace_path)
+    exec_results = execute_workspace(ws)
+
+    # Sync manifest with actual produced artifact paths.
+    for er in exec_results:
+        run_ids = [rr.run_id for rr in er.experiment_result.run_results]
+        sync_manifest_after_run(
+            ws, er.experiment_result.experiment_id, run_ids, er.role,
+        )
+
+    if output == "json":
+        print(json.dumps([{
+            "experiment_id": er.experiment_result.experiment_id,
+            "num_runs": er.experiment_result.summary.num_runs,
+        } for er in exec_results], indent=2))
+    else:
+        print(f"Workspace execution completed: {len(exec_results)} experiment(s)")
+        for er in exec_results:
+            r = er.experiment_result
+            print(f"  {r.experiment_id}: {r.summary.num_runs} run(s)")
+
+
+def _cmd_workspaces_compare(
+    workspace_path: str,
+    output: str,
+    reference_experiment: str | None = None,
+    candidate_experiment: str | None = None,
+) -> None:
+    """Run workspace comparison."""
+    from axis.framework.workspaces.compare import compare_workspace
+    from axis.framework.workspaces.sync import sync_manifest_after_compare
+
+    ws = Path(workspace_path)
+    envelope, ws_relative_path = compare_workspace(
+        ws, reference_experiment, candidate_experiment,
+    )
+    sync_manifest_after_compare(ws, ws_relative_path)
+
+    if output == "json":
+        print(json.dumps(envelope.model_dump(mode="json"), indent=2))
+    else:
+        print(f"Workspace comparison #{envelope.comparison_number} completed.")
+        print(f"  Output: {ws / ws_relative_path}")
+
+
+def _cmd_workspaces_comparison_result(
+    workspace_path: str,
+    output: str,
+    comparison_number: int | None = None,
+) -> None:
+    """Display a stored workspace comparison result."""
+    from axis.framework.comparison.types import RunComparisonResult
+    from axis.framework.workspaces.comparison_envelope import (
+        WorkspaceComparisonEnvelope,
+    )
+    from axis.framework.workspaces.types import WorkspaceType, load_manifest
+
+    ws = Path(workspace_path)
+    manifest = load_manifest(ws)
+
+    if manifest.workspace_type not in (
+        WorkspaceType.SYSTEM_COMPARISON,
+        WorkspaceType.SYSTEM_DEVELOPMENT,
+    ):
+        print(
+            f"Error: comparison-result is only valid for "
+            f"system_comparison or system_development workspaces, "
+            f"got '{manifest.workspace_type}'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    comparisons_dir = ws / "comparisons"
+    if not comparisons_dir.is_dir():
+        print("Error: No comparisons directory found.", file=sys.stderr)
+        sys.exit(1)
+
+    import re
+    files = sorted(
+        f for f in comparisons_dir.iterdir()
+        if re.match(r"comparison-\d+\.json$", f.name)
+    )
+    if not files:
+        print("Error: No comparison results found.", file=sys.stderr)
+        sys.exit(1)
+
+    if comparison_number is not None:
+        target = comparisons_dir / f"comparison-{comparison_number:03d}.json"
+        if not target.is_file():
+            print(
+                f"Error: Comparison #{comparison_number} not found. "
+                f"Available: {', '.join(f.name for f in files)}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        files = [target]
+    elif len(files) == 1:
+        pass  # show the only one
+    else:
+        # List available comparisons
+        if output == "json":
+            listing = []
+            for f in files:
+                env = WorkspaceComparisonEnvelope.model_validate(
+                    json.loads(f.read_text()))
+                cr = env.comparison_result
+                listing.append({
+                    "number": env.comparison_number,
+                    "timestamp": env.timestamp,
+                    "reference_system": cr.get("reference_system_type", ""),
+                    "candidate_system": cr.get("candidate_system_type", ""),
+                    "file": f.name,
+                })
+            print(json.dumps(listing, indent=2))
+        else:
+            print(f"Found {len(files)} comparison result(s). "
+                  f"Use --number to select one:\n")
+            for f in files:
+                env = WorkspaceComparisonEnvelope.model_validate(
+                    json.loads(f.read_text()))
+                cr = env.comparison_result
+                ref_sys = cr.get("reference_system_type", "?")
+                cand_sys = cr.get("candidate_system_type", "?")
+                print(f"  #{env.comparison_number}: {ref_sys} vs {cand_sys} "
+                      f"({env.timestamp})")
+        return
+
+    # Display the selected comparison
+    env = WorkspaceComparisonEnvelope.model_validate(
+        json.loads(files[0].read_text()))
+
+    if output == "json":
+        print(json.dumps(env.model_dump(mode="json"), indent=2))
+    else:
+        print(f"Comparison #{env.comparison_number} — {env.timestamp}")
+        print()
+        # Print the comparison metrics using the existing formatter.
+        result = RunComparisonResult.model_validate(env.comparison_result)
+        _print_run_comparison_text(result)
+        print()
+        print("  --- Configurations ---")
+        print(f"  Reference config (system_type={env.reference_config.get('system_type', '?')}):")
+        _print_config_summary(env.reference_config, indent=4)
+        print(f"  Candidate config (system_type={env.candidate_config.get('system_type', '?')}):")
+        _print_config_summary(env.candidate_config, indent=4)
+
+
+def _print_config_summary(config: dict, indent: int = 4) -> None:
+    """Print a full experiment config as flattened key-value pairs."""
+    prefix = " " * indent
+
+    def _flatten(obj: dict, path: str = "") -> None:
+        for key, value in obj.items():
+            full_key = f"{path}.{key}" if path else key
+            if isinstance(value, dict):
+                _flatten(value, full_key)
+            elif isinstance(value, list):
+                print(f"{prefix}{full_key}: {value}")
+            else:
+                print(f"{prefix}{full_key}: {value}")
+
+    _flatten(config)
 
 
 # ---------------------------------------------------------------------------
@@ -776,6 +1217,31 @@ def main(argv: list[str] | None = None) -> int:
                 _cmd_runs_list(repo, args.experiment, output)
             elif args.action == "show":
                 _cmd_runs_show(repo, args.experiment, args.run_id, output)
+            else:
+                parser.print_help()
+                return 1
+        elif args.entity == "workspaces":
+            if args.action == "scaffold":
+                _cmd_workspaces_scaffold(output)
+            elif args.action == "check":
+                _cmd_workspaces_check(args.workspace_path, output)
+            elif args.action == "show":
+                _cmd_workspaces_show(args.workspace_path, output)
+            elif args.action == "run":
+                _cmd_workspaces_run(args.workspace_path, output)
+            elif args.action == "compare":
+                _cmd_workspaces_compare(
+                    args.workspace_path, output,
+                    reference_experiment=getattr(
+                        args, "reference_experiment", None),
+                    candidate_experiment=getattr(
+                        args, "candidate_experiment", None),
+                )
+            elif args.action == "comparison-result":
+                _cmd_workspaces_comparison_result(
+                    args.workspace_path, output,
+                    comparison_number=getattr(args, "number", None),
+                )
             else:
                 parser.print_help()
                 return 1

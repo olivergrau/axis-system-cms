@@ -61,6 +61,15 @@ Implement checks for:
 - existence of declared `primary_comparisons`
 - existence of declared `primary_measurements`
 
+Helper artifacts under `results/` and `comparisons/` remain explicitly
+freeform in version 1.
+
+If such files exist, this WP should only perform:
+
+- existence checks
+- readability checks
+- contradiction checks against manifest-declared primary semantics
+
 Warnings should be supported for incomplete-but-not-invalid states.
 
 ---
@@ -84,6 +93,7 @@ Warnings should be supported for incomplete-but-not-invalid states.
 - Human-readable formatting belongs later in `show` or CLI functions.
 - This WP should not mutate the workspace.
 - Linked external artifacts may be checked only for basic path existence if present.
+- Helper-file schemas must not be invented as required contracts in this WP.
 
 ---
 
