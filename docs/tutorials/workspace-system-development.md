@@ -6,6 +6,10 @@
 > familiarity with the SystemInterface contract
 > (see [Building a System](building-a-system.md)), and the CLI basics.
 >
+> **Important:** Workspace configs must use `experiment_type: single_run`.
+> OFAT and other multi-run experiment types are not supported in
+> workspace mode — use `axis experiments run` directly for those.
+>
 > **What we do:** Create a development workspace to build and validate
 > a new system. We establish a baseline, implement candidate changes,
 > run structured comparisons, and iterate -- all within a single

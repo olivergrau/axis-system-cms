@@ -329,6 +329,10 @@ execution outputs, comparisons, and notes into a single coherent
 directory. They provide repeatable workflows for common research and
 development tasks.
 
+Workspaces support only ``experiment_type: single_run`` configs. OFAT
+sweeps are not supported in workspace mode -- use ``axis experiments run``
+directly for OFAT experiments.
+
 ### Workspace Types
 
 | Class | Type | Purpose |
@@ -336,7 +340,6 @@ development tasks.
 | `investigation` | `single_system` | Study one system under varying parameters |
 | `investigation` | `system_comparison` | Compare two systems under identical conditions |
 | `development` | `system_development` | Build and validate a new system |
-| `development` | `world_development` | Build and validate a new world |
 
 ### Workspace Structure
 

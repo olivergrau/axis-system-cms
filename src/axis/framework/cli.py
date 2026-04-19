@@ -858,7 +858,7 @@ def _cmd_workspaces_scaffold(output: str) -> None:
     ).ask()
 
     valid_types = {
-        "development": ["system_development", "world_development"],
+        "development": ["system_development"],
         "investigation": ["single_system", "system_comparison"],
     }
     ws_type = questionary.select(
@@ -909,7 +909,7 @@ def _cmd_workspaces_scaffold(output: str) -> None:
             "Candidate system:",
         ).ask() or "system_a"
 
-    elif ws_type in ("system_development", "world_development"):
+    elif ws_type in ("system_development",):
         kind = "system" if ws_type == "system_development" else "world"
         manifest_data["artifact_kind"] = kind
         manifest_data["artifact_under_development"] = questionary.text(
@@ -1066,7 +1066,7 @@ def _cmd_workspaces_set_candidate(
     data = yaml.safe_load(manifest_file.read_text())
 
     wtype = data.get("workspace_type", "")
-    if wtype not in ("system_development", "world_development"):
+    if wtype not in ("system_development",):
         raise ValueError(
             f"set-candidate is only valid for development workspaces, "
             f"not '{wtype}'"

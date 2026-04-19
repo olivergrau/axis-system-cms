@@ -44,8 +44,8 @@ system:
 
 logging:
   enabled: true
-  console_enabled: true
-  jsonl_enabled: true
+  console_enabled: false
+  jsonl_enabled: false
   jsonl_path: "experiments/output/system-aw-curiosity-sweep.jsonl"
   verbosity: "compact"
 

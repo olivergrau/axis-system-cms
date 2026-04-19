@@ -6,6 +6,10 @@
 > at least two registered systems (e.g. `system_a` and `system_c`),
 > familiarity with the CLI basics.
 >
+> **Important:** Workspace configs must use `experiment_type: single_run`.
+> OFAT and other multi-run experiment types are not supported in
+> workspace mode — use `axis experiments run` directly for those.
+>
 > **What we do:** Create an investigation workspace to compare
 > System A (energy-driven forager) against System C (prediction-error-driven)
 > on a grid world, then run both, compare, analyze the differences,

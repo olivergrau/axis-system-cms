@@ -6,6 +6,10 @@
 > at least one registered system (e.g. `system_a`), familiarity with
 > the CLI basics (`axis experiments run`).
 >
+> **Important:** Workspace configs must use `experiment_type: single_run`.
+> OFAT and other multi-run experiment types are not supported in
+> workspace mode — use `axis experiments run` directly for those.
+>
 > **What we do:** Create an investigation workspace to study how
 > changing `consume_weight` affects System A's survival behavior,
 > then run a baseline, modify the parameter, run again, compare,

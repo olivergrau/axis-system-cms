@@ -2,6 +2,8 @@
 
 Experiment Workspaces provide structured containers for AXIS work contexts. A workspace bundles intent, configuration, execution outputs, comparisons, measurements, and notes into a single coherent directory.
 
+> **Supported experiment type:** Workspaces currently support only `experiment_type: single_run` configs. OFAT (one-factor-at-a-time) sweeps are not supported in workspace mode. If a workspace config uses `experiment_type: ofat`, both `axis workspaces check` and `axis workspaces run` will reject it with a clear error. Use `axis experiments run` directly for OFAT experiments.
+
 ## Quick Start
 
 ### Create a workspace
@@ -41,6 +43,8 @@ axis workspaces run workspaces/my-workspace
 ```
 
 Resolves and executes all workspace configs. Results are written into the workspace's own `results/` directory and the manifest is updated with workspace-relative paths to the produced artifacts.
+
+All configs must use `experiment_type: single_run`. The command will fail before execution if any config uses a different experiment type (e.g. `ofat`).
 
 ### Run a workspace comparison
 
@@ -456,18 +460,6 @@ axis workspaces show workspaces/develop-system-d
 
 ---
 
-### Development / World Development
-
-**Purpose**: Develop and iterate on a new world implementation. Similar to system development but focused on world environments.
-
-**Manifest requirements**: `development_goal`, `artifact_kind` (= `world`), `artifact_under_development`.
-
-**Additional directories**: `concept/` for conceptual modeling, `engineering/` for engineering specs and work packages.
-
-*Workflow documentation to be added once the development lifecycle commands are refined.*
-
----
-
 ## Workspace Classification
 
 Every workspace defines two classification fields:
@@ -475,20 +467,19 @@ Every workspace defines two classification fields:
 | Field | Values |
 |---|---|
 | `workspace_class` | `development`, `investigation` |
-| `workspace_type` | `system_development`, `world_development`, `single_system`, `system_comparison` |
+| `workspace_type` | `system_development`, `single_system`, `system_comparison` |
 
 ### Valid combinations
 
 | Class | Type |
 |---|---|
 | `development` | `system_development` |
-| `development` | `world_development` |
 | `investigation` | `single_system` |
 | `investigation` | `system_comparison` |
 
 ### Development vs Investigation
 
-**Development** workspaces create or modify artifacts (systems or worlds). They require `concept/` and `engineering/` directories and a `development_goal`.
+**Development** workspaces create or modify system artifacts. They require `concept/` and `engineering/` directories and a `development_goal`.
 
 **Investigation** workspaces study existing artifacts under defined conditions. They require a `question`.
 
@@ -505,7 +496,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 | `workspace_id` | Unique identifier |
 | `title` | Human-readable title |
 | `workspace_class` | `development` or `investigation` |
-| `workspace_type` | One of the four workspace types |
+| `workspace_type` | One of the three workspace types |
 | `status` | `idea`, `draft`, `running`, `analyzing`, `completed` |
 | `lifecycle_stage` | `idea`, `draft`, `spec`, `implementation`, `documentation` |
 | `created_at` | Creation date (YYYY-MM-DD) |
@@ -517,7 +508,6 @@ The manifest is the authoritative source of workspace identity and semantics.
 | `single_system` | `question`, `system_under_test` |
 | `system_comparison` | `question`, `reference_system`, `candidate_system` |
 | `system_development` | `development_goal`, `artifact_kind` (= `system`), `artifact_under_development` |
-| `world_development` | `development_goal`, `artifact_kind` (= `world`), `artifact_under_development` |
 
 ### Optional fields
 
