@@ -521,7 +521,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 The manifest tracks workspace-produced artifacts via four list fields:
 
 - **`primary_configs`** — workspace-relative paths to config files (populated at scaffold time).
-- **`primary_results`** — workspace-relative paths to run output directories (populated after `axis workspaces run`). Entries point to individual run directories, e.g. `results/<experiment-id>/runs/<run-id>`.
+- **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`.
 - **`primary_comparisons`** — workspace-relative paths to comparison output files (accumulated after each `axis workspaces compare`), e.g. `comparisons/comparison-001.json`.
 - **`primary_measurements`** — workspace-relative paths to processed metrics.
 

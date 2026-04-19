@@ -263,6 +263,20 @@ class ExperimentExecutor:
         # Initialize experiment artifacts
         repo.create_experiment_dir(experiment_id)
         repo.save_experiment_config(experiment_id, config)
+
+        # Derive output semantics from experiment type
+        if config.experiment_type == ExperimentType.SINGLE_RUN:
+            output_form = "point"
+            primary_run_id = "run-0000"
+            baseline_run_id = None
+        elif config.experiment_type == ExperimentType.OFAT:
+            output_form = "sweep"
+            primary_run_id = None
+            baseline_run_id = "run-0000"
+        else:
+            raise ValueError(
+                f"Unknown experiment type: {config.experiment_type}")
+
         repo.save_experiment_metadata(
             experiment_id,
             ExperimentMetadata(
@@ -270,6 +284,9 @@ class ExperimentExecutor:
                 created_at=datetime.now(timezone.utc).isoformat(),
                 experiment_type=config.experiment_type.value,
                 system_type=config.system_type,
+                output_form=output_form,
+                primary_run_id=primary_run_id,
+                baseline_run_id=baseline_run_id,
             ),
         )
         repo.save_experiment_status(experiment_id, ExperimentStatus.RUNNING)
@@ -373,16 +390,24 @@ class ExperimentExecutor:
         repo.save_run_config(
             experiment_id, run_id, run_config, overwrite=True,
         )
+
+        # Build run metadata with optional sweep fields
+        run_meta_kwargs: dict = dict(
+            run_id=run_id,
+            experiment_id=experiment_id,
+            variation_description=variation_description(config, run_index),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            base_seed=run_config.base_seed,
+        )
+        if config.experiment_type == ExperimentType.OFAT:
+            assert config.parameter_values is not None
+            run_meta_kwargs["variation_index"] = run_index
+            run_meta_kwargs["variation_value"] = config.parameter_values[run_index]
+            run_meta_kwargs["is_baseline"] = (run_index == 0)
+
         repo.save_run_metadata(
-            experiment_id,
-            run_id,
-            RunMetadata(
-                run_id=run_id,
-                experiment_id=experiment_id,
-                variation_description=variation_description(config, run_index),
-                created_at=datetime.now(timezone.utc).isoformat(),
-                base_seed=run_config.base_seed,
-            ),
+            experiment_id, run_id,
+            RunMetadata(**run_meta_kwargs),
         )
         repo.save_run_status(experiment_id, run_id, RunStatus.RUNNING)
 

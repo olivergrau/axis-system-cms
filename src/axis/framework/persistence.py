@@ -5,6 +5,7 @@ from __future__ import annotations
 import enum
 import json
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -55,6 +56,11 @@ class ExperimentMetadata(BaseModel):
     name: str | None = None
     description: str | None = None
 
+    # --- Experiment Output Abstraction fields ---
+    output_form: str | None = None          # "point" or "sweep"
+    primary_run_id: str | None = None       # for point outputs
+    baseline_run_id: str | None = None      # for sweep outputs
+
 
 class RunMetadata(BaseModel):
     """Run-level metadata artifact."""
@@ -66,6 +72,11 @@ class RunMetadata(BaseModel):
     variation_description: str | None = None
     created_at: str
     base_seed: int | None = None
+
+    # --- Experiment Output Abstraction fields (sweep runs) ---
+    variation_index: int | None = None
+    variation_value: Any | None = None
+    is_baseline: bool | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +343,8 @@ class ExperimentRepository:
         self, experiment_id: str, run_id: str, episode_index: int,
     ) -> BaseEpisodeTrace:
         return BaseEpisodeTrace.model_validate(
-            _load_json(self.episode_path(experiment_id, run_id, episode_index)),
+            _load_json(self.episode_path(
+                experiment_id, run_id, episode_index)),
         )
 
     # -- Discovery ----------------------------------------------------------

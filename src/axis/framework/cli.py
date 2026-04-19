@@ -289,6 +289,8 @@ def _cmd_experiments_list(repo, output: str) -> None:
             meta = repo.load_experiment_metadata(eid)
             entry["system_type"] = meta.system_type
             entry["created_at"] = meta.created_at
+            if meta.output_form:
+                entry["output_form"] = meta.output_form
         except Exception:
             pass
         runs = repo.list_runs(eid)
@@ -316,6 +318,8 @@ def _cmd_experiments_list(repo, output: str) -> None:
                 f"runs={e['num_runs']}",
                 f"completed={e['num_completed_runs']}",
             ]
+            if e.get("output_form"):
+                parts.append(f"form={e['output_form']}")
             if e.get("system_type"):
                 parts.append(f"system={e['system_type']}")
             if e.get("created_at"):
@@ -381,6 +385,13 @@ def _cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
         )
         sys.exit(1)
 
+    from axis.framework.experiment_output import (
+        ExperimentOutputForm,
+        PointExperimentOutput,
+        SweepExperimentOutput,
+        load_experiment_output,
+    )
+
     info: dict = {"experiment_id": experiment_id}
 
     try:
@@ -411,6 +422,20 @@ def _cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
     except Exception:
         info["summary"] = None
 
+    # Load experiment output for form-specific info
+    exp_output = None
+    try:
+        exp_output = load_experiment_output(repo, experiment_id)
+        info["output_form"] = exp_output.output_form.value
+        if isinstance(exp_output, PointExperimentOutput):
+            info["primary_run_id"] = exp_output.primary_run_id
+        elif isinstance(exp_output, SweepExperimentOutput):
+            info["baseline_run_id"] = exp_output.baseline_run_id
+            info["parameter_path"] = exp_output.parameter_path
+            info["parameter_values"] = list(exp_output.parameter_values) if exp_output.parameter_values else None
+    except Exception:
+        pass
+
     if output == "json":
         print(json.dumps(info, indent=2))
     else:
@@ -418,11 +443,21 @@ def _cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
         print(f"  Status: {info.get('status', 'unknown')}")
         if info.get("experiment_type"):
             print(f"  Type: {info['experiment_type']}")
+        if info.get("output_form"):
+            print(f"  Output form: {info['output_form']}")
         if info.get("system_type"):
             print(f"  System: {info['system_type']}")
         if info.get("created_at"):
             print(f"  Created: {info['created_at']}")
         print(f"  Runs: {runs}")
+        if info.get("primary_run_id"):
+            print(f"  Primary run: {info['primary_run_id']}")
+        if info.get("baseline_run_id"):
+            print(f"  Baseline run: {info['baseline_run_id']}")
+        if info.get("parameter_path"):
+            print(f"  Parameter path: {info['parameter_path']}")
+        if info.get("parameter_values"):
+            print(f"  Parameter values: {info['parameter_values']}")
         if info.get("summary"):
             s = info["summary"]
             print(f"  Summary: {s['num_runs']} runs")
@@ -500,6 +535,20 @@ def _cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
         info["variation_description"] = meta.variation_description
         info["created_at"] = meta.created_at
         info["base_seed"] = meta.base_seed
+        if meta.variation_index is not None:
+            info["variation_index"] = meta.variation_index
+        if meta.variation_value is not None:
+            info["variation_value"] = meta.variation_value
+        if meta.is_baseline is not None:
+            info["is_baseline"] = meta.is_baseline
+    except Exception:
+        pass
+
+    # Enclosing output form
+    try:
+        from axis.framework.experiment_output import load_experiment_output
+        exp_output = load_experiment_output(repo, experiment_id)
+        info["output_form"] = exp_output.output_form.value
     except Exception:
         pass
 
@@ -524,8 +573,16 @@ def _cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
         print(f"Run: {run_id}")
         print(f"  Experiment: {experiment_id}")
         print(f"  Status: {info.get('status', 'unknown')}")
+        if info.get("output_form"):
+            print(f"  Output form: {info['output_form']}")
         if info.get("variation_description"):
             print(f"  Variation: {info['variation_description']}")
+        if info.get("is_baseline") is not None:
+            print(f"  Is baseline: {info['is_baseline']}")
+        if info.get("variation_index") is not None:
+            print(f"  Variation index: {info['variation_index']}")
+        if info.get("variation_value") is not None:
+            print(f"  Variation value: {info['variation_value']}")
         if info.get("created_at"):
             print(f"  Created: {info['created_at']}")
         if info.get("base_seed") is not None:
@@ -647,7 +704,22 @@ def _print_run_comparison_text(result) -> None:
     print()
 
     if s.num_valid_pairs == 0:
-        print("  No valid pairs to summarise.")
+        # Collect distinct validation errors across all failed episodes.
+        all_errors: list[str] = []
+        for r in result.episode_results:
+            if r.validation and r.validation.errors:
+                for e in r.validation.errors:
+                    if e not in all_errors:
+                        all_errors.append(e)
+        if all_errors:
+            print(
+                f"  No valid episode pairs to summarise — all failed "
+                f"validation: {', '.join(all_errors)}.")
+            print(
+                "  This typically means the world configuration or start "
+                "conditions differ between the two runs.")
+        else:
+            print("  No valid episode pairs to summarise.")
         return
 
     print("  --- Per-episode results ---")
@@ -1106,9 +1178,22 @@ def _cmd_workspaces_run(
     # Sync manifest with actual produced artifact paths.
     for er in exec_results:
         run_ids = [rr.run_id for rr in er.experiment_result.run_results]
+        config = er.experiment_result.experiment_config
+        if config.experiment_type.value == "single_run":
+            o_form = "point"
+            p_run = "run-0000"
+            b_run = None
+        else:
+            o_form = "sweep"
+            p_run = None
+            b_run = "run-0000"
         sync_manifest_after_run(
             ws, er.experiment_result.experiment_id, run_ids, er.role,
             config_path=er.config_path,
+            output_form=o_form,
+            system_type=config.system_type,
+            primary_run_id=p_run,
+            baseline_run_id=b_run,
         )
 
     if output == "json":

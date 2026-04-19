@@ -333,6 +333,21 @@ Workspaces support only ``experiment_type: single_run`` configs. OFAT
 sweeps are not supported in workspace mode -- use ``axis experiments run``
 directly for OFAT experiments.
 
+### Experiment Output Abstraction
+
+Every completed experiment is interpreted through a normalized
+**Experiment Output** layer with two output forms:
+
+- **Point** (``output_form: point``) — single primary run, from
+  ``single_run`` experiments.
+- **Sweep** (``output_form: sweep``) — ordered parameter variation set,
+  from ``ofat`` experiments.
+
+Output semantics (``output_form``, ``primary_run_id``,
+``baseline_run_id``) are persisted in experiment metadata and used
+throughout the framework: CLI inspection, workspace result tracking,
+comparison resolution, and visualization.
+
 ### Workspace Types
 
 | Class | Type | Purpose |
