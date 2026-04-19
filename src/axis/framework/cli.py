@@ -874,7 +874,7 @@ def _cmd_visualize(args: argparse.Namespace, repo) -> None:
         ws_experiment = args.experiment
         experiment, run, episode_index = resolve_visualization_target(
             Path(args.workspace), episode_index,
-            role=args.role, experiment=ws_experiment,
+            role=args.role, experiment=ws_experiment, run=run,
         )
         # Visualization uses workspace-local repo.
         from axis.framework.persistence import ExperimentRepository

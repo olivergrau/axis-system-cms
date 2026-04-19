@@ -116,24 +116,26 @@ def load_experiment_output(
     meta = repo.load_experiment_metadata(experiment_id)
     run_ids = tuple(repo.list_runs(experiment_id))
 
-    # Determine output form: prefer persisted, derive if absent
-    if meta.output_form:
-        form = ExperimentOutputForm(meta.output_form)
-        expected = output_form_for_type(meta.experiment_type)
-        if form != expected:
-            raise ValueError(
-                f"Experiment '{experiment_id}': persisted output_form='{form}' "
-                f"disagrees with experiment_type='{meta.experiment_type}' "
-                f"(expected '{expected}')"
-            )
-    else:
-        form = output_form_for_type(meta.experiment_type)
+    # Require explicit persisted output_form — no silent derivation.
+    if not meta.output_form:
+        raise ValueError(
+            f"Experiment '{experiment_id}': missing output_form in metadata. "
+            f"Re-run the experiment to populate output semantics."
+        )
+    form = ExperimentOutputForm(meta.output_form)
+    expected = output_form_for_type(meta.experiment_type)
+    if form != expected:
+        raise ValueError(
+            f"Experiment '{experiment_id}': persisted output_form='{form}' "
+            f"disagrees with experiment_type='{meta.experiment_type}' "
+            f"(expected '{expected}')"
+        )
 
     # Status
     status: str | None = None
     try:
         status = repo.load_experiment_status(experiment_id).value
-    except Exception:
+    except FileNotFoundError:
         pass
 
     # Summary path
@@ -159,8 +161,12 @@ def load_experiment_output(
     )
 
     if form == ExperimentOutputForm.POINT:
-        primary_run_id = meta.primary_run_id or (
-            run_ids[0] if run_ids else "run-0000")
+        if not meta.primary_run_id:
+            raise ValueError(
+                f"Experiment '{experiment_id}': point output missing "
+                f"primary_run_id in metadata."
+            )
+        primary_run_id = meta.primary_run_id
         primary_run_path = f"{exp_root}/runs/{primary_run_id}"
         primary_run_summary: str | None = None
         srp = repo.run_summary_path(experiment_id, primary_run_id)
@@ -175,8 +181,12 @@ def load_experiment_output(
         )
 
     # SWEEP
-    baseline_run_id = meta.baseline_run_id or (
-        run_ids[0] if run_ids else "run-0000")
+    if not meta.baseline_run_id:
+        raise ValueError(
+            f"Experiment '{experiment_id}': sweep output missing "
+            f"baseline_run_id in metadata."
+        )
+    baseline_run_id = meta.baseline_run_id
 
     # Load sweep metadata from config
     parameter_path: str | None = None
@@ -185,7 +195,7 @@ def load_experiment_output(
         config = repo.load_experiment_config(experiment_id)
         parameter_path = config.parameter_path
         parameter_values = config.parameter_values
-    except Exception:
+    except (FileNotFoundError, KeyError):
         pass
 
     # Load variation descriptions from run metadata
@@ -194,7 +204,7 @@ def load_experiment_output(
         try:
             rm = repo.load_run_metadata(experiment_id, rid)
             var_descs.append(rm.variation_description or rid)
-        except Exception:
+        except (FileNotFoundError, KeyError):
             var_descs.append(rid)
 
     run_paths = tuple(f"{exp_root}/runs/{rid}" for rid in run_ids)

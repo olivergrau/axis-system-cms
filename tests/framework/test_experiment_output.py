@@ -194,8 +194,8 @@ class TestOutputValidation:
         with pytest.raises(ValueError, match="disagrees with experiment_type"):
             load_experiment_output(repo, "exp-bad")
 
-    def test_derives_form_when_not_persisted(self, tmp_path):
-        """Legacy experiments without output_form derive it from type."""
+    def test_raises_when_form_not_persisted(self, tmp_path):
+        """Experiments without output_form must fail explicitly."""
         repo = ExperimentRepository(tmp_path)
         repo.create_experiment_dir("exp-legacy")
         repo.save_experiment_metadata(
@@ -205,7 +205,7 @@ class TestOutputValidation:
                 created_at="2025-01-01T00:00:00",
                 experiment_type="single_run",
                 system_type="system_a",
-                # No output_form, no primary_run_id
+                # No output_form
             ),
         )
         repo.create_run_dir("exp-legacy", "run-0000")
@@ -218,6 +218,43 @@ class TestOutputValidation:
             ),
         )
 
-        output = load_experiment_output(repo, "exp-legacy")
-        assert isinstance(output, PointExperimentOutput)
-        assert output.primary_run_id == "run-0000"
+        with pytest.raises(ValueError, match="missing output_form"):
+            load_experiment_output(repo, "exp-legacy")
+
+    def test_raises_when_primary_run_id_missing(self, tmp_path):
+        """Point output without primary_run_id must fail."""
+        repo = ExperimentRepository(tmp_path)
+        repo.create_experiment_dir("exp-no-pri")
+        repo.save_experiment_metadata(
+            "exp-no-pri",
+            ExperimentMetadata(
+                experiment_id="exp-no-pri",
+                created_at="2025-01-01T00:00:00",
+                experiment_type="single_run",
+                system_type="system_a",
+                output_form="point",
+                # No primary_run_id
+            ),
+        )
+
+        with pytest.raises(ValueError, match="missing primary_run_id"):
+            load_experiment_output(repo, "exp-no-pri")
+
+    def test_raises_when_baseline_run_id_missing(self, tmp_path):
+        """Sweep output without baseline_run_id must fail."""
+        repo = ExperimentRepository(tmp_path)
+        repo.create_experiment_dir("exp-no-base")
+        repo.save_experiment_metadata(
+            "exp-no-base",
+            ExperimentMetadata(
+                experiment_id="exp-no-base",
+                created_at="2025-01-01T00:00:00",
+                experiment_type="ofat",
+                system_type="system_a",
+                output_form="sweep",
+                # No baseline_run_id
+            ),
+        )
+
+        with pytest.raises(ValueError, match="missing baseline_run_id"):
+            load_experiment_output(repo, "exp-no-base")
