@@ -122,13 +122,24 @@ def compute_run_summary(
 class RunExecutor:
     """Execute multiple episodes under a shared configuration."""
 
+    def __init__(
+        self,
+        system_catalog: Any | None = None,
+        world_catalog: Any | None = None,
+    ) -> None:
+        self._system_catalog = system_catalog
+        self._world_catalog = world_catalog
+
     def execute(self, config: RunConfig) -> RunResult:
         """Execute a complete run: N episodes, aggregate results."""
         from axis.framework.logging import EpisodeLogger
 
         run_id = config.run_id or str(uuid.uuid4())
         seeds = resolve_episode_seeds(config.num_episodes, config.base_seed)
-        system = create_system(config.system_type, config.system_config)
+        system = create_system(
+            config.system_type, config.system_config,
+            system_catalog=self._system_catalog,
+        )
 
         traces: list[BaseEpisodeTrace] = []
         with EpisodeLogger(config.framework_config.logging) as logger:
@@ -163,6 +174,7 @@ class RunExecutor:
             world_config,
             config.agent_start_position,
             seed=episode_seed,
+            world_catalog=self._world_catalog,
         )
 
         return run_episode(

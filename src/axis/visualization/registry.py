@@ -39,17 +39,29 @@ def register_system_visualization(system_type: str, factory: SystemVisFactory) -
     _SYSTEM_VIS_REGISTRY[system_type] = factory
 
 
-def resolve_world_adapter(world_type: str, world_config: dict[str, Any]) -> Any:
+def resolve_world_adapter(
+    world_type: str, world_config: dict[str, Any],
+    world_vis_catalog: Any | None = None,
+) -> Any:
     """Resolve a world visualization adapter, falling back to default."""
-    factory = _WORLD_VIS_REGISTRY.get(world_type)
+    if world_vis_catalog is not None:
+        factory = world_vis_catalog.get_optional(world_type)
+    else:
+        factory = _WORLD_VIS_REGISTRY.get(world_type)
     if factory is not None:
         return factory(world_config)
     return DefaultWorldVisualizationAdapter()
 
 
-def resolve_system_adapter(system_type: str) -> Any:
+def resolve_system_adapter(
+    system_type: str,
+    system_vis_catalog: Any | None = None,
+) -> Any:
     """Resolve a system visualization adapter, falling back to null."""
-    factory = _SYSTEM_VIS_REGISTRY.get(system_type)
+    if system_vis_catalog is not None:
+        factory = system_vis_catalog.get_optional(system_type)
+    else:
+        factory = _SYSTEM_VIS_REGISTRY.get(system_type)
     if factory is not None:
         return factory()
     return NullSystemVisualizationAdapter()

@@ -209,8 +209,13 @@ class ExperimentExecutor:
         self,
         run_executor: RunExecutor | None = None,
         repository: ExperimentRepository | None = None,
+        system_catalog: object | None = None,
+        world_catalog: object | None = None,
     ) -> None:
-        self._run_executor = run_executor or RunExecutor()
+        self._run_executor = run_executor or RunExecutor(
+            system_catalog=system_catalog,
+            world_catalog=world_catalog,
+        )
         self._repository = repository
 
     def execute(self, config: ExperimentConfig) -> ExperimentResult:
@@ -464,14 +469,26 @@ class ExperimentExecutor:
 def execute_experiment(
     config: ExperimentConfig,
     repository: ExperimentRepository,
+    system_catalog: object | None = None,
+    world_catalog: object | None = None,
 ) -> ExperimentResult:
     """Execute an experiment with persistence. Convenience wrapper."""
-    return ExperimentExecutor(repository=repository).execute(config)
+    return ExperimentExecutor(
+        repository=repository,
+        system_catalog=system_catalog,
+        world_catalog=world_catalog,
+    ).execute(config)
 
 
 def resume_experiment(
     experiment_id: str,
     repository: ExperimentRepository,
+    system_catalog: object | None = None,
+    world_catalog: object | None = None,
 ) -> ExperimentResult:
     """Resume an experiment. Convenience wrapper."""
-    return ExperimentExecutor(repository=repository).resume(experiment_id)
+    return ExperimentExecutor(
+        repository=repository,
+        system_catalog=system_catalog,
+        world_catalog=world_catalog,
+    ).resume(experiment_id)

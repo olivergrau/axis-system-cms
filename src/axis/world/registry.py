@@ -56,10 +56,15 @@ def create_world_from_config(
     config: BaseWorldConfig,
     agent_position: Position,
     seed: int | None = None,
+    world_catalog: Any | None = None,
 ) -> MutableWorldProtocol:
     """Convenience: look up factory by config.world_type and create a world.
 
-    Equivalent to get_world_factory(config.world_type)(config, agent_position, seed).
+    If *world_catalog* is provided, uses catalog lookup instead of
+    the global registry.
     """
-    factory = get_world_factory(config.world_type)
+    if world_catalog is not None:
+        factory = world_catalog.get(config.world_type)
+    else:
+        factory = get_world_factory(config.world_type)
     return factory(config, agent_position, seed)

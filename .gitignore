@@ -19,3 +19,4 @@ resume.txt
 /workspaces/
 !src/axis/framework/workspaces/
 !src/axis/framework/workspaces/**
+__pycache__/

@@ -30,12 +30,18 @@ def build_system_specific_analysis(
     reference: BaseEpisodeTrace,
     candidate: BaseEpisodeTrace,
     alignment: AlignmentSummary,
+    extension_catalog: Any | None = None,
 ) -> dict[str, Any] | None:
     """Run system-specific analysis if an extension is registered.
 
-    Dispatches based on the *candidate* system type.
+    Dispatches based on the *candidate* system type.  If
+    *extension_catalog* is provided, uses catalog lookup instead of
+    the global registry.
     """
-    ext = _EXTENSION_REGISTRY.get(candidate.system_type)
+    if extension_catalog is not None:
+        ext = extension_catalog.get_optional(candidate.system_type)
+    else:
+        ext = _EXTENSION_REGISTRY.get(candidate.system_type)
     if ext is None:
         return None
     return ext(reference, candidate, alignment)

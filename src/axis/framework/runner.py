@@ -152,14 +152,19 @@ def setup_episode(
     start_position: Position,
     *,
     seed: int,
+    world_catalog: Any | None = None,
 ) -> tuple[MutableWorldProtocol, ActionRegistry]:
     """Create a world and action registry for an episode.
 
     Uses the world registry to create the world based on world_config.world_type.
+    If *world_catalog* is provided, uses catalog lookup instead of the global registry.
 
     Returns (world, registry) ready for run_episode().
     """
-    world = create_world_from_config(world_config, start_position, seed)
+    world = create_world_from_config(
+        world_config, start_position, seed,
+        world_catalog=world_catalog,
+    )
 
     registry = create_action_registry()
     for action_name, handler in system.action_handlers().items():

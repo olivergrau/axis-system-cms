@@ -51,11 +51,16 @@ def _clear_system_registry() -> None:
 
 
 def create_system(
-    system_type: str, system_config: dict[str, Any]
+    system_type: str, system_config: dict[str, Any],
+    system_catalog: Any | None = None,
 ) -> SystemInterface:
     """Convenience: look up factory and create a system instance.
 
-    Equivalent to get_system_factory(system_type)(system_config).
+    If *system_catalog* is provided, uses catalog lookup instead of
+    the global registry.
     """
-    factory = get_system_factory(system_type)
+    if system_catalog is not None:
+        factory = system_catalog.get(system_type)
+    else:
+        factory = get_system_factory(system_type)
     return factory(system_config)

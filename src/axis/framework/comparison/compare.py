@@ -36,6 +36,7 @@ def compare_episode_traces(
     candidate_run_metadata: RunMetadata | None = None,
     reference_episode_index: int | None = None,
     candidate_episode_index: int | None = None,
+    extension_catalog: object | None = None,
 ) -> PairedTraceComparisonResult:
     """Compare two episode traces and return a structured result."""
     validation, pairing_mode, episode_seed = validate_trace_pair(
@@ -91,6 +92,7 @@ def compare_episode_traces(
 
     sys_analysis = build_system_specific_analysis(
         reference_trace, candidate_trace, alignment,
+        extension_catalog=extension_catalog,
     )
 
     return PairedTraceComparisonResult(
@@ -110,6 +112,7 @@ def compare_runs(
     reference_run_id: str,
     candidate_experiment_id: str,
     candidate_run_id: str,
+    extension_catalog: object | None = None,
 ) -> RunComparisonResult:
     """Compare all matched episodes across two runs.
 
@@ -166,6 +169,7 @@ def compare_runs(
             candidate_run_metadata=cand_meta,
             reference_episode_index=ep_idx,
             candidate_episode_index=ep_idx,
+            extension_catalog=extension_catalog,
         )
         results.append(result)
 

@@ -31,6 +31,8 @@ def launch_visualization(
     start_step: int | None = None,
     start_phase: int | None = None,
     scale: float = 1.0,
+    world_vis_catalog: object | None = None,
+    system_vis_catalog: object | None = None,
 ) -> int:
     """Load episode, resolve adapters, and launch the visualization viewer.
 
@@ -62,8 +64,14 @@ def launch_visualization(
     world_config = getattr(episode, "world_config", {})
 
     # 4. Resolve adapters
-    world_adapter = resolve_world_adapter(world_type, world_config)
-    system_adapter = resolve_system_adapter(system_type)
+    world_adapter = resolve_world_adapter(
+        world_type, world_config,
+        world_vis_catalog=world_vis_catalog,
+    )
+    system_adapter = resolve_system_adapter(
+        system_type,
+        system_vis_catalog=system_vis_catalog,
+    )
 
     # 5. Build session controller
     controller = VisualizationSessionController(
