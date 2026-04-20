@@ -63,8 +63,7 @@ workspaces/system-a-consume-weight/
   README.md
   notes.md
   configs/
-    system_a-baseline.yaml          # baseline config (declared as primary)
-    system_a-sweep-starter.yaml     # OFAT starter (convenience, not primary)
+    system_a-baseline.yaml          # baseline config
   results/
   comparisons/
   measurements/

@@ -64,8 +64,9 @@ Multiple comparisons can be run without overwriting previous results.
 
 By default, the system auto-resolves which experiments to compare:
 
-- **Different system types**: matches experiments by `system_type` from the manifest.
-- **Same system type**: uses `primary_results` ordering from the manifest — the first entry maps to reference, the second to candidate.
+- **Different system types** (`system_comparison`): matches experiments by `system_type` from the manifest.
+- **Same system type** (`system_comparison`): uses `primary_results` ordering — the first entry maps to reference, the second to candidate.
+- **Single system** (`single_system`): filters `primary_results` to **point outputs only** (sweep outputs are excluded). The first point output becomes the reference, the most recent point output becomes the candidate. This means sweep outputs never interfere with comparison resolution.
 - **Ambiguous**: if multiple experiments match and ordering doesn't resolve, an error is raised listing the options.
 
 You can override auto-resolution with explicit experiment IDs:
@@ -255,7 +256,7 @@ axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --numbe
 axis workspaces scaffold
 ```
 
-Choose `investigation` / `single_system`. The scaffolder creates a baseline config and an OFAT starter config in `configs/`. Only the baseline is declared as a primary config — the OFAT starter is available as a convenience for parameter sweeps.
+Choose `investigation` / `single_system`. The scaffolder creates a baseline config in `configs/`.
 
 **2. Configure and run the baseline**
 
@@ -289,10 +290,10 @@ At least two point runs must exist before comparison is possible.
 
 **5. Run an OFAT sweep (optional)**
 
-`single_system` workspaces also support OFAT configs. Use the scaffolded sweep starter or write your own:
+`single_system` workspaces also support OFAT configs. Create a sweep config in `configs/`, add it to `primary_configs`, and run:
 
 ```bash
-# Edit configs/<system>-sweep-starter.yaml to set up parameter variations
+# Create and configure an OFAT config, then add it to primary_configs
 axis workspaces run workspaces/my-workspace
 ```
 

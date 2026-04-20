@@ -52,7 +52,7 @@ axis workspaces scaffold
 | Question | `How does energy_gain_factor affect system_a survival?` |
 | System under test | `system_a` |
 
-The scaffolder creates two config files:
+The scaffolder creates a baseline config:
 
 ```
 workspaces/system-a-energy-gain-sweep/
@@ -61,16 +61,14 @@ workspaces/system-a-energy-gain-sweep/
   notes.md
   configs/
     system_a-baseline.yaml          # single_run baseline (declared as primary)
-    system_a-sweep-starter.yaml     # OFAT starter (convenience file)
   results/
   comparisons/
   measurements/
   exports/
 ```
 
-Only `system_a-baseline.yaml` is listed in `primary_configs`. The
-sweep starter is a convenience file you can customize and declare when
-ready.
+Only `system_a-baseline.yaml` is listed in `primary_configs`. To run an
+OFAT sweep, you will create a sweep config manually (see Step 3).
 
 ---
 
@@ -88,10 +86,18 @@ against future point runs using `axis workspaces compare`.
 
 ---
 
-## Step 3: Configure the OFAT Sweep
+## Step 3: Create the OFAT Sweep Config
 
-Open `configs/system_a-sweep-starter.yaml`. The scaffolder created a
-starter config that looks like this:
+Create a new sweep config file in `configs/`. You can copy the baseline
+and modify it, or write one from scratch. The key additions are
+`experiment_type: ofat`, `parameter_path`, and `parameter_values`:
+
+```bash
+cp workspaces/system-a-energy-gain-sweep/configs/system_a-baseline.yaml \
+   workspaces/system-a-energy-gain-sweep/configs/system_a-sweep.yaml
+```
+
+Edit `configs/system_a-sweep.yaml` to make it an OFAT config:
 
 ```yaml
 system_type: system_a
@@ -143,8 +149,8 @@ The two key fields that make this an OFAT config:
   produces one run. The first run uses the baseline config as-is
   (acting as the "baseline" of the sweep).
 
-Customize these to match your investigation. For example, to sweep
-`system.policy.temperature` instead:
+Customize the parameter sweep to match your investigation. For example,
+to sweep `system.policy.temperature` instead:
 
 ```yaml
 parameter_path: system.policy.temperature
@@ -159,12 +165,12 @@ parameter_values:
 
 ## Step 4: Declare the Sweep Config and Run
 
-To run the sweep config, add it to `primary_configs` in `workspace.yaml`:
+Add the sweep config to `primary_configs` in `workspace.yaml`:
 
 ```yaml
 primary_configs:
   - configs/system_a-baseline.yaml
-  - configs/system_a-sweep-starter.yaml
+  - configs/system_a-sweep.yaml
 ```
 
 Then run the workspace:
@@ -318,7 +324,7 @@ annotated, so the workspace always knows what it contains.
 |---|---|
 | Scaffold | `axis workspaces scaffold` (choose single_system) |
 | Run baseline | `axis workspaces run <ws>` |
-| Configure sweep | Edit `configs/<system>-sweep-starter.yaml` |
+| Configure sweep | Create OFAT config in `configs/`, set `parameter_path` and `parameter_values` |
 | Declare sweep config | Add to `primary_configs` in `workspace.yaml` |
 | Run sweep | `axis workspaces run <ws>` |
 | Inspect sweep | `axis workspaces sweep-result <ws>` |

@@ -14,4 +14,8 @@ build/
 *.egg-info/
 Agents.md
 resume.txt
-workspaces/
+
+
+/workspaces/
+!src/axis/framework/workspaces/
+!src/axis/framework/workspaces/**
