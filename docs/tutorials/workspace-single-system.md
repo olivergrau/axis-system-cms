@@ -6,14 +6,12 @@
 > at least one registered system (e.g. `system_a`), familiarity with
 > the CLI basics (`axis experiments run`).
 >
-> **Important:** Workspace configs must use `experiment_type: single_run`.
-> OFAT and other multi-run experiment types are not supported in
-> workspace mode — use `axis experiments run` directly for those.
->
 > **What we do:** Create an investigation workspace to study how
 > changing `consume_weight` affects System A's survival behavior,
 > then run a baseline, modify the parameter, run again, compare,
-> and analyze the results.
+> and analyze the results. This tutorial uses `experiment_type: single_run`
+> configs for point-by-point comparison. For parameter sweeps using
+> OFAT configs, see [OFAT Parameter Sweep in a Workspace](workspace-ofat-sweep.md).
 >
 > **Related:** [Workspace Manual](../manuals/workspace-manual.md) |
 > [CLI Manual](../manuals/cli-manual.md) |
@@ -65,7 +63,8 @@ workspaces/system-a-consume-weight/
   README.md
   notes.md
   configs/
-    single-system_a.yaml      # baseline config
+    system_a-baseline.yaml          # baseline config (declared as primary)
+    system_a-sweep-starter.yaml     # OFAT starter (convenience, not primary)
   results/
   comparisons/
   measurements/
@@ -85,7 +84,7 @@ no results yet, and `Validation: VALID`.
 
 ## Step 2: Configure and Run the Baseline
 
-Open `configs/single-system_a.yaml`. The scaffolder created a
+Open `configs/system_a-baseline.yaml`. The scaffolder created a
 placeholder config. Review the key parameters:
 
 ```yaml
@@ -129,7 +128,7 @@ role, and timestamp annotated.
 ## Step 3: Modify the Parameter and Run Again
 
 Now change `consume_weight` to explore a different value. Edit
-`configs/single-system_a.yaml`:
+`configs/system_a-baseline.yaml`:
 
 ```yaml
 system:
@@ -283,5 +282,6 @@ The workspace keeps everything together: configs, results, comparisons,
 and notes. Every comparison embeds the full config snapshot, so results
 are always reproducible and traceable.
 
-**Next:** [Comparing Two Systems](workspace-system-comparison.md) |
+**Next:** [OFAT Parameter Sweep in a Workspace](workspace-ofat-sweep.md) |
+[Comparing Two Systems](workspace-system-comparison.md) |
 [Developing a System](workspace-system-development.md)

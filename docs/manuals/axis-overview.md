@@ -329,9 +329,12 @@ execution outputs, comparisons, and notes into a single coherent
 directory. They provide repeatable workflows for common research and
 development tasks.
 
-Workspaces support only ``experiment_type: single_run`` configs. OFAT
-sweeps are not supported in workspace mode -- use ``axis experiments run``
-directly for OFAT experiments.
+Workspaces support ``experiment_type: single_run`` configs across all
+workspace types. Additionally, ``investigation / single_system``
+workspaces support ``experiment_type: ofat`` for parameter sweeps.
+Sweep outputs are tracked in the manifest and can be inspected with
+``axis workspaces sweep-result``. Workspace comparison remains
+point-vs-point only — sweep outputs are excluded from auto-resolution.
 
 ### Experiment Output Abstraction
 
@@ -380,6 +383,7 @@ axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments
 axis workspaces comparison-result <path>       Display comparison results
+axis workspaces sweep-result <path>            Display sweep (OFAT) results
 axis workspaces check <path>                   Validate workspace structure
 axis workspaces set-candidate <path> <config>  Set candidate config (development)
 ```
@@ -389,8 +393,9 @@ axis workspaces set-candidate <path> <config>  Set candidate config (development
 The ``workspace.yaml`` manifest is the authoritative source of workspace
 identity. It tracks primary configs, results, comparisons, and
 measurements as workspace-relative paths. Each entry under
-``primary_results`` is annotated with the config file, role (baseline
-or candidate), and timestamp.
+``primary_results`` is annotated with output semantics (``output_form``:
+``point`` or ``sweep``), enabling the framework to route point outputs
+to comparison and sweep outputs to sweep-result inspection.
 
 The framework automatically updates the manifest after each run and
 comparison. Comparison files are sequentially numbered

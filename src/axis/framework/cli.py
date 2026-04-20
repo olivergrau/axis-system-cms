@@ -248,6 +248,16 @@ examples:
         help="Workspace-relative path to the candidate config file "
              "(e.g. configs/candidate-system_demo.yaml)")
 
+    ws_sr_p = ws_action.add_parser(
+        "sweep-result", parents=[common],
+        help="Inspect a sweep (OFAT) result in a workspace",
+    )
+    ws_sr_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_sr_p.add_argument(
+        "--experiment", default=None,
+        help="Explicit experiment ID (defaults to newest sweep)")
+
     return parser
 
 
@@ -1118,6 +1128,8 @@ def _print_artifact_section(label: str, entries: list) -> None:
         annotations = []
         if getattr(e, "config", None):
             annotations.append(e.config)
+        if getattr(e, "output_form", None):
+            annotations.append(e.output_form)
         if getattr(e, "role", None):
             annotations.append(f"role={e.role}")
         if getattr(e, "timestamp", None):
@@ -1125,6 +1137,46 @@ def _print_artifact_section(label: str, entries: list) -> None:
         if annotations:
             extra = f"  ({', '.join(annotations)})"
         print(f"    [{marker}] {e.path}{extra}")
+
+
+def _cmd_workspaces_sweep_result(
+    workspace_path: str, output: str,
+    experiment: str | None = None,
+) -> None:
+    """Inspect a sweep (OFAT) result in a workspace."""
+    from axis.framework.workspaces.sweep_result import resolve_sweep_result
+
+    result = resolve_sweep_result(Path(workspace_path), experiment=experiment)
+
+    if output == "json":
+        print(json.dumps(result, indent=2))
+        return
+
+    print(f"Sweep Result: {result['experiment_id']}")
+    print(f"  System: {result['system_type']}")
+    if result.get("parameter_path"):
+        print(f"  Parameter: {result['parameter_path']}")
+    if result.get("parameter_values"):
+        print(f"  Values: {result['parameter_values']}")
+    print(f"  Baseline run: {result['baseline_run_id']}")
+    print(f"  Runs: {result['num_runs']}")
+    print()
+    for rd in result.get("runs", []):
+        label = rd.get("variation", rd["run_id"])
+        parts = [f"  {rd['run_id']}  {label}"]
+        if "mean_steps" in rd:
+            parts.append(f"mean_steps={rd['mean_steps']:.1f}")
+        if "death_rate" in rd:
+            parts.append(f"death_rate={rd['death_rate']:.2f}")
+        if "mean_final_vitality" in rd:
+            parts.append(f"vitality={rd['mean_final_vitality']:.3f}")
+        if "delta_mean_steps" in rd:
+            parts.append(f"delta_steps={rd['delta_mean_steps']:+.1f}")
+        if "delta_death_rate" in rd:
+            parts.append(f"delta_death={rd['delta_death_rate']:+.4f}")
+        if "delta_mean_final_vitality" in rd:
+            parts.append(f"delta_vitality={rd['delta_mean_final_vitality']:+.3f}")
+        print("  ".join(parts))
 
 
 def _cmd_workspaces_set_candidate(
@@ -1447,6 +1499,11 @@ def main(argv: list[str] | None = None) -> int:
             elif args.action == "set-candidate":
                 _cmd_workspaces_set_candidate(
                     args.workspace_path, args.config_path, output)
+            elif args.action == "sweep-result":
+                _cmd_workspaces_sweep_result(
+                    args.workspace_path, output,
+                    experiment=getattr(args, "experiment", None),
+                )
             else:
                 parser.print_help()
                 return 1

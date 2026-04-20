@@ -2,7 +2,7 @@
 
 Experiment Workspaces provide structured containers for AXIS work contexts. A workspace bundles intent, configuration, execution outputs, comparisons, measurements, and notes into a single coherent directory.
 
-> **Supported experiment type:** Workspaces currently support only `experiment_type: single_run` configs. OFAT (one-factor-at-a-time) sweeps are not supported in workspace mode. If a workspace config uses `experiment_type: ofat`, both `axis workspaces check` and `axis workspaces run` will reject it with a clear error. Use `axis experiments run` directly for OFAT experiments.
+> **Supported experiment types:** Workspaces support `experiment_type: single_run` configs across all workspace types. Additionally, `investigation / single_system` workspaces also support `experiment_type: ofat` configs for one-factor-at-a-time parameter sweeps. OFAT is **not** supported in `system_comparison` or `system_development` workspaces — use `axis experiments run` directly for OFAT experiments in those contexts.
 
 ## Quick Start
 
@@ -44,7 +44,7 @@ axis workspaces run workspaces/my-workspace
 
 Resolves and executes all workspace configs. Results are written into the workspace's own `results/` directory and the manifest is updated with workspace-relative paths to the produced artifacts.
 
-All configs must use `experiment_type: single_run`. The command will fail before execution if any config uses a different experiment type (e.g. `ofat`).
+For `investigation / single_system` workspaces, configs may use either `experiment_type: single_run` or `experiment_type: ofat`. All other workspace types require `single_run`. The command will fail before execution if any config uses a disallowed experiment type.
 
 ### Run a workspace comparison
 
@@ -98,6 +98,22 @@ The output includes the comparison metrics (same format as `axis compare`) follo
 
 This command is only valid for `system_comparison`, `system_development`, and `single_system` workspaces.
 
+### Inspect sweep results
+
+```bash
+axis workspaces sweep-result workspaces/my-workspace
+```
+
+Displays sweep (OFAT) results from a `single_system` workspace. Shows each parameter variation with its metrics and delta values relative to the baseline run.
+
+Select a specific sweep experiment:
+
+```bash
+axis workspaces sweep-result workspaces/my-workspace --experiment <experiment-id>
+```
+
+If multiple sweep outputs exist, the most recent is shown by default. Use `--output json` for machine-readable output.
+
 ### Visualize from a workspace
 
 ```bash
@@ -111,6 +127,14 @@ axis visualize --workspace workspaces/my-workspace --experiment <experiment-id> 
 ```
 
 Visualization uses the workspace-local results — the experiment ID must exist under `<workspace>/results/`.
+
+For sweep (OFAT) experiments, you must specify the run explicitly with `--run`:
+
+```bash
+axis visualize --workspace workspaces/my-workspace --experiment <experiment-id> --run <run-id> --episode 1
+```
+
+The `--run` flag is required for sweep experiments because they contain multiple runs (one per parameter variation). Use `axis workspaces sweep-result` to see the available run IDs.
 
 ---
 
@@ -231,7 +255,7 @@ axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --numbe
 axis workspaces scaffold
 ```
 
-Choose `investigation` / `single_system`. The scaffolder creates one baseline config in `configs/`.
+Choose `investigation` / `single_system`. The scaffolder creates a baseline config and an OFAT starter config in `configs/`. Only the baseline is declared as a primary config — the OFAT starter is available as a convenience for parameter sweeps.
 
 **2. Configure and run the baseline**
 
@@ -259,19 +283,30 @@ Each run creates a new experiment with its own ID. Results accumulate — previo
 axis workspaces compare workspaces/my-workspace
 ```
 
-Auto-resolution uses manifest ordering: the first recorded experiment becomes the reference, the most recent becomes the candidate. This naturally compares the baseline against your latest run.
+Auto-resolution uses manifest ordering: the first recorded **point** experiment becomes the reference, the most recent **point** experiment becomes the candidate. Sweep outputs are excluded from auto-resolution — workspace comparison is always point-vs-point.
 
-For explicit control over which runs to compare:
+At least two point runs must exist before comparison is possible.
+
+**5. Run an OFAT sweep (optional)**
+
+`single_system` workspaces also support OFAT configs. Use the scaffolded sweep starter or write your own:
 
 ```bash
-axis workspaces compare workspaces/my-workspace \
-  --reference-experiment <baseline-eid> \
-  --candidate-experiment <modified-eid>
+# Edit configs/<system>-sweep-starter.yaml to set up parameter variations
+axis workspaces run workspaces/my-workspace
 ```
 
-At least two runs must exist before comparison is possible.
+Sweep outputs are recorded in `primary_results` with `output_form: sweep`. They do not participate in workspace comparison.
 
-**5. Analyze**
+**6. Inspect sweep results**
+
+```bash
+axis workspaces sweep-result workspaces/my-workspace
+```
+
+Displays the parameter variations, per-run metrics, and delta values relative to the baseline. Use `--experiment <eid>` to select a specific sweep when multiple exist.
+
+**7. Analyze**
 
 ```bash
 axis workspaces comparison-result workspaces/my-workspace
@@ -279,9 +314,17 @@ axis workspaces comparison-result workspaces/my-workspace
 
 Displays per-episode metrics, statistical summary, and the full configurations for both runs. Since configs are embedded as copies, you can see exactly which parameter changes produced the observed differences.
 
-**6. Iterate**
+**8. Iterate**
 
 Modify configs, run again, compare again. Each comparison is numbered and preserved with its own config snapshot.
+
+For explicit control over which point runs to compare:
+
+```bash
+axis workspaces compare workspaces/my-workspace \
+  --reference-experiment <baseline-eid> \
+  --candidate-experiment <modified-eid>
+```
 
 #### Example: investigating consume_weight on system_a
 
@@ -611,6 +654,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `axis workspaces set-candidate <path> <config>` | Set candidate config for a development workspace |
 | `axis workspaces compare <path>` | Run workspace comparison (sequential, self-contained) |
 | `axis workspaces comparison-result <path>` | Display stored comparison result(s) |
+| `axis workspaces sweep-result <path>` | Display sweep (OFAT) results (single_system only) |
 | `axis visualize --workspace <path> --episode N` | Visualize from workspace |
 
 ### Flags
@@ -621,6 +665,8 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--reference-experiment <id>` | `compare` | Explicit reference experiment ID |
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
 | `--number <N>` | `comparison-result` | Select a specific comparison by number |
+| `--experiment <id>` | `sweep-result` | Select a specific sweep experiment |
 | `--baseline-only` | `run` | Run only baseline config (system_development) |
 | `--candidate-only` | `run` | Run only candidate config (system_development) |
 | `--experiment <id>` | `visualize --workspace` | Select a specific experiment to visualize |
+| `--run <id>` | `visualize --workspace` | Select a specific run (required for sweep experiments) |
