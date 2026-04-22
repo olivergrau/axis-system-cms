@@ -107,7 +107,7 @@ system:
 | Field              | Type   | Required | Constraints        | Description |
 |--------------------|--------|----------|--------------------|-------------|
 | `selection_mode`   | string | yes      | `"sample"` or `"argmax"` | Action selection strategy. |
-| `temperature`      | float  | yes      | > 0                | Softmax temperature. Lower = peakier distribution. |
+| `temperature`      | float  | yes      | > 0                | Softmax temperature multiplier. Higher = peakier distribution. |
 | `stay_suppression` | float  | yes      | >= 0               | Weight penalty applied to the "stay" action in the hunger drive. |
 | `consume_weight`   | float  | yes      | > 0                | Weight bonus for "consume" when on a resource cell. |
 
@@ -399,9 +399,9 @@ Source: `src/axis/systems/construction_kit/memory/world_model.py`
 ### Policy
 
 - **`temperature`**: Interacts with the drive scores. Lower temperature
-  makes the softmax distribution peakier (more deterministic), which
-  amplifies the effect of curiosity-driven score differences. Higher
-  temperature adds exploration noise.
+  makes the softmax distribution flatter, reducing the effect of
+  curiosity-driven score differences. Higher temperature makes the
+  distribution peakier and more decisive.
   - Recommended: 1.0--2.0 for `selection_mode: "sample"`.
 
 ---

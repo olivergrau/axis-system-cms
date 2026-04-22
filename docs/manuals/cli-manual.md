@@ -365,7 +365,7 @@ system:
     buffer_capacity: 10
   policy:
     selection_mode: "sample"
-    temperature: 0.5        # lower temperature = more deterministic
+    temperature: 0.5        # lower temperature = flatter distribution
     stay_suppression: 0.3   # strongly penalize staying
     consume_weight: 3.0     # strongly prefer consuming
   transition:

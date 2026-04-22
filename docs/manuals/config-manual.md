@@ -295,8 +295,8 @@ system:
 
 - **`"sample"`** -- Computes a softmax probability distribution over all
   6 actions (up, down, left, right, stay, consume) using temperature, then
-  samples stochastically. Lower temperature makes the distribution
-  peakier (more deterministic); higher temperature makes it more uniform.
+  samples stochastically. Lower temperature flattens the distribution;
+  higher temperature makes it sharper (more deterministic).
 
 - **`"argmax"`** -- Always selects the action with the highest weight.
   Fully deterministic given the same state. The `temperature` field is

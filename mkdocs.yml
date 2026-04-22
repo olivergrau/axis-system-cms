@@ -39,6 +39,12 @@ nav:
       - "System A -- Hunger Drive": concepts/04-system-a.md
       - "System A+W -- Curiosity & World Model": concepts/05-system-aw.md
 
+  - Cheat Sheets:
+      - cheat-sheets/index.md
+      - "System A": cheat-sheets/system-a.md
+      - "System A+W": cheat-sheets/system-aw.md
+      - "System C": cheat-sheets/system-c.md
+
   - Tutorials:
       - tutorials/index.md
       - "Building a System": tutorials/building-a-system.md
@@ -47,6 +53,7 @@ nav:
       - "Workspace: Investigating a Single System": tutorials/workspace-single-system.md
       - "Workspace: Comparing Two Systems": tutorials/workspace-system-comparison.md
       - "Workspace: Developing a System": tutorials/workspace-system-development.md
+      - "Workspace: OFAT Parameter Sweeps": tutorials/workspace-ofat-sweep.md
 
   - Manuals:
       - manuals/index.md

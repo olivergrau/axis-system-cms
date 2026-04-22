@@ -1,9 +1,10 @@
 # Modulation
 
 The **modulation** package provides exponential action score modulation
-driven by dual traces. It multiplies raw action scores by a factor
+driven by dual traces. It rescales raw action scores by a factor
 derived from learned frustration and confidence, suppressing unreliable
-actions and reinforcing positively surprising ones.
+actions and reinforcing positively surprising ones while preserving the
+sign semantics of negative baseline penalties such as `stay`.
 
 **Import path:** `from axis.systems.construction_kit.modulation import ...`
 
@@ -71,8 +72,25 @@ modulated = modulate_action_scores(
 For each action $a$:
 
 $$
-\text{modulated}(a) = \text{base\_score}(a) \times \mu(s_t, a)
+\text{modulated}(a) =
+\begin{cases}
+\text{base\_score}(a) \times \mu(s_t, a), & \text{if } \text{base\_score}(a) \ge 0 \\
+\text{base\_score}(a) \div \mu(s_t, a), & \text{if } \text{base\_score}(a) < 0
+\end{cases}
 $$
+
+This rule matters for actions represented as negative penalties rather
+than positive preferences:
+
+- If $\mu > 1$, a positive score is reinforced, while a negative score
+  becomes less negative.
+- If $\mu < 1$, a positive score is suppressed, while a negative score
+  becomes more negative.
+
+In System C, this is especially relevant for `stay`, whose baseline
+score is a negative suppression term. Dividing negative scores by
+$\mu$ ensures that confidence makes `stay` less penalized and
+frustration makes it more strongly penalized.
 
 When trace state is empty (all zeros), every $\mu = 1.0$ and modulated
 scores equal raw scores. This guarantees that prediction is neutral until

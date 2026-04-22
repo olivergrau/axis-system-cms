@@ -406,8 +406,29 @@ history shows a thick green ring.
 
 ### 7.4 System A+W Overlays
 
-System A+W provides all 4 overlays from System A plus 2 additional
-overlay types:
+System A+W provides the same overlay set as System A, but interprets
+the action-score bar chart differently: the primary score bars show
+the final **combined** per-action scores after hunger-curiosity
+arbitration, not separate stacked raw drive bars. It also adds 2
+additional overlay types:
+
+#### Combined Action Scores
+
+A bar chart drawn inside the agent's cell showing the final
+post-arbitration action scores. Each bar represents the action
+strength actually used by the policy after hunger and curiosity have
+been weighted and combined. This makes the overlay answer the
+decision-level question first: which action is currently dominating?
+
+- Bar labels are `U`, `D`, `L`, `R`, `C`, `S`.
+- Bar length is proportional to the action's relative dominance within
+  the current score set.
+- Blue/green internal segments show the relative weighted influence of
+  hunger and curiosity within that action score. Faded segments
+  indicate a drive term opposing the action's net tendency.
+- Use the step analysis panel to inspect the separate Hunger Drive,
+  Curiosity Drive, and Drive Arbitration sections when you want to see
+  how the combined score was formed.
 
 #### Visit Count Map
 
@@ -574,7 +595,25 @@ appended below the selection info:
   Wrap: Both axes
 ```
 
-### 8.4 Prediction Summary Widget (System C)
+### 8.4 Policy Distribution Widget
+
+For systems that expose policy diagnostics, the detail panel includes a
+generic **Policy Distribution Widget** below the text info. This widget
+shows three related views of the same decision:
+
+- **Pre-softmax score shape** -- raw and masked action scores before
+  sampling
+- **Post-softmax probabilities** -- the actual distribution that the
+  sampler draws from
+- **Selected action highlight** -- the action that was sampled from the
+  displayed distribution
+
+This is especially useful when tuning `system.policy.temperature`,
+because it lets you compare how strongly the score differences are being
+expressed in the final probability distribution without mentally
+reconstructing the softmax from the numeric debug rows.
+
+### 8.5 Prediction Summary Widget (System C)
 
 When viewing a System C episode, the detail panel includes an
 additional graphical widget below the text info: the **Prediction
@@ -790,13 +829,15 @@ The world adapter separately contributes:
 1. Check the **"Overlays"** master checkbox to enable overlays.
 2. Enable **Action Preference** to see which actions the agent
    considered and which one it chose (gold arrow).
-3. Enable **Drive Contribution** to see how the drive system scored
+3. Enable **Drive Contribution** to see how the active system scored
    each action.
 4. Look at the **zoomed agent cell** in the detail panel on the right to
    read the bar chart and arrow lengths at a larger scale.
 5. For System A+W, enable **Novelty Field** to see which directions
    have high novelty, and **Visit Count Map** to see the agent's
-   exploration coverage.
+   exploration coverage. In System A+W, the Drive Contribution overlay
+   shows the final combined post-arbitration action scores rather than
+   separate hunger and curiosity bar stacks.
 
 ### 10.3 Reviewing the Observation Buffer
 

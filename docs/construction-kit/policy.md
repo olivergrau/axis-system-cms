@@ -25,7 +25,7 @@ from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
 ```python
 SoftmaxPolicy(
     *,
-    temperature: float,     # softmax temperature (lower = peakier)
+    temperature: float,     # softmax multiplier (higher = peakier)
     selection_mode: str,    # "sample" or "argmax"
 )
 ```
@@ -49,7 +49,7 @@ def select(
 3. **Softmax** -- numerically stable exponential normalization:
    $P(a_i) = \frac{e^{\beta \cdot (s_i - s_{max})}}{\sum_j e^{\beta \cdot (s_j - s_{max})}}$
 
-    where $\beta = 1 / \text{temperature}$ and the sum runs over
+    where $\beta = \text{temperature}$ and the sum runs over
     admissible actions only. Masked actions receive probability 0.
 
 4. **Selection** -- either sample from the distribution or take argmax.
@@ -78,10 +78,10 @@ blocked. Consume and stay are always available.
 
 ### Temperature Effects
 
-- **Low temperature** (e.g. 0.1) -- near-argmax behavior, highest-scored
-  action dominates.
-- **High temperature** (e.g. 5.0) -- near-uniform distribution, actions
-  selected almost randomly.
+- **Low temperature** (e.g. 0.1) -- flatter distribution, weaker score
+  differences, more exploratory sampling.
+- **High temperature** (e.g. 5.0) -- sharper distribution, highest-scored
+  action dominates more strongly.
 - **Temperature 1.0** -- standard softmax.
 
 ---

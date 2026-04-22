@@ -56,8 +56,12 @@ new_traces = update_traces(
 
 Update rules (EMA):
 
-$$f_{t+1}(s_t, a_t) = (1 - \eta_f) \cdot f_t(s_t, a_t) + \eta_f \cdot \varepsilon_t^-$$
-$$c_{t+1}(s_t, a_t) = (1 - \eta_c) \cdot c_t(s_t, a_t) + \eta_c \cdot \varepsilon_t^+$$
+\[
+f_{t+1}(s_t, a_t) = (1 - \eta_f) \cdot f_t(s_t, a_t) + \eta_f \cdot \varepsilon_t^-
+\]
+\[
+c_{t+1}(s_t, a_t) = (1 - \eta_c) \cdot c_t(s_t, a_t) + \eta_c \cdot \varepsilon_t^+
+\]
 
 The asymmetric learning rates ($\eta_f > \eta_c$ by default) implement
 **loss aversion**: disappointment accumulates faster than positive
