@@ -66,6 +66,19 @@ result with the same role.
 
 If the workspace has `status: closed`, the run command aborts before execution.
 
+By default, the duplicate-run guard treats world-only edits as
+insufficient to count as a new comparable run. If you intentionally
+want to rerun a workspace because only the world configuration changed,
+opt in explicitly:
+
+```bash
+axis workspaces run workspaces/my-workspace --allow-world-changes
+```
+
+This is especially useful for controlled world-manipulation studies
+where the systems remain unchanged but the environment is the variable
+under investigation.
+
 ### Run a workspace comparison
 
 ```bash
@@ -80,13 +93,24 @@ For `system_comparison` and `system_development` workspaces, resolves reference 
 
 Multiple comparisons can be run without overwriting previous results.
 
+If you intentionally want to compare runs where only the world
+configuration changed, opt in explicitly:
+
+```bash
+axis workspaces compare workspaces/my-workspace --allow-world-changes
+```
+
+This relaxes only the `world_config_mismatch` validation rule. World
+type, start position, seed pairing, and shared action-label validation
+remain strict.
+
 #### Comparison target resolution
 
 By default, the system auto-resolves which experiments to compare:
 
-- **Different system types** (`system_comparison`): matches experiments by `system_type` from the manifest.
-- **Same system type** (`system_comparison`): uses `primary_results` ordering — the first entry maps to reference, the second to candidate.
-- **Single system** (`single_system`): filters `primary_results` to **point outputs only** (sweep outputs are excluded). The first point output becomes the reference, the most recent point output becomes the candidate. This means sweep outputs never interfere with comparison resolution.
+- **Different system types** (`system_comparison`): uses the latest result for the reference system and the latest result for the candidate system.
+- **Same system type** (`system_comparison`): prefers the latest `reference` and latest `candidate` point outputs recorded in `primary_results`. If role metadata is unavailable, it falls back to the latest two point outputs.
+- **Single system** (`single_system`): filters `primary_results` to **point outputs only** (sweep outputs are excluded) and compares the latest two point outputs. This means sweep outputs never interfere with comparison resolution.
 - **Ambiguous**: if multiple experiments match and ordering doesn't resolve, an error is raised listing the options.
 
 You can override auto-resolution with explicit experiment IDs:
@@ -137,6 +161,8 @@ axis workspaces comparison-result workspaces/my-workspace
 
 Displays stored comparison results. If only one comparison exists, it is shown directly. If multiple comparisons exist, a listing is displayed with comparison numbers, system types, and timestamps.
 
+If multiple comparison results exist and `--number` is omitted, AXIS now shows the latest comparison by default.
+
 Select a specific comparison by number:
 
 ```bash
@@ -144,6 +170,16 @@ axis workspaces comparison-result workspaces/my-workspace --number 2
 ```
 
 The output includes the comparison metrics (same format as `axis compare`) followed by a summary of the reference and candidate configurations that were in effect when the comparison was run.
+
+If a stored comparison was created under the default strict rules, you
+can re-render it with relaxed world-config validation:
+
+```bash
+axis workspaces comparison-result workspaces/my-workspace --number 2 --allow-world-changes
+```
+
+In that case AXIS recomputes the comparison from the stored run
+identities for display, without overwriting the saved comparison file.
 
 This command is only valid for `system_comparison`, `system_development`, and `single_system` workspaces.
 
@@ -715,6 +751,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--reference-experiment <id>` | `compare` | Explicit reference experiment ID |
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
 | `--number <N>` | `comparison-result` | Select a specific comparison by number |
+| `--allow-world-changes` | `run`, `compare`, `comparison-result` | Allow world-only changes as the intentional variable |
 | `--experiment <id>` | `sweep-result` | Select a specific sweep experiment |
 | `--baseline-only` | `run` | Run only baseline config (system_development) |
 | `--candidate-only` | `run` | Run only candidate config (system_development) |

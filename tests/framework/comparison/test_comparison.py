@@ -123,6 +123,19 @@ class TestValidation:
         assert not val.is_valid_pair
         assert "world_config_mismatch" in val.errors
 
+    def test_world_config_mismatch_can_be_allowed(self):
+        ref = make_episode([make_step(0)], world_config={"size": 5})
+        cand = make_episode(
+            [make_step(0)], system_type="system_c", world_config={"size": 10})
+        val, _, _ = validate_trace_pair(
+            ref,
+            cand,
+            allow_world_changes=True,
+        )
+        assert val.is_valid_pair
+        assert "world_config_mismatch" not in val.errors
+        assert not val.world_config_match
+
     def test_start_position_mismatch(self):
         ref = make_episode([make_step(0, pos_before=(0, 0), pos_after=(0, 1))])
         cand = make_episode([
@@ -210,6 +223,23 @@ class TestAlignment:
         pairs = list(iter_aligned_steps(ref, cand))
         assert len(pairs) == 4
         assert pairs[0][0].timestep == 0
+
+
+class TestCompareEpisodeTraceOptions:
+    def test_compare_episode_traces_allows_world_changes(self):
+        ref = make_episode([make_step(0)], world_config={"size": 5})
+        cand = make_episode(
+            [make_step(0)],
+            system_type="system_c",
+            world_config={"size": 10},
+        )
+        result = compare_episode_traces(
+            ref,
+            cand,
+            allow_world_changes=True,
+        )
+        assert result.result_mode == ResultMode.COMPARISON_SUCCEEDED
+        assert not result.validation.world_config_match
 
 
 # ===================================================================

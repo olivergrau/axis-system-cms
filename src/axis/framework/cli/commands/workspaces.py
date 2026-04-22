@@ -319,11 +319,16 @@ def cmd_workspaces_set_candidate(
 def cmd_workspaces_run(
     workspace_path: str, output: str,
     run_filter: str | None = None,
+    allow_world_changes: bool = False,
     run_service: object = None,
 ) -> None:
     """Execute workspace configs."""
     ws = Path(workspace_path)
-    summaries = run_service.execute(ws, run_filter=run_filter)
+    summaries = run_service.execute(
+        ws,
+        run_filter=run_filter,
+        allow_world_changes=allow_world_changes,
+    )
 
     if output == "json":
         print(json.dumps([{
@@ -342,12 +347,17 @@ def cmd_workspaces_compare(
     output: str,
     reference_experiment: str | None = None,
     candidate_experiment: str | None = None,
+    allow_world_changes: bool = False,
     compare_service: object = None,
 ) -> None:
     """Run workspace comparison."""
     ws = Path(workspace_path)
     svc_result = compare_service.compare(
-        ws, reference_experiment, candidate_experiment)
+        ws,
+        reference_experiment,
+        candidate_experiment,
+        allow_world_changes=allow_world_changes,
+    )
 
     if output == "json":
         # Re-read the envelope for full JSON output.
@@ -363,6 +373,7 @@ def cmd_workspaces_comparison_result(
     workspace_path: str,
     output: str,
     comparison_number: int | None = None,
+    allow_world_changes: bool = False,
 ) -> None:
     """Display a stored workspace comparison result."""
     from axis.framework.comparison.types import RunComparisonResult
@@ -395,6 +406,7 @@ def cmd_workspaces_comparison_result(
         f for f in comparisons_dir.iterdir()
         if re.match(r"comparison-\d+\.json$", f.name)
     )
+    num_available = len(files)
     if not files:
         fail(
             "No comparison results found.",
@@ -409,54 +421,43 @@ def cmd_workspaces_comparison_result(
                 f"Available: {', '.join(f.name for f in files)}"
             )
         files = [target]
-    elif len(files) == 1:
-        pass  # show the only one
     else:
-        # List available comparisons
-        if output == "json":
-            listing = []
-            for f in files:
-                env = WorkspaceComparisonEnvelope.model_validate(
-                    json.loads(f.read_text()))
-                cr = env.comparison_result
-                listing.append({
-                    "number": env.comparison_number,
-                    "timestamp": env.timestamp,
-                    "reference_system": cr.get("reference_system_type", ""),
-                    "candidate_system": cr.get("candidate_system_type", ""),
-                    "file": f.name,
-                })
-            print(json.dumps(listing, indent=2))
-        else:
-            out = stdout_output()
-            out.title("Comparison Results")
-            out.kv("Available", len(files))
-            out.hint("Use --number to select one.")
-            for f in files:
-                env = WorkspaceComparisonEnvelope.model_validate(
-                    json.loads(f.read_text()))
-                cr = env.comparison_result
-                ref_sys = cr.get("reference_system_type", "?")
-                cand_sys = cr.get("candidate_system_type", "?")
-                out.list_row(
-                    f"#{env.comparison_number}:",
-                    f"{ref_sys} vs {cand_sys}",
-                    f"({env.timestamp})",
-                )
-        return
+        # Default to the latest comparison result if multiple exist.
+        files = [files[-1]]
 
     # Display the selected comparison
     env = WorkspaceComparisonEnvelope.model_validate(
         json.loads(files[0].read_text()))
 
+    effective_allow_world_changes = (
+        allow_world_changes or env.allow_world_changes
+    )
+    result = _resolve_comparison_result(
+        ws,
+        env,
+        allow_world_changes=effective_allow_world_changes,
+    )
+
     if output == "json":
-        print(json.dumps(env.model_dump(mode="json"), indent=2))
+        payload = env.model_dump(mode="json")
+        payload["allow_world_changes"] = effective_allow_world_changes
+        payload["comparison_result"] = result.model_dump(mode="json")
+        print(json.dumps(payload, indent=2))
     else:
         out = stdout_output()
         out.title(f"Comparison #{env.comparison_number}")
         out.kv("Timestamp", env.timestamp)
+        if comparison_number is None and num_available > 1:
+            out.hint("Showing latest comparison by default. Use --number to select another.")
+        out.kv(
+            "World changes",
+            "ALLOWED" if effective_allow_world_changes else "STRICT",
+        )
+        if allow_world_changes and not env.allow_world_changes:
+            out.hint(
+                "Result was recomputed for display with world-config differences allowed."
+            )
         # Print the comparison metrics using the existing formatter.
-        result = RunComparisonResult.model_validate(env.comparison_result)
         print_run_comparison_text(result)
         out.section("Configurations")
         out.hint("Differing config values are highlighted when terminal styling is enabled.")
@@ -502,6 +503,47 @@ def _print_comparison_targets(ws: Path, comparison_path: str, *, out=None) -> No
         pass
 
 
+def _resolve_comparison_result(
+    workspace_path: Path,
+    envelope,
+    *,
+    allow_world_changes: bool,
+):
+    """Return a stored or recomputed comparison result for display."""
+    from axis.framework.comparison import compare_runs
+    from axis.framework.comparison.types import RunComparisonResult
+    from axis.framework.persistence import ExperimentRepository
+
+    if allow_world_changes == envelope.allow_world_changes:
+        return RunComparisonResult.model_validate(envelope.comparison_result)
+
+    cr = envelope.comparison_result
+    reference_experiment_id = cr.get("reference_experiment_id")
+    candidate_experiment_id = cr.get("candidate_experiment_id")
+    reference_run_id = cr.get("reference_run_id")
+    candidate_run_id = cr.get("candidate_run_id")
+
+    if not all([
+        reference_experiment_id,
+        candidate_experiment_id,
+        reference_run_id,
+        candidate_run_id,
+    ]):
+        raise ValueError(
+            "Stored comparison is missing run identity and cannot be recomputed."
+        )
+
+    repo = ExperimentRepository(workspace_path / "results")
+    return compare_runs(
+        repo,
+        reference_experiment_id,
+        reference_run_id,
+        candidate_experiment_id,
+        candidate_run_id,
+        allow_world_changes=allow_world_changes,
+    )
+
+
 def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
     """Print a primary artifact section with existence markers."""
     out = out or stdout_output()
@@ -527,6 +569,26 @@ def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
         if annotations:
             extra = f"  ({', '.join(annotations)})"
         out.list_row(f"[{marker}]", f"{e.path}{extra}", indent=4)
+        if getattr(e, "reference_experiment_id", None) or getattr(e, "candidate_experiment_id", None):
+            compared = " vs ".join(
+                part for part in [
+                    getattr(e, "reference_experiment_id", None),
+                    getattr(e, "candidate_experiment_id", None),
+                ] if part
+            )
+            if compared:
+                out.kv("Compared experiments", compared, indent=6)
+        if getattr(e, "comparison_config_changes", None):
+            out.kv(
+                "Config differences between compared experiments",
+                "",
+                indent=6,
+            )
+            _print_changed_config_summary(
+                e.comparison_config_changes,
+                indent=8,
+                out=out,
+            )
         if getattr(e, "config_changes", None):
             out.kv(
                 "Config changes vs previous comparable run",

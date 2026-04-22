@@ -105,6 +105,8 @@ def dispatch(
                 cmd_workspaces_run(
                     args.workspace_path, output,
                     run_filter=run_filter,
+                    allow_world_changes=getattr(
+                        args, "allow_world_changes", False),
                     run_service=ctx.run_service)
             elif args.action == "compare":
                 cmd_workspaces_compare(
@@ -113,11 +115,15 @@ def dispatch(
                         args, "reference_experiment", None),
                     candidate_experiment=getattr(
                         args, "candidate_experiment", None),
+                    allow_world_changes=getattr(
+                        args, "allow_world_changes", False),
                     compare_service=ctx.compare_service)
             elif args.action == "comparison-result":
                 cmd_workspaces_comparison_result(
                     args.workspace_path, output,
                     comparison_number=getattr(args, "number", None),
+                    allow_world_changes=getattr(
+                        args, "allow_world_changes", False),
                 )
             elif args.action == "set-candidate":
                 cmd_workspaces_set_candidate(

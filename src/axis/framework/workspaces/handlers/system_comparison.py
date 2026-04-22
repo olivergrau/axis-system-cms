@@ -66,6 +66,7 @@ class SystemComparisonHandler(WorkspaceHandler):
         from axis.framework.workspaces.compare_resolution import (
             WorkspaceCompareTarget,
             WorkspaceComparisonPlan,
+            _resolve_latest_by_role,
             _resolve_by_manifest_order,
             _resolve_by_system,
         )
@@ -79,15 +80,27 @@ class SystemComparisonHandler(WorkspaceHandler):
                 "both reference_system and candidate_system."
             )
 
-        # Same system → resolve by manifest order.
+        # Same system → resolve latest reference/candidate outputs by manifest role,
+        # falling back to the latest two point outputs overall.
         if ref_system == cand_system:
             return _resolve_by_manifest_order(repo, manifest, experiments)
 
-        # Different systems → resolve each independently.
-        ref_eid, ref_rid = _resolve_by_system(
-            repo, experiments, ref_system, "reference")
-        cand_eid, cand_rid = _resolve_by_system(
-            repo, experiments, cand_system, "candidate")
+        # Different systems → prefer latest role-tagged workspace outputs,
+        # then fall back to system-type lookup if needed.
+        ref_resolved = _resolve_latest_by_role(
+            repo, manifest, experiments, "reference")
+        cand_resolved = _resolve_latest_by_role(
+            repo, manifest, experiments, "candidate")
+
+        if ref_resolved is None:
+            ref_resolved = _resolve_by_system(
+                repo, experiments, ref_system, "reference")
+        if cand_resolved is None:
+            cand_resolved = _resolve_by_system(
+                repo, experiments, cand_system, "candidate")
+
+        ref_eid, ref_rid = ref_resolved
+        cand_eid, cand_rid = cand_resolved
 
         return WorkspaceComparisonPlan(
             reference=WorkspaceCompareTarget(

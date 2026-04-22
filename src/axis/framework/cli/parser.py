@@ -121,6 +121,16 @@ examples:
     cmp_parser.add_argument(
         "--candidate-episode", type=int, default=None,
         help="Candidate episode index (omit for full-run comparison)")
+    cmp_parser.add_argument(
+        "--allow-world-changes",
+        action="store_true",
+        default=False,
+        help=(
+            "Allow comparisons when only the world configuration differs. "
+            "World type, start position, seed, and action-space validation "
+            "still remain strict."
+        ),
+    )
 
     # -- visualize -----------------------------------------------------------
     viz_parser = entity_sub.add_parser(
@@ -192,6 +202,15 @@ examples:
     ws_run_p.add_argument(
         "--candidate-only", action="store_true", default=False,
         help="Run only the candidate config (system_development)")
+    ws_run_p.add_argument(
+        "--allow-world-changes",
+        action="store_true",
+        default=False,
+        help=(
+            "Treat world-only config changes as intentional and allow the run. "
+            "Without this flag, world-only edits do not bypass duplicate-run protection."
+        ),
+    )
 
     ws_cmp_p = ws_action.add_parser(
         "compare", parents=[common], help="Run workspace comparison",
@@ -204,6 +223,15 @@ examples:
     ws_cmp_p.add_argument(
         "--candidate-experiment", default=None,
         help="Experiment ID for candidate side (must exist in workspace results)")
+    ws_cmp_p.add_argument(
+        "--allow-world-changes",
+        action="store_true",
+        default=False,
+        help=(
+            "Allow comparisons when only the world configuration differs. "
+            "Useful for comparing world-state manipulations explicitly."
+        ),
+    )
 
     ws_cr_p = ws_action.add_parser(
         "comparison-result", parents=[common],
@@ -215,6 +243,15 @@ examples:
         "--number", type=int, default=None,
         help="Comparison number to display (e.g. 1, 2). "
              "If omitted, lists all or shows the only one.")
+    ws_cr_p.add_argument(
+        "--allow-world-changes",
+        action="store_true",
+        default=False,
+        help=(
+            "Recompute the stored comparison for display while allowing "
+            "world-configuration differences."
+        ),
+    )
 
     ws_sc_p = ws_action.add_parser(
         "set-candidate", parents=[common],

@@ -33,5 +33,8 @@ class WorkspaceComparisonEnvelope(BaseModel):
     #: Full copy of the candidate experiment configuration at comparison time.
     candidate_config: dict
 
+    #: Whether world-config mismatches were allowed for this comparison.
+    allow_world_changes: bool = False
+
     #: The framework-level comparison result (RunComparisonResult payload).
     comparison_result: dict

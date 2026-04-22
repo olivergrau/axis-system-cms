@@ -30,6 +30,7 @@ def compare_episode_traces(
     reference_trace: BaseEpisodeTrace,
     candidate_trace: BaseEpisodeTrace,
     *,
+    allow_world_changes: bool = False,
     reference_run_config: RunConfig | None = None,
     candidate_run_config: RunConfig | None = None,
     reference_run_metadata: RunMetadata | None = None,
@@ -42,6 +43,7 @@ def compare_episode_traces(
     validation, pairing_mode, episode_seed = validate_trace_pair(
         reference_trace,
         candidate_trace,
+        allow_world_changes=allow_world_changes,
         reference_run_config=reference_run_config,
         candidate_run_config=candidate_run_config,
         reference_run_metadata=reference_run_metadata,
@@ -112,6 +114,8 @@ def compare_runs(
     reference_run_id: str,
     candidate_experiment_id: str,
     candidate_run_id: str,
+    *,
+    allow_world_changes: bool = False,
     extension_catalog: object | None = None,
 ) -> RunComparisonResult:
     """Compare all matched episodes across two runs.
@@ -163,6 +167,7 @@ def compare_runs(
         result = compare_episode_traces(
             ref_trace,
             cand_trace,
+            allow_world_changes=allow_world_changes,
             reference_run_config=ref_config,
             candidate_run_config=cand_config,
             reference_run_metadata=ref_meta,

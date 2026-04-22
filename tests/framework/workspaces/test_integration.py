@@ -71,6 +71,44 @@ def _scaffold_comparison(tmp_path: Path) -> Path:
     return ws
 
 
+def _set_candidate_world_override(
+    workspace_path: Path,
+    *,
+    grid_width: int | None = None,
+    resource_density: float | None = None,
+) -> None:
+    """Apply a small world-config override to the candidate config."""
+    candidate_config_path = workspace_path / "configs" / "candidate-system_a.yaml"
+    data = yaml.safe_load(candidate_config_path.read_text())
+    world = data.setdefault("world", {})
+    if grid_width is not None:
+        world["grid_width"] = grid_width
+    if resource_density is not None:
+        world["resource_density"] = resource_density
+    candidate_config_path.write_text(
+        yaml.dump(data, default_flow_style=False, sort_keys=False)
+    )
+
+
+def _set_reference_world_override(
+    workspace_path: Path,
+    *,
+    grid_width: int | None = None,
+    resource_density: float | None = None,
+) -> None:
+    """Apply a small world-config override to the reference config."""
+    reference_config_path = workspace_path / "configs" / "reference-system_a.yaml"
+    data = yaml.safe_load(reference_config_path.read_text())
+    world = data.setdefault("world", {})
+    if grid_width is not None:
+        world["grid_width"] = grid_width
+    if resource_density is not None:
+        world["resource_density"] = resource_density
+    reference_config_path.write_text(
+        yaml.dump(data, default_flow_style=False, sort_keys=False)
+    )
+
+
 def _scaffold_development(tmp_path: Path) -> Path:
     ws = tmp_path / "integration-dev"
     manifest = WorkspaceManifest.model_validate({
@@ -436,6 +474,28 @@ class TestCLIIntegration:
         err = capsys.readouterr().err
         assert "no config changes detected" in err
 
+    def test_run_allows_world_only_change_with_allow_world_changes(
+        self, tmp_path, capsys,
+    ):
+        ws = _scaffold_comparison(tmp_path)
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 0
+        capsys.readouterr()
+
+        _set_reference_world_override(ws, grid_width=7)
+        _set_candidate_world_override(ws, grid_width=7)
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 1
+        err = capsys.readouterr().err
+        assert "no config changes detected" in err
+
+        code = cli_main([
+            "workspaces", "run", str(ws), "--allow-world-changes",
+        ])
+        assert code == 0
+
 
     def test_show_after_run_displays_real_artifacts(self, tmp_path, capsys):
         """After workspace run, show must display actual artifact paths."""
@@ -555,6 +615,73 @@ class TestCLIIntegration:
         assert data["primary_results"][1]["config_changes"] == {
             "execution": {"max_steps": 110},
             "system": {"policy": {"temperature": 2.5}},
+        }
+
+    def test_show_displays_compared_experiments_and_config_differences(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        comparisons_dir = ws / "comparisons"
+        comparisons_dir.mkdir(exist_ok=True)
+
+        comparison_data = {
+            "comparison_number": 1,
+            "timestamp": "2026-04-22T12:00:00",
+            "reference_config": {
+                "system_type": "system_a",
+                "execution": {"max_steps": 100},
+                "system": {"policy": {"temperature": 1.0}},
+            },
+            "candidate_config": {
+                "system_type": "system_a",
+                "execution": {"max_steps": 150},
+                "system": {"policy": {"temperature": 2.0}},
+            },
+            "comparison_result": {
+                "reference_experiment_id": "exp-ref",
+                "candidate_experiment_id": "exp-cand",
+            },
+        }
+        (comparisons_dir / "comparison-001.json").write_text(json.dumps(comparison_data))
+        sync_manifest_after_compare(ws, "comparisons/comparison-001.json")
+
+        code = cli_main(["workspaces", "show", str(ws)])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Compared experiments: exp-ref vs exp-cand" in out
+        assert "Config differences between compared experiments:" in out
+        assert "execution.max_steps: 150" in out
+        assert "system.policy.temperature: 2.0" in out
+
+    def test_show_json_includes_comparison_details(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        comparisons_dir = ws / "comparisons"
+        comparisons_dir.mkdir(exist_ok=True)
+
+        comparison_data = {
+            "comparison_number": 1,
+            "timestamp": "2026-04-22T12:00:00",
+            "reference_config": {
+                "system_type": "system_a",
+                "execution": {"max_steps": 100},
+            },
+            "candidate_config": {
+                "system_type": "system_a",
+                "execution": {"max_steps": 120},
+            },
+            "comparison_result": {
+                "reference_experiment_id": "exp-ref",
+                "candidate_experiment_id": "exp-cand",
+            },
+        }
+        (comparisons_dir / "comparison-001.json").write_text(json.dumps(comparison_data))
+        sync_manifest_after_compare(ws, "comparisons/comparison-001.json")
+
+        code = cli_main(["workspaces", "show", str(ws), "--output", "json"])
+        assert code == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["primary_comparisons"][0]["reference_experiment_id"] == "exp-ref"
+        assert data["primary_comparisons"][0]["candidate_experiment_id"] == "exp-cand"
+        assert data["primary_comparisons"][0]["comparison_config_changes"] == {
+            "execution": {"max_steps": 120},
         }
 
     def test_config_changes_use_previous_result_with_same_role(self, tmp_path):
@@ -829,7 +956,9 @@ class TestComparisonResultCLI:
         out = capsys.readouterr().out
         assert "Comparison #2" in out
 
-    def test_comparison_result_lists_multiple(self, tmp_path, capsys):
+    def test_comparison_result_defaults_to_latest_when_multiple(
+        self, tmp_path, capsys,
+    ):
         from axis.framework.workspaces.compare import compare_workspace
         from axis.framework.workspaces.sync import sync_manifest_after_compare
 
@@ -840,13 +969,75 @@ class TestComparisonResultCLI:
         code = cli_main(["workspaces", "comparison-result", str(ws)])
         assert code == 0
         out = capsys.readouterr().out
-        assert "#1:" in out
-        assert "#2:" in out
+        assert "Comparison #2" in out
+        assert "Showing latest comparison by default." in out
 
     def test_comparison_result_error_no_comparisons(self, tmp_path, capsys):
         ws = _scaffold_comparison(tmp_path)
         code = cli_main(["workspaces", "comparison-result", str(ws)])
         assert code == 1
+
+    def test_comparison_result_can_recompute_with_allow_world_changes(
+        self, tmp_path, capsys,
+    ):
+        from axis.framework.workspaces.execute import execute_workspace
+        from axis.framework.workspaces.compare import compare_workspace
+        from axis.framework.workspaces.sync import (
+            sync_manifest_after_run,
+            sync_manifest_after_compare,
+        )
+
+        ws = _scaffold_comparison(tmp_path)
+        _set_candidate_world_override(ws, grid_width=7)
+
+        exec_results = execute_workspace(ws)
+        for er in exec_results:
+            run_ids = [rr.run_id for rr in er.experiment_result.run_results]
+            sync_manifest_after_run(
+                ws, er.experiment_result.experiment_id, run_ids, er.role)
+
+        _, ws_path = compare_workspace(ws)
+        sync_manifest_after_compare(ws, ws_path)
+
+        code = cli_main([
+            "workspaces", "comparison-result", str(ws), "--allow-world-changes",
+        ])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "World changes: ALLOWED" in out
+        assert "No valid episode pairs to summarize" not in out
+
+
+class TestWorkspaceCompareAllowWorldChanges:
+    def test_compare_stores_allow_world_changes_in_envelope(self, tmp_path):
+        from axis.framework.workspaces.execute import execute_workspace
+        from axis.framework.workspaces.compare import compare_workspace
+        from axis.framework.workspaces.sync import (
+            sync_manifest_after_run,
+            sync_manifest_after_compare,
+        )
+        from axis.framework.workspaces.comparison_envelope import (
+            WorkspaceComparisonEnvelope,
+        )
+
+        ws = _scaffold_comparison(tmp_path)
+        _set_candidate_world_override(ws, resource_density=0.2)
+
+        exec_results = execute_workspace(ws)
+        for er in exec_results:
+            run_ids = [rr.run_id for rr in er.experiment_result.run_results]
+            sync_manifest_after_run(
+                ws, er.experiment_result.experiment_id, run_ids, er.role)
+
+        _, ws_path = compare_workspace(ws, allow_world_changes=True)
+        sync_manifest_after_compare(ws, ws_path)
+
+        loaded = WorkspaceComparisonEnvelope.model_validate(
+            json.loads((ws / ws_path).read_text())
+        )
+        assert loaded.allow_world_changes is True
+        summary = loaded.comparison_result["summary"]
+        assert summary["num_valid_pairs"] >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -1320,6 +1511,156 @@ class TestStrictCompareResolution:
                 reference_experiment="exp-a",
                 candidate_experiment="exp-b",
             )
+
+    def test_compare_defaults_to_latest_reference_and_candidate_results(
+        self, tmp_path,
+    ):
+        import yaml
+
+        from axis.framework.persistence import (
+            ExperimentMetadata, ExperimentRepository, ExperimentStatus,
+            RunMetadata, RunStatus,
+        )
+        from axis.framework.workspaces.compare_resolution import (
+            resolve_comparison_targets,
+        )
+
+        ws = _scaffold_comparison(tmp_path)
+        repo = ExperimentRepository(ws / "results")
+
+        def _add_point_experiment(eid: str, system_type: str) -> None:
+            repo.create_experiment_dir(eid)
+            repo.save_experiment_metadata(eid, ExperimentMetadata(
+                experiment_id=eid,
+                created_at="2025-01-01T00:00:00",
+                experiment_type="single_run",
+                system_type=system_type,
+                output_form="point",
+                primary_run_id="run-0000",
+            ))
+            repo.save_experiment_status(eid, ExperimentStatus.COMPLETED)
+            repo.create_run_dir(eid, "run-0000")
+            repo.save_run_metadata(eid, "run-0000", RunMetadata(
+                run_id="run-0000",
+                experiment_id=eid,
+                created_at="2025-01-01T00:00:00",
+                base_seed=42,
+            ))
+            repo.save_run_status(eid, "run-0000", RunStatus.COMPLETED)
+
+        _add_point_experiment("ref-old", "system_a")
+        _add_point_experiment("cand-old", "system_a")
+        _add_point_experiment("ref-new", "system_a")
+        _add_point_experiment("cand-new", "system_a")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["primary_results"] = [
+            {
+                "path": "results/ref-old",
+                "role": "reference",
+                "output_form": "point",
+                "config": "results/ref-old/experiment_config.json",
+            },
+            {
+                "path": "results/cand-old",
+                "role": "candidate",
+                "output_form": "point",
+                "config": "results/cand-old/experiment_config.json",
+            },
+            {
+                "path": "results/ref-new",
+                "role": "reference",
+                "output_form": "point",
+                "config": "results/ref-new/experiment_config.json",
+            },
+            {
+                "path": "results/cand-new",
+                "role": "candidate",
+                "output_form": "point",
+                "config": "results/cand-new/experiment_config.json",
+            },
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        plan = resolve_comparison_targets(ws)
+        assert plan.reference.experiment_id == "ref-new"
+        assert plan.candidate.experiment_id == "cand-new"
+
+    def test_compare_for_different_systems_prefers_latest_role_entries(
+        self, tmp_path,
+    ):
+        import yaml
+
+        from axis.framework.persistence import (
+            ExperimentMetadata, ExperimentRepository, ExperimentStatus,
+            RunMetadata, RunStatus,
+        )
+        from axis.framework.workspaces.compare_resolution import (
+            resolve_comparison_targets,
+        )
+
+        ws = _scaffold_comparison(tmp_path)
+        repo = ExperimentRepository(ws / "results")
+
+        def _add_point_experiment(eid: str, system_type: str) -> None:
+            repo.create_experiment_dir(eid)
+            repo.save_experiment_metadata(eid, ExperimentMetadata(
+                experiment_id=eid,
+                created_at="2025-01-01T00:00:00",
+                experiment_type="single_run",
+                system_type=system_type,
+                output_form="point",
+                primary_run_id="run-0000",
+            ))
+            repo.save_experiment_status(eid, ExperimentStatus.COMPLETED)
+            repo.create_run_dir(eid, "run-0000")
+            repo.save_run_metadata(eid, "run-0000", RunMetadata(
+                run_id="run-0000",
+                experiment_id=eid,
+                created_at="2025-01-01T00:00:00",
+                base_seed=42,
+            ))
+            repo.save_run_status(eid, "run-0000", RunStatus.COMPLETED)
+
+        _add_point_experiment("ref-old", "system_a")
+        _add_point_experiment("cand-old", "system_aw")
+        _add_point_experiment("ref-new", "system_a")
+        _add_point_experiment("cand-new", "system_aw")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["reference_system"] = "system_a"
+        data["candidate_system"] = "system_aw"
+        data["primary_results"] = [
+            {
+                "path": "results/ref-old",
+                "role": "reference",
+                "output_form": "point",
+                "config": "results/ref-old/experiment_config.json",
+            },
+            {
+                "path": "results/cand-old",
+                "role": "candidate",
+                "output_form": "point",
+                "config": "results/cand-old/experiment_config.json",
+            },
+            {
+                "path": "results/ref-new",
+                "role": "reference",
+                "output_form": "point",
+                "config": "results/ref-new/experiment_config.json",
+            },
+            {
+                "path": "results/cand-new",
+                "role": "candidate",
+                "output_form": "point",
+                "config": "results/cand-new/experiment_config.json",
+            },
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        plan = resolve_comparison_targets(ws)
+        assert plan.reference.experiment_id == "ref-new"
+        assert plan.candidate.experiment_id == "cand-new"
 
 
 class TestStrictManifestTyping:

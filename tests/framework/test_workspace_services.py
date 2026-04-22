@@ -234,6 +234,173 @@ class TestRunServiceInjection:
 
         execute_fn.assert_not_called()
 
+    def test_execute_blocks_world_only_change_without_allow_flag(
+        self, tmp_path: Path,
+    ) -> None:
+        import yaml
+
+        from axis.framework.cli import _load_config_file
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "configs").mkdir()
+        (ws / "results" / "exp-001").mkdir(parents=True)
+
+        config_data = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 100},
+            "world": {"world_type": "grid_2d", "grid_width": 7, "grid_height": 5},
+            "system": {
+                "agent": {
+                    "initial_energy": 50,
+                    "max_energy": 100,
+                    "buffer_capacity": 5,
+                },
+                "policy": {
+                    "selection_mode": "sample",
+                    "temperature": 1.0,
+                    "stay_suppression": 0.1,
+                    "consume_weight": 2.5,
+                },
+                "transition": {
+                    "move_cost": 0.5,
+                    "consume_cost": 0.5,
+                    "stay_cost": 0.3,
+                    "max_consume": 1.0,
+                    "energy_gain_factor": 15.0,
+                },
+            },
+            "num_episodes_per_run": 5,
+        }
+        (ws / "configs" / "baseline.yaml").write_text(yaml.dump(config_data))
+        normalized = _load_config_file(
+            ws / "configs" / "baseline.yaml"
+        ).model_dump(mode="json")
+        normalized["world"]["grid_width"] = 5
+        (ws / "results" / "exp-001" / "experiment_config.json").write_text(
+            json.dumps(normalized)
+        )
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_a",
+            "primary_configs": ["configs/baseline.yaml"],
+            "primary_results": [
+                {
+                    "path": "results/exp-001",
+                    "role": "system_under_test",
+                    "config": "results/exp-001/experiment_config.json",
+                },
+            ],
+        }))
+
+        execute_fn = MagicMock(return_value=[])
+        svc = _make_run_service(execute_fn=execute_fn)
+
+        fake_target = MagicMock(
+            config_path="configs/baseline.yaml",
+            role="system_under_test",
+        )
+        with patch(
+            "axis.framework.workspaces.resolution.resolve_run_targets",
+            return_value=MagicMock(targets=[fake_target]),
+        ):
+            with pytest.raises(ValueError, match="no config changes detected"):
+                svc.execute(ws)
+
+        execute_fn.assert_not_called()
+
+    def test_execute_allows_world_only_change_with_allow_flag(
+        self, tmp_path: Path,
+    ) -> None:
+        import yaml
+
+        from axis.framework.cli import _load_config_file
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "configs").mkdir()
+        (ws / "results" / "exp-001").mkdir(parents=True)
+
+        config_data = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 100},
+            "world": {"world_type": "grid_2d", "grid_width": 7, "grid_height": 5},
+            "system": {
+                "agent": {
+                    "initial_energy": 50,
+                    "max_energy": 100,
+                    "buffer_capacity": 5,
+                },
+                "policy": {
+                    "selection_mode": "sample",
+                    "temperature": 1.0,
+                    "stay_suppression": 0.1,
+                    "consume_weight": 2.5,
+                },
+                "transition": {
+                    "move_cost": 0.5,
+                    "consume_cost": 0.5,
+                    "stay_cost": 0.3,
+                    "max_consume": 1.0,
+                    "energy_gain_factor": 15.0,
+                },
+            },
+            "num_episodes_per_run": 5,
+        }
+        (ws / "configs" / "baseline.yaml").write_text(yaml.dump(config_data))
+        normalized = _load_config_file(
+            ws / "configs" / "baseline.yaml"
+        ).model_dump(mode="json")
+        normalized["world"]["grid_width"] = 5
+        (ws / "results" / "exp-001" / "experiment_config.json").write_text(
+            json.dumps(normalized)
+        )
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_a",
+            "primary_configs": ["configs/baseline.yaml"],
+            "primary_results": [
+                {
+                    "path": "results/exp-001",
+                    "role": "system_under_test",
+                    "config": "results/exp-001/experiment_config.json",
+                },
+            ],
+        }))
+
+        execute_fn = MagicMock(return_value=[])
+        svc = _make_run_service(execute_fn=execute_fn)
+
+        fake_target = MagicMock(
+            config_path="configs/baseline.yaml",
+            role="system_under_test",
+        )
+        with patch(
+            "axis.framework.workspaces.resolution.resolve_run_targets",
+            return_value=MagicMock(targets=[fake_target]),
+        ):
+            svc.execute(ws, allow_world_changes=True)
+
+        execute_fn.assert_called_once()
+
     def test_execute_rejects_closed_workspace(self, tmp_path: Path) -> None:
         import yaml
 

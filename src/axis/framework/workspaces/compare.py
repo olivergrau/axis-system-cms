@@ -46,6 +46,8 @@ def compare_workspace(
     workspace_path: Path,
     reference_experiment: str | None = None,
     candidate_experiment: str | None = None,
+    *,
+    allow_world_changes: bool = False,
 ) -> tuple[WorkspaceComparisonEnvelope, str]:
     """Run a comparison for a workspace and save results.
 
@@ -82,6 +84,7 @@ def compare_workspace(
         plan.reference.run_id,
         plan.candidate.experiment_id,
         plan.candidate.run_id,
+        allow_world_changes=allow_world_changes,
     )
 
     # Load full config copies from the workspace results.
@@ -105,6 +108,7 @@ def compare_workspace(
         timestamp=datetime.now(timezone.utc).isoformat(),
         reference_config=ref_config,
         candidate_config=cand_config,
+        allow_world_changes=allow_world_changes,
         comparison_result=result.model_dump(mode="json"),
     )
 

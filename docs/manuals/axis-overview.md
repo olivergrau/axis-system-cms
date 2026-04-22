@@ -384,6 +384,13 @@ axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments
 axis workspaces comparison-result <path>       Display comparison results
+
+Use `--allow-world-changes` with `compare` or `comparison-result` when
+the world configuration itself was changed intentionally and should not
+block pairing.
+
+The same flag is also available on `axis workspaces run` when you want
+world-only config changes to bypass workspace duplicate-run protection.
 axis workspaces sweep-result <path>            Display sweep (OFAT) results
 axis workspaces check <path>                   Validate workspace structure
 axis workspaces set-candidate <path> <config>  Set candidate config (development)

@@ -42,6 +42,8 @@ class WorkspaceRunService:
         self,
         workspace_path: Path,
         run_filter: str | None = None,
+        *,
+        allow_world_changes: bool = False,
     ) -> list[RunServiceResult]:
         """Execute all run targets and sync the manifest.
 
@@ -69,7 +71,11 @@ class WorkspaceRunService:
             config = _load_config_file(config_path)
             current_config = config.model_dump(mode="json")
             if has_same_config_as_previous_result(
-                ws, current_config, manifest_results, target.role,
+                ws,
+                current_config,
+                manifest_results,
+                target.role,
+                ignore_world=not allow_world_changes,
             ):
                 unchanged_targets.append(target.config_path)
 

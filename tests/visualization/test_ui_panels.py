@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402
 
+from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from axis.visualization.snapshot_models import ReplayCoordinate  # noqa: E402
@@ -251,6 +252,66 @@ class TestStepAnalysisPanel:
         text = panel._content_label.text()
         assert "Hunger: 0.60" in text
         assert "Weight: 0.3" in text
+
+    def test_analysis_panel_text_is_selectable(self, qapp) -> None:
+        panel = StepAnalysisPanel()
+        panel.set_sections((
+            AnalysisSection(
+                title="Overview",
+                rows=(AnalysisRow(label="Action", value="right"),),
+            ),
+        ))
+        flags = panel._content_label.textInteractionFlags()
+        assert flags & Qt.TextInteractionFlag.TextSelectableByMouse
+        assert flags & Qt.TextInteractionFlag.TextSelectableByKeyboard
+
+    def test_analysis_panel_context_menu_disables_copy_selection_without_selection(
+        self, qapp,
+    ) -> None:
+        panel = StepAnalysisPanel()
+        panel.set_sections((
+            AnalysisSection(
+                title="Overview",
+                rows=(AnalysisRow(label="Action", value="right"),),
+            ),
+        ))
+        menu = panel._content_label._build_context_menu()
+        actions = menu.actions()
+        assert len(actions) == 2
+        assert actions[0].text() == "Copy All"
+        assert actions[0].isEnabled()
+        assert actions[1].text() == "Copy Selection"
+        assert not actions[1].isEnabled()
+
+    def test_analysis_panel_copy_all_and_selection(self, qapp) -> None:
+        panel = StepAnalysisPanel()
+        panel.set_sections((
+            AnalysisSection(
+                title="Overview",
+                rows=(
+                    AnalysisRow(label="Action", value="right"),
+                    AnalysisRow(label="Score", value="0.75"),
+                ),
+            ),
+        ))
+
+        panel._content_label.copy_all()
+        assert "Action: right" in qapp.clipboard().text()
+
+        cursor = panel._content_label.textCursor()
+        cursor.movePosition(cursor.MoveOperation.Start)
+        cursor.movePosition(
+            cursor.MoveOperation.Right,
+            cursor.MoveMode.KeepAnchor,
+            8,
+        )
+        panel._content_label.setTextCursor(cursor)
+
+        menu = panel._content_label._build_context_menu()
+        assert menu.actions()[1].isEnabled()
+
+        panel._content_label.copy_selection()
+        assert qapp.clipboard().text() == panel._content_label.text()[:8]
 
 
 # ---------------------------------------------------------------------------

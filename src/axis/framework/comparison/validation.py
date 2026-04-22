@@ -20,6 +20,7 @@ def validate_trace_pair(
     reference: BaseEpisodeTrace,
     candidate: BaseEpisodeTrace,
     *,
+    allow_world_changes: bool = False,
     reference_run_config: RunConfig | None = None,
     candidate_run_config: RunConfig | None = None,
     reference_run_metadata: RunMetadata | None = None,
@@ -40,7 +41,7 @@ def validate_trace_pair(
 
     # World config
     world_config_match = reference.world_config == candidate.world_config
-    if not world_config_match:
+    if not world_config_match and not allow_world_changes:
         errors.append("world_config_mismatch")
 
     # Start position

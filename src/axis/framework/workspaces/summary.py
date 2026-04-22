@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from axis.framework.workspaces.config_changes import diff_current_values
 from axis.framework.workspaces.types import (
     WorkspaceClass,
     WorkspaceLifecycleStage,
@@ -33,6 +34,9 @@ class ArtifactEntry(BaseModel, frozen=True):
     primary_run_id: str | None = None
     baseline_run_id: str | None = None
     config_changes: dict[str, object] | None = None
+    reference_experiment_id: str | None = None
+    candidate_experiment_id: str | None = None
+    comparison_config_changes: dict[str, object] | None = None
 
 
 class WorkspaceSummary(BaseModel, frozen=True):
@@ -92,6 +96,7 @@ def _resolve_artifacts(
     entries: list[ArtifactEntry] = []
     for item in paths:
         if isinstance(item, ResultEntry):
+            comparison_meta = _load_comparison_metadata(ws, item.path)
             entries.append(ArtifactEntry(
                 path=item.path,
                 exists=(ws / item.path).exists(),
@@ -103,9 +108,13 @@ def _resolve_artifacts(
                 primary_run_id=item.primary_run_id,
                 baseline_run_id=item.baseline_run_id,
                 config_changes=item.config_changes,
+                reference_experiment_id=comparison_meta.get("reference_experiment_id"),
+                candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),
+                comparison_config_changes=comparison_meta.get("comparison_config_changes"),
             ))
         elif isinstance(item, dict):
             p = item["path"]
+            comparison_meta = _load_comparison_metadata(ws, p)
             entries.append(ArtifactEntry(
                 path=p,
                 exists=(ws / p).exists(),
@@ -117,11 +126,59 @@ def _resolve_artifacts(
                 primary_run_id=item.get("primary_run_id"),
                 baseline_run_id=item.get("baseline_run_id"),
                 config_changes=item.get("config_changes"),
+                reference_experiment_id=comparison_meta.get("reference_experiment_id"),
+                candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),
+                comparison_config_changes=comparison_meta.get("comparison_config_changes"),
             ))
         else:
+            comparison_meta = _load_comparison_metadata(ws, item)
             entries.append(ArtifactEntry(
-                path=item, exists=(ws / item).exists()))
+                path=item,
+                exists=(ws / item).exists(),
+                reference_experiment_id=comparison_meta.get("reference_experiment_id"),
+                candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),
+                comparison_config_changes=comparison_meta.get("comparison_config_changes"),
+            ))
     return entries
+
+
+def _load_comparison_metadata(ws: Path, rel_path: str) -> dict[str, object]:
+    """Return enriched metadata for a workspace comparison entry."""
+    if not rel_path.startswith("comparisons/"):
+        return {}
+
+    cmp_path = ws / rel_path
+    if not cmp_path.is_file():
+        return {}
+
+    try:
+        import json
+
+        data = json.loads(cmp_path.read_text())
+    except Exception:
+        return {}
+
+    if not isinstance(data, dict):
+        return {}
+
+    comparison_result = data.get("comparison_result")
+    reference_config = data.get("reference_config")
+    candidate_config = data.get("candidate_config")
+
+    if not isinstance(comparison_result, dict):
+        comparison_result = {}
+    if not isinstance(reference_config, dict) or not isinstance(candidate_config, dict):
+        return {
+            "reference_experiment_id": comparison_result.get("reference_experiment_id"),
+            "candidate_experiment_id": comparison_result.get("candidate_experiment_id"),
+        }
+
+    config_diff = diff_current_values(reference_config, candidate_config)
+    return {
+        "reference_experiment_id": comparison_result.get("reference_experiment_id"),
+        "candidate_experiment_id": comparison_result.get("candidate_experiment_id"),
+        "comparison_config_changes": config_diff if isinstance(config_diff, dict) else None,
+    }
 
 
 def summarize_workspace(workspace_path: Path) -> WorkspaceSummary:

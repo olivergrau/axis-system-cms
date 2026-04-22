@@ -176,6 +176,37 @@ def _resolve_by_system(
     return eid, rid
 
 
+def _resolve_latest_by_role(
+    repo,
+    manifest,
+    experiments: list[str],
+    role: str,
+) -> tuple[str, str] | None:
+    """Resolve the latest point output for a specific manifest role."""
+    from axis.framework.workspaces.types import result_entry_path
+
+    if not manifest.primary_results:
+        return None
+
+    for entry in reversed(manifest.primary_results):
+        entry_role = getattr(entry, "role", None)
+        entry_form = getattr(entry, "output_form", None)
+        if entry_role != role:
+            continue
+        if entry_form and entry_form != "point":
+            continue
+        path_str = result_entry_path(entry)
+        parts = path_str.split("/")
+        if len(parts) < 2:
+            continue
+        eid = parts[1]
+        if eid not in experiments:
+            continue
+        return eid, _resolve_run_from_output(repo, eid)
+
+    return None
+
+
 def _resolve_by_manifest_order(
     repo, manifest, experiments: list[str],
 ) -> "WorkspaceComparisonPlan":
@@ -183,12 +214,18 @@ def _resolve_by_manifest_order(
 
     Filters ``primary_results`` to **point outputs only** so mixed
     point/sweep histories remain usable without introducing
-    sweep comparison.  Uses first point output as reference, latest
-    point output as candidate.
+    sweep comparison. When role metadata exists, uses the latest
+    reference-side and latest candidate-side outputs. Otherwise,
+    falls back to the latest two point outputs overall.
 
     Result paths are experiment-root (``results/<eid>``).
     """
+    from axis.framework.experiment_output import (
+        PointExperimentOutput,
+        load_experiment_output,
+    )
     ordered_eids: list[str] = []
+    latest_by_role: dict[str, str] = {}
 
     # Filter primary_results to point outputs and extract experiment IDs.
     if manifest.primary_results:
@@ -204,10 +241,12 @@ def _resolve_by_manifest_order(
                 eid = parts[1]  # results/<eid>
                 if eid in experiments and eid not in ordered_eids:
                     ordered_eids.append(eid)
+                role = getattr(entry, "role", None)
+                if role in {"reference", "candidate", "baseline"} and eid in experiments:
+                    latest_by_role[str(role)] = eid
 
     # Fall back to sorted experiment IDs if manifest didn't help.
     if len(ordered_eids) < 2:
-        from axis.framework.experiment_output import load_experiment_output, PointExperimentOutput
         for eid in experiments:
             if eid in ordered_eids:
                 continue
@@ -225,8 +264,14 @@ def _resolve_by_manifest_order(
             "use 'axis workspaces sweep-result' to inspect sweep results."
         )
 
-    ref_eid = ordered_eids[0]
-    cand_eid = ordered_eids[-1]
+    ref_eid = latest_by_role.get("reference") or latest_by_role.get("baseline")
+    cand_eid = latest_by_role.get("candidate")
+    if ref_eid and cand_eid and ref_eid != cand_eid:
+        pass
+    else:
+        ref_eid = ordered_eids[-2]
+        cand_eid = ordered_eids[-1]
+
     ref_rid = _resolve_run_from_output(repo, ref_eid)
     cand_rid = _resolve_run_from_output(repo, cand_eid)
 
