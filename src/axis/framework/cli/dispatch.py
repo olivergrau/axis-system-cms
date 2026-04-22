@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
+from axis.framework.cli.output import print_error
 from axis.framework.cli.commands.compare import cmd_compare
 from axis.framework.cli.commands.experiments import (
     cmd_experiments_list,
@@ -133,7 +133,7 @@ def dispatch(
     except SystemExit as exc:
         return exc.code if isinstance(exc.code, int) else 1
     except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print_error(str(exc))
         return 1
 
     return 0

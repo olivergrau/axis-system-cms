@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
+
+from axis.framework.cli.output import fail, stdout_output
 
 
 def _load_config_file(path: Path):
@@ -54,13 +55,15 @@ def cmd_experiments_list(repo, output: str) -> None:
     if output == "json":
         print(json.dumps(entries, indent=2))
     else:
+        out = stdout_output()
         if not entries:
-            print("No experiments found.")
+            out.info("No experiments found.")
             return
+        out.title("Experiments")
         for e in entries:
             parts = [
                 e["experiment_id"],
-                f"status={e['status']}",
+                f"[{e['status']}]",
                 f"runs={e['num_runs']}",
                 f"completed={e['num_completed_runs']}",
             ]
@@ -70,7 +73,7 @@ def cmd_experiments_list(repo, output: str) -> None:
                 parts.append(f"system={e['system_type']}")
             if e.get("created_at"):
                 parts.append(f"created={e['created_at']}")
-            print("  ".join(parts))
+            out.list_row(*parts)
 
 
 def cmd_experiments_run(
@@ -81,13 +84,14 @@ def cmd_experiments_run(
 
     path = Path(config_path)
     if not path.exists():
-        print(f"Error: Config file not found: {config_path}", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            f"Config file not found: {config_path}",
+            hint="Provide a valid experiment config path.",
+        )
     try:
         config = _load_config_file(path)
     except Exception as exc:
-        print(f"Error: Invalid config file: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail(f"Invalid config file: {exc}")
 
     try:
         result = ExperimentExecutor(
@@ -96,8 +100,7 @@ def cmd_experiments_run(
             world_catalog=catalogs.get("worlds") if catalogs else None,
         ).execute(config)
     except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        fail(str(exc))
 
     if output == "json":
         print(json.dumps({
@@ -106,9 +109,10 @@ def cmd_experiments_run(
             "num_runs": result.summary.num_runs,
         }, indent=2))
     else:
-        print(f"Experiment completed.")
-        print(f"  ID: {result.experiment_id}")
-        print(f"  Runs: {result.summary.num_runs}")
+        out = stdout_output()
+        out.success("experiment run")
+        out.kv("Experiment ID", result.experiment_id)
+        out.kv("Runs", result.summary.num_runs)
 
 
 def cmd_experiments_resume(
@@ -118,10 +122,10 @@ def cmd_experiments_resume(
     from axis.framework.experiment import ExperimentExecutor
 
     if not repo.experiment_dir(experiment_id).exists():
-        print(
-            f"Error: Experiment not found: {experiment_id}", file=sys.stderr,
+        fail(
+            f"Experiment not found: {experiment_id}",
+            hint="Run `axis experiments list` to inspect available experiments.",
         )
-        sys.exit(1)
     result = ExperimentExecutor(
         repository=repo,
         system_catalog=catalogs.get("systems") if catalogs else None,
@@ -134,19 +138,20 @@ def cmd_experiments_resume(
             "num_runs": result.summary.num_runs,
         }, indent=2))
     else:
-        print(f"Experiment '{experiment_id}' resumed and completed.")
-        print(f"  Runs: {result.summary.num_runs}")
+        out = stdout_output()
+        out.success("experiment resume")
+        out.kv("Experiment ID", experiment_id)
+        out.kv("Runs", result.summary.num_runs)
 
 
 def cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
     if not repo.experiment_dir(experiment_id).exists():
-        print(
-            f"Error: Experiment not found: {experiment_id}", file=sys.stderr,
+        fail(
+            f"Experiment not found: {experiment_id}",
+            hint="Run `axis experiments list` to inspect available experiments.",
         )
-        sys.exit(1)
 
     from axis.framework.experiment_output import (
-        ExperimentOutputForm,
         PointExperimentOutput,
         SweepExperimentOutput,
         load_experiment_output,
@@ -200,30 +205,33 @@ def cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
     if output == "json":
         print(json.dumps(info, indent=2))
     else:
-        print(f"Experiment: {experiment_id}")
-        print(f"  Status: {info.get('status', 'unknown')}")
+        out = stdout_output()
+        out.title(f"Experiment {experiment_id}")
+        out.kv("Status", info.get("status", "unknown"))
         if info.get("experiment_type"):
-            print(f"  Type: {info['experiment_type']}")
+            out.kv("Type", info["experiment_type"])
         if info.get("output_form"):
-            print(f"  Output form: {info['output_form']}")
+            out.kv("Output form", info["output_form"])
         if info.get("system_type"):
-            print(f"  System: {info['system_type']}")
+            out.kv("System", info["system_type"])
         if info.get("created_at"):
-            print(f"  Created: {info['created_at']}")
-        print(f"  Runs: {runs}")
+            out.kv("Created", info["created_at"])
+        out.kv("Runs", runs)
         if info.get("primary_run_id"):
-            print(f"  Primary run: {info['primary_run_id']}")
+            out.kv("Primary run", info["primary_run_id"])
         if info.get("baseline_run_id"):
-            print(f"  Baseline run: {info['baseline_run_id']}")
+            out.kv("Baseline run", info["baseline_run_id"])
         if info.get("parameter_path"):
-            print(f"  Parameter path: {info['parameter_path']}")
+            out.kv("Parameter path", info["parameter_path"])
         if info.get("parameter_values"):
-            print(f"  Parameter values: {info['parameter_values']}")
+            out.kv("Parameter values", info["parameter_values"])
         if info.get("summary"):
             s = info["summary"]
-            print(f"  Summary: {s['num_runs']} runs")
+            out.section("Summary")
+            out.kv("Runs", s["num_runs"])
             for entry in s.get("run_entries", []):
-                print(
-                    f"    {entry['run_id']}  "
-                    f"{entry.get('variation_description', '')}"
+                out.list_row(
+                    entry["run_id"],
+                    entry.get("variation_description", ""),
+                    indent=4,
                 )

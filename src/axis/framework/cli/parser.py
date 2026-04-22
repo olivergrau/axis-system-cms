@@ -25,7 +25,6 @@ def build_parser() -> argparse.ArgumentParser:
 examples:
   axis experiments list                         List all experiments
   axis experiments run config.yaml              Run experiment from config
-  axis experiments run config.yaml              Run experiment from config
   axis experiments show <experiment_id>         Inspect experiment details
   axis experiments resume <experiment_id>       Resume incomplete experiment
 
@@ -36,6 +35,9 @@ examples:
 
   axis compare --reference-experiment <eid> --reference-run <rid> --reference-episode 0 \\
                --candidate-experiment <eid2> --candidate-run <rid2> --candidate-episode 0
+
+  axis workspaces show <workspace-path>         Inspect workspace state
+  axis workspaces compare <workspace-path>      Run a workspace comparison
 
   Use --output json on any command for machine-readable output.
   Use --root <path> to point to a non-default repository location.

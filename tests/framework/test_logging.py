@@ -142,6 +142,7 @@ class TestCompactConsole:
         logger = EpisodeLogger(self._config())
         logger.log_episode(trace, episode_index=1)
         out = capsys.readouterr().out
+        assert "[E1 START]" in out
         assert "[E1 DONE]" in out
         assert "steps=3" in out
         assert "terminated=energy_depleted" in out
@@ -172,8 +173,9 @@ class TestVerboseConsole:
         trace = _make_episode(num_steps=1)
         EpisodeLogger(config).log_episode(trace, episode_index=1)
         out = capsys.readouterr().out
-        assert "decision:" in out
-        assert "transition:" in out
+        assert "Decision:" in out
+        assert "Transition:" in out
+        assert "{\n" in out
 
     def test_respects_include_decision_false(
         self, capsys: pytest.CaptureFixture,
@@ -187,8 +189,8 @@ class TestVerboseConsole:
         trace = _make_episode(num_steps=1)
         EpisodeLogger(config).log_episode(trace, episode_index=1)
         out = capsys.readouterr().out
-        assert "decision:" not in out
-        assert "transition:" in out
+        assert "Decision:" not in out
+        assert "Transition:" in out
 
     def test_respects_include_transition_false(
         self, capsys: pytest.CaptureFixture,
@@ -202,8 +204,8 @@ class TestVerboseConsole:
         trace = _make_episode(num_steps=1)
         EpisodeLogger(config).log_episode(trace, episode_index=1)
         out = capsys.readouterr().out
-        assert "decision:" in out
-        assert "transition:" not in out
+        assert "Decision:" in out
+        assert "Transition:" not in out
 
 
 # ---------------------------------------------------------------------------
@@ -386,9 +388,10 @@ class TestEdgeCases:
         )
         EpisodeLogger(config).log_episode(trace, episode_index=1)
         out = capsys.readouterr().out
-        # Should only have the summary line, no step lines
+        # Should not emit any step lines for an empty episode.
+        assert "[E1 START]" in out
         assert "[E1 DONE]" in out
-        assert "[E1 S" not in out
+        assert "[E1 S0" not in out
 
 
 # ---------------------------------------------------------------------------

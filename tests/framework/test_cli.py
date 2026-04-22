@@ -281,6 +281,61 @@ class TestRunsShow:
 
 
 # ---------------------------------------------------------------------------
+# compare
+# ---------------------------------------------------------------------------
+
+
+class TestCompare:
+    def test_mismatched_episode_flags(self, tmp_path, capsys):
+        root, eid = _run_experiment(tmp_path)
+        capsys.readouterr()
+        code, _, err = _run_cli(capsys, [
+            "--root", root,
+            "compare",
+            "--reference-experiment", eid,
+            "--reference-run", "run-0000",
+            "--reference-episode", "0",
+            "--candidate-experiment", eid,
+            "--candidate-run", "run-0000",
+        ])
+        assert code == 1
+        assert "both be provided" in err.lower()
+
+    def test_compare_runs_text(self, tmp_path, capsys):
+        root, eid = _run_experiment(tmp_path)
+        capsys.readouterr()
+        code, out, _ = _run_cli(capsys, [
+            "--root", root,
+            "compare",
+            "--reference-experiment", eid,
+            "--reference-run", "run-0000",
+            "--candidate-experiment", eid,
+            "--candidate-run", "run-0000",
+        ])
+        assert code == 0
+        assert "Run Comparison" in out
+        assert "Per-episode Results" in out
+        assert "Statistical Summary" in out
+
+    def test_compare_episode_text(self, tmp_path, capsys):
+        root, eid = _run_experiment(tmp_path)
+        capsys.readouterr()
+        code, out, _ = _run_cli(capsys, [
+            "--root", root,
+            "compare",
+            "--reference-experiment", eid,
+            "--reference-run", "run-0000",
+            "--reference-episode", "1",
+            "--candidate-experiment", eid,
+            "--candidate-run", "run-0000",
+            "--candidate-episode", "1",
+        ])
+        assert code == 0
+        assert "Comparison" in out
+        assert "Alignment" in out or "Metrics" in out
+
+
+# ---------------------------------------------------------------------------
 # visualize stub
 # ---------------------------------------------------------------------------
 

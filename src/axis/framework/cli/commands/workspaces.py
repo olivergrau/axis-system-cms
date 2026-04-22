@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
+
+from axis.framework.cli.output import fail, stdout_output
 
 
 def cmd_workspaces_scaffold(output: str) -> None:
@@ -28,8 +29,7 @@ def cmd_workspaces_scaffold(output: str) -> None:
 
     workspace_id = questionary.text("Workspace ID:").ask()
     if not workspace_id:
-        print("Aborted.", file=sys.stderr)
-        sys.exit(1)
+        fail("Scaffolding aborted.")
 
     title = questionary.text("Title:").ask() or workspace_id
 
@@ -127,17 +127,23 @@ def cmd_workspaces_check(
         ]
         print(json.dumps(data, indent=2))
     else:
+        out = stdout_output()
+        out.title(f"Workspace {ws.name}")
         if result.is_valid and not drift_issues:
-            print(f"Workspace '{ws.name}': VALID")
+            out.kv("Validation", "VALID")
         elif result.is_valid:
-            print(f"Workspace '{ws.name}': VALID (with drift warnings)")
+            out.kv("Validation", "VALID (with drift warnings)")
         else:
-            print(f"Workspace '{ws.name}': INVALID")
+            out.kv("Validation", "INVALID")
 
+        if result.issues:
+            out.section("Issues")
         for issue in result.issues:
-            print(f"  [{issue.severity}] {issue.message}")
+            out.list_row(f"[{issue.severity}]", issue.message)
+        if drift_issues:
+            out.section("Drift Warnings")
         for issue in drift_issues:
-            print(f"  [drift:{issue.severity}] {issue.message}")
+            out.list_row(f"[drift:{issue.severity}]", issue.message)
 
 
 def cmd_workspaces_show(
@@ -151,57 +157,64 @@ def cmd_workspaces_show(
     if output == "json":
         print(json.dumps(summary.model_dump(mode="json"), indent=2))
     else:
-        print(f"Workspace: {summary.workspace_id}")
-        print(f"  Title: {summary.title}")
-        print(f"  Class: {summary.workspace_class}")
-        print(f"  Type: {summary.workspace_type}")
-        print(f"  Status: {summary.status}")
-        print(f"  Lifecycle: {summary.lifecycle_stage}")
+        out = stdout_output()
+        out.title(f"Workspace {summary.workspace_id}")
+        out.kv("Title", summary.title)
+        out.kv("Class", summary.workspace_class)
+        out.kv("Type", summary.workspace_type)
+        out.kv("Status", summary.status)
+        out.kv("Lifecycle", summary.lifecycle_stage)
         if summary.description:
-            print(f"  Description: {summary.description}")
+            out.kv("Description", summary.description)
         if summary.question:
-            print(f"  Question: {summary.question}")
+            out.kv("Question", summary.question)
         if summary.development_goal:
-            print(f"  Goal: {summary.development_goal}")
+            out.kv("Goal", summary.development_goal)
         if summary.system_under_test:
-            print(f"  System under test: {summary.system_under_test}")
+            out.kv("System under test", summary.system_under_test)
         if summary.reference_system:
-            print(f"  Reference: {summary.reference_system}")
+            out.kv("Reference", summary.reference_system)
         if summary.candidate_system:
-            print(f"  Candidate: {summary.candidate_system}")
+            out.kv("Candidate", summary.candidate_system)
         if summary.artifact_under_development:
-            print(f"  Artifact: {summary.artifact_under_development}")
-        _print_artifact_section("Primary configs", summary.primary_configs)
-        _print_artifact_section("Primary results", summary.primary_results)
+            out.kv("Artifact", summary.artifact_under_development)
+        _print_artifact_section("Primary configs", summary.primary_configs, out=out)
+        _print_artifact_section("Primary results", summary.primary_results, out=out)
         _print_artifact_section(
-            "Primary comparisons", summary.primary_comparisons)
+            "Primary comparisons", summary.primary_comparisons, out=out)
         _print_artifact_section(
-            "Primary measurements", summary.primary_measurements)
+            "Primary measurements", summary.primary_measurements, out=out)
         if summary.development_state:
-            print(f"  Development state: {summary.development_state}")
+            out.section("Development")
+            out.kv("Development state", summary.development_state)
             if summary.baseline_config:
-                print(f"  Baseline config: {summary.baseline_config}")
+                out.kv("Baseline config", summary.baseline_config)
             if summary.candidate_config:
-                print(f"  Candidate config: {summary.candidate_config}")
+                out.kv("Candidate config", summary.candidate_config)
             _print_artifact_section(
-                "Baseline results", summary.baseline_results)
+                "Baseline results", summary.baseline_results, out=out)
             _print_artifact_section(
-                "Candidate results", summary.candidate_results)
+                "Candidate results", summary.candidate_results, out=out)
             if summary.current_candidate_result:
                 marker = "OK" if summary.current_candidate_result.exists else "MISSING"
-                print(
-                    f"  Current candidate result: [{marker}] {summary.current_candidate_result.path}")
+                out.kv(
+                    "Current candidate result",
+                    f"[{marker}] {summary.current_candidate_result.path}",
+                )
             if summary.current_validation_comparison:
                 marker = "OK" if summary.current_validation_comparison.exists else "MISSING"
-                print(
-                    f"  Current validation comparison: [{marker}] {summary.current_validation_comparison.path}")
+                out.kv(
+                    "Current validation comparison",
+                    f"[{marker}] {summary.current_validation_comparison.path}",
+                )
                 # Show which baseline was used in the last comparison
                 if summary.current_validation_comparison.exists:
                     _print_comparison_targets(
-                        ws, summary.current_validation_comparison.path)
+                        ws, summary.current_validation_comparison.path, out=out)
         if summary.check_result:
             status = "VALID" if summary.check_result.is_valid else "INVALID"
-            print(f"  Validation: {status}")
+            out.section("Validation")
+            out.kv("Status", status)
 
 
 def cmd_workspaces_sweep_result(
@@ -217,18 +230,19 @@ def cmd_workspaces_sweep_result(
         print(json.dumps(result, indent=2))
         return
 
-    print(f"Sweep Result: {result['experiment_id']}")
-    print(f"  System: {result['system_type']}")
+    out = stdout_output()
+    out.title(f"Sweep Result {result['experiment_id']}")
+    out.kv("System", result["system_type"])
     if result.get("parameter_path"):
-        print(f"  Parameter: {result['parameter_path']}")
+        out.kv("Parameter", result["parameter_path"])
     if result.get("parameter_values"):
-        print(f"  Values: {result['parameter_values']}")
-    print(f"  Baseline run: {result['baseline_run_id']}")
-    print(f"  Runs: {result['num_runs']}")
-    print()
+        out.kv("Values", result["parameter_values"])
+    out.kv("Baseline run", result["baseline_run_id"])
+    out.kv("Runs", result["num_runs"])
+    out.section("Run Summary")
     for rd in result.get("runs", []):
         label = rd.get("variation", rd["run_id"])
-        parts = [f"  {rd['run_id']}  {label}"]
+        parts = [rd["run_id"], label]
         if "mean_steps" in rd:
             parts.append(f"mean_steps={rd['mean_steps']:.1f}")
         if "death_rate" in rd:
@@ -242,7 +256,7 @@ def cmd_workspaces_sweep_result(
         if "delta_mean_final_vitality" in rd:
             parts.append(
                 f"delta_vitality={rd['delta_mean_final_vitality']:+.3f}")
-        print("  ".join(parts))
+        out.list_row(*parts)
 
 
 def cmd_workspaces_set_candidate(
@@ -251,7 +265,7 @@ def cmd_workspaces_set_candidate(
 ) -> None:
     """Set the candidate config for a development workspace."""
     run_service.set_candidate(Path(workspace_path), config_path)
-    print(f"Candidate config set: {config_path}")
+    stdout_output().success(f"candidate config set: {config_path}")
 
 
 def cmd_workspaces_run(
@@ -269,10 +283,10 @@ def cmd_workspaces_run(
             "num_runs": s.num_runs,
         } for s in summaries], indent=2))
     else:
-        print(
-            f"Workspace execution completed: {len(summaries)} experiment(s)")
+        out = stdout_output()
+        out.success(f"workspace execution: {len(summaries)} experiment(s)")
         for s in summaries:
-            print(f"  {s.experiment_id}: {s.num_runs} run(s)")
+            out.list_row(s.experiment_id, f"runs={s.num_runs}")
 
 
 def cmd_workspaces_compare(
@@ -292,9 +306,9 @@ def cmd_workspaces_compare(
         env_path = ws / svc_result.output_path
         print(env_path.read_text())
     else:
-        print(
-            f"Workspace comparison #{svc_result.comparison_number} completed.")
-        print(f"  Output: {ws / svc_result.output_path}")
+        out = stdout_output()
+        out.success(f"workspace comparison #{svc_result.comparison_number}")
+        out.kv("Output", ws / svc_result.output_path)
 
 
 def cmd_workspaces_comparison_result(
@@ -318,18 +332,15 @@ def cmd_workspaces_comparison_result(
         WorkspaceType.SYSTEM_DEVELOPMENT,
         WorkspaceType.SINGLE_SYSTEM,
     ):
-        print(
-            f"Error: comparison-result is only valid for "
+        fail(
+            f"comparison-result is only valid for "
             f"system_comparison, system_development, or single_system "
-            f"workspaces, got '{manifest.workspace_type}'.",
-            file=sys.stderr,
+            f"workspaces, got '{manifest.workspace_type}'."
         )
-        sys.exit(1)
 
     comparisons_dir = ws / "comparisons"
     if not comparisons_dir.is_dir():
-        print("Error: No comparisons directory found.", file=sys.stderr)
-        sys.exit(1)
+        fail("No comparisons directory found.")
 
     import re
     files = sorted(
@@ -337,18 +348,18 @@ def cmd_workspaces_comparison_result(
         if re.match(r"comparison-\d+\.json$", f.name)
     )
     if not files:
-        print("Error: No comparison results found.", file=sys.stderr)
-        sys.exit(1)
+        fail(
+            "No comparison results found.",
+            hint=f"Run `axis workspaces compare {workspace_path}` first.",
+        )
 
     if comparison_number is not None:
         target = comparisons_dir / f"comparison-{comparison_number:03d}.json"
         if not target.is_file():
-            print(
-                f"Error: Comparison #{comparison_number} not found. "
-                f"Available: {', '.join(f.name for f in files)}",
-                file=sys.stderr,
+            fail(
+                f"Comparison #{comparison_number} not found. "
+                f"Available: {', '.join(f.name for f in files)}"
             )
-            sys.exit(1)
         files = [target]
     elif len(files) == 1:
         pass  # show the only one
@@ -369,16 +380,21 @@ def cmd_workspaces_comparison_result(
                 })
             print(json.dumps(listing, indent=2))
         else:
-            print(f"Found {len(files)} comparison result(s). "
-                  f"Use --number to select one:\n")
+            out = stdout_output()
+            out.title("Comparison Results")
+            out.kv("Available", len(files))
+            out.hint("Use --number to select one.")
             for f in files:
                 env = WorkspaceComparisonEnvelope.model_validate(
                     json.loads(f.read_text()))
                 cr = env.comparison_result
                 ref_sys = cr.get("reference_system_type", "?")
                 cand_sys = cr.get("candidate_system_type", "?")
-                print(f"  #{env.comparison_number}: {ref_sys} vs {cand_sys} "
-                      f"({env.timestamp})")
+                out.list_row(
+                    f"#{env.comparison_number}:",
+                    f"{ref_sys} vs {cand_sys}",
+                    f"({env.timestamp})",
+                )
         return
 
     # Display the selected comparison
@@ -388,19 +404,34 @@ def cmd_workspaces_comparison_result(
     if output == "json":
         print(json.dumps(env.model_dump(mode="json"), indent=2))
     else:
-        print(f"Comparison #{env.comparison_number} — {env.timestamp}")
-        print()
+        out = stdout_output()
+        out.title(f"Comparison #{env.comparison_number}")
+        out.kv("Timestamp", env.timestamp)
         # Print the comparison metrics using the existing formatter.
         result = RunComparisonResult.model_validate(env.comparison_result)
         print_run_comparison_text(result)
-        print()
-        print("  --- Configurations ---")
-        print(
-            f"  Reference config (system_type={env.reference_config.get('system_type', '?')}):")
-        _print_config_summary(env.reference_config, indent=4)
-        print(
-            f"  Candidate config (system_type={env.candidate_config.get('system_type', '?')}):")
-        _print_config_summary(env.candidate_config, indent=4)
+        out.section("Configurations")
+        out.hint("Differing config values are highlighted when terminal styling is enabled.")
+        out.kv(
+            "Reference config",
+            f"system_type={env.reference_config.get('system_type', '?')}",
+        )
+        _print_config_summary(
+            env.reference_config,
+            indent=4,
+            other_config=env.candidate_config,
+            out=out,
+        )
+        out.kv(
+            "Candidate config",
+            f"system_type={env.candidate_config.get('system_type', '?')}",
+        )
+        _print_config_summary(
+            env.candidate_config,
+            indent=4,
+            other_config=env.reference_config,
+            out=out,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -408,27 +439,31 @@ def cmd_workspaces_comparison_result(
 # ---------------------------------------------------------------------------
 
 
-def _print_comparison_targets(ws: Path, comparison_path: str) -> None:
+def _print_comparison_targets(ws: Path, comparison_path: str, *, out=None) -> None:
     """Print the reference/candidate experiment IDs from a comparison file."""
+    out = out or stdout_output()
     cmp_file = ws / comparison_path
     try:
         data = json.loads(cmp_file.read_text())
         cr = data.get("comparison_result", {})
         ref_eid = cr.get("reference_experiment_id", "?")
         cand_eid = cr.get("candidate_experiment_id", "?")
-        print(f"    Reference used: {ref_eid}")
-        print(f"    Candidate used: {cand_eid}")
+        out.kv("Reference used", ref_eid, indent=4)
+        out.kv("Candidate used", cand_eid, indent=4)
     except Exception:
         pass
 
 
-def _print_artifact_section(label: str, entries: list) -> None:
+def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
     """Print a primary artifact section with existence markers."""
+    out = out or stdout_output()
+    out.blank()
+    out.line(f"{label}:")
     if not entries:
-        print(f"  {label}: (none declared)")
+        out.kv("Declared", "none")
         return
     found = sum(1 for e in entries if e.exists)
-    print(f"  {label}: {found}/{len(entries)} present")
+    out.kv("Present", f"{found}/{len(entries)}")
     for e in entries:
         marker = "OK" if e.exists else "MISSING"
         extra = ""
@@ -443,34 +478,64 @@ def _print_artifact_section(label: str, entries: list) -> None:
             annotations.append(e.timestamp)
         if annotations:
             extra = f"  ({', '.join(annotations)})"
-        print(f"    [{marker}] {e.path}{extra}")
+        out.list_row(f"[{marker}]", f"{e.path}{extra}", indent=4)
         if getattr(e, "config_changes", None):
-            print("      Config changes vs previous comparable run:")
+            out.kv(
+                "Config changes vs previous comparable run",
+                "",
+                indent=6,
+            )
             _print_changed_config_summary(e.config_changes, indent=8)
 
 
-def _print_config_summary(config: dict, indent: int = 4) -> None:
-    """Print a full experiment config as flattened key-value pairs.
-
-    Excludes the ``logging`` section and keys with None values.
-    """
-    prefix = " " * indent
-    _EXCLUDED_SECTIONS = {"logging"}
+def _flatten_config(
+    config: dict,
+    *,
+    excluded_sections: set[str] | None = None,
+) -> dict[str, object]:
+    """Flatten a nested config into dotted key/value pairs."""
+    excluded_sections = excluded_sections or {"logging"}
+    flattened: dict[str, object] = {}
 
     def _flatten(obj: dict, path: str = "") -> None:
         for key, value in obj.items():
             full_key = f"{path}.{key}" if path else key
             top_level_key = full_key.split(".")[0]
-            if top_level_key in _EXCLUDED_SECTIONS:
+            if top_level_key in excluded_sections:
                 continue
             if value is None:
                 continue
             if isinstance(value, dict):
                 _flatten(value, full_key)
             else:
-                print(f"{prefix}{full_key}: {value}")
+                flattened[full_key] = value
 
     _flatten(config)
+    return flattened
+
+
+def _print_config_summary(
+    config: dict,
+    indent: int = 4,
+    *,
+    other_config: dict | None = None,
+    out=None,
+) -> None:
+    """Print a full experiment config as flattened key-value pairs.
+
+    Excludes the ``logging`` section and keys with None values.
+    """
+    out = out or stdout_output()
+    prefix = " " * indent
+    flattened = _flatten_config(config)
+    other_flattened = _flatten_config(other_config) if other_config else {}
+
+    for key, value in flattened.items():
+        line = f"{prefix}{key}: {value}"
+        if other_config is not None and other_flattened.get(key) != value:
+            out.line(out.styled(line, role="diff"))
+        else:
+            out.line(line)
 
 
 def _print_changed_config_summary(config: dict, indent: int = 8) -> None:

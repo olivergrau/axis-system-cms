@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import json
-import sys
-from pathlib import Path
+
+from axis.framework.cli.output import fail, stdout_output
 
 
 def cmd_runs_list(repo, experiment_id: str, output: str) -> None:
     from axis.framework.persistence import RunStatus
 
     if not repo.experiment_dir(experiment_id).exists():
-        print(
-            f"Error: Experiment not found: {experiment_id}", file=sys.stderr,
+        fail(
+            f"Experiment not found: {experiment_id}",
+            hint="Run `axis experiments list` to inspect available experiments.",
         )
-        sys.exit(1)
 
     run_ids = repo.list_runs(experiment_id)
     entries = []
@@ -39,28 +39,29 @@ def cmd_runs_list(repo, experiment_id: str, output: str) -> None:
     if output == "json":
         print(json.dumps(entries, indent=2))
     else:
+        out = stdout_output()
         if not entries:
-            print("No runs found.")
+            out.info("No runs found.")
             return
+        out.title(f"Runs For {experiment_id}")
         for e in entries:
             parts = [
                 e["run_id"],
-                f"status={e['status']}",
+                f"[{e['status']}]",
             ]
             if e.get("variation_description"):
                 parts.append(e["variation_description"])
             if e.get("has_summary"):
                 parts.append("summary=yes")
-            print("  ".join(parts))
+            out.list_row(*parts)
 
 
 def cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
     if not repo.run_dir(experiment_id, run_id).exists():
-        print(
-            f"Error: Run not found: {run_id} in experiment {experiment_id}",
-            file=sys.stderr,
+        fail(
+            f"Run not found: {run_id} in experiment {experiment_id}",
+            hint="Run `axis runs list --experiment <experiment-id>` to inspect available runs.",
         )
-        sys.exit(1)
 
     info: dict = {"run_id": run_id, "experiment_id": experiment_id}
 
@@ -109,28 +110,30 @@ def cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
     if output == "json":
         print(json.dumps(info, indent=2))
     else:
-        print(f"Run: {run_id}")
-        print(f"  Experiment: {experiment_id}")
-        print(f"  Status: {info.get('status', 'unknown')}")
+        out = stdout_output()
+        out.title(f"Run {run_id}")
+        out.kv("Experiment", experiment_id)
+        out.kv("Status", info.get("status", "unknown"))
         if info.get("output_form"):
-            print(f"  Output form: {info['output_form']}")
+            out.kv("Output form", info["output_form"])
         if info.get("variation_description"):
-            print(f"  Variation: {info['variation_description']}")
+            out.kv("Variation", info["variation_description"])
         if info.get("is_baseline") is not None:
-            print(f"  Is baseline: {info['is_baseline']}")
+            out.kv("Is baseline", info["is_baseline"])
         if info.get("variation_index") is not None:
-            print(f"  Variation index: {info['variation_index']}")
+            out.kv("Variation index", info["variation_index"])
         if info.get("variation_value") is not None:
-            print(f"  Variation value: {info['variation_value']}")
+            out.kv("Variation value", info["variation_value"])
         if info.get("created_at"):
-            print(f"  Created: {info['created_at']}")
+            out.kv("Created", info["created_at"])
         if info.get("base_seed") is not None:
-            print(f"  Base seed: {info['base_seed']}")
-        print(f"  Episodes: {info['num_episodes']}")
+            out.kv("Base seed", info["base_seed"])
+        out.kv("Episodes", info["num_episodes"])
         if info.get("summary"):
             s = info["summary"]
-            print(
-                f"  Summary: mean_steps={s['mean_steps']:.1f}  "
-                f"death_rate={s['death_rate']:.2f}  "
-                f"mean_final_vitality={s['mean_final_vitality']:.3f}"
+            out.section("Summary")
+            out.list_row(
+                f"mean_steps={s['mean_steps']:.1f}",
+                f"death_rate={s['death_rate']:.2f}",
+                f"mean_final_vitality={s['mean_final_vitality']:.3f}",
             )

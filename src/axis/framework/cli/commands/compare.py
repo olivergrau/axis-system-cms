@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
+
+from axis.framework.cli.output import fail, stdout_output
 
 
 def cmd_compare(args: argparse.Namespace, repo, output: str, catalogs: dict | None = None) -> None:
@@ -14,12 +15,10 @@ def cmd_compare(args: argparse.Namespace, repo, output: str, catalogs: dict | No
 
     # Validate: both or neither episode flags must be provided.
     if (ref_ep is None) != (cand_ep is None):
-        print(
-            "Error: --reference-episode and --candidate-episode must both be "
-            "provided (single-episode mode) or both omitted (run-level mode).",
-            file=sys.stderr,
+        fail(
+            "--reference-episode and --candidate-episode must both be "
+            "provided (single-episode mode) or both omitted (run-level mode)."
         )
-        sys.exit(1)
 
     if ref_ep is not None:
         _cmd_compare_episode(args, repo, output, catalogs=catalogs)
@@ -105,20 +104,24 @@ def _cmd_compare_runs(args: argparse.Namespace, repo, output: str, catalogs: dic
 
 def print_run_comparison_text(result) -> None:
     """Pretty-print a RunComparisonResult in text mode."""
+    out = stdout_output()
     s = result.summary
-    print(
-        f"Run Comparison: {result.reference_system_type} vs "
-        f"{result.candidate_system_type}")
-    print(
-        f"  Reference: experiment={result.reference_experiment_id} "
-        f"run={result.reference_run_id}")
-    print(
-        f"  Candidate: experiment={result.candidate_experiment_id} "
-        f"run={result.candidate_run_id}")
-    print(
-        f"  Episodes: {s.num_episodes_compared} compared, "
-        f"{s.num_valid_pairs} valid, {s.num_invalid_pairs} invalid")
-    print()
+    out.title("Run Comparison")
+    out.kv(
+        "Reference",
+        f"{result.reference_system_type}  "
+        f"experiment={result.reference_experiment_id}  run={result.reference_run_id}",
+    )
+    out.kv(
+        "Candidate",
+        f"{result.candidate_system_type}  "
+        f"experiment={result.candidate_experiment_id}  run={result.candidate_run_id}",
+    )
+    out.kv(
+        "Episodes",
+        f"{s.num_episodes_compared} compared, "
+        f"{s.num_valid_pairs} valid, {s.num_invalid_pairs} invalid",
+    )
 
     if s.num_valid_pairs == 0:
         # Collect distinct validation errors across all failed episodes.
@@ -129,148 +132,145 @@ def print_run_comparison_text(result) -> None:
                     if e not in all_errors:
                         all_errors.append(e)
         if all_errors:
-            print(
-                f"  No valid episode pairs to summarise — all failed "
-                f"validation: {', '.join(all_errors)}.")
-            print(
-                "  This typically means the world configuration or start "
-                "conditions differ between the two runs.")
+            out.section("Validation")
+            out.warning(
+                "No valid episode pairs to summarize: "
+                f"{', '.join(all_errors)}"
+            )
+            out.hint(
+                "This usually means the world configuration or start conditions "
+                "differ between the two runs."
+            )
         else:
-            print("  No valid episode pairs to summarise.")
+            out.section("Validation")
+            out.warning("No valid episode pairs to summarize.")
         return
 
-    print("  --- Per-episode results ---")
+    out.section("Per-episode Results")
     for r in result.episode_results:
         ep = r.identity.reference_episode_index
         if r.result_mode.value != "comparison_succeeded":
-            print(
-                f"  Episode {ep}: VALIDATION FAILED ({', '.join(r.validation.errors)})")
+            out.list_row(
+                f"Episode {ep}",
+                "[validation_failed]",
+                ", ".join(r.validation.errors),
+            )
             continue
         m = r.metrics
         o = r.outcome
         assert m is not None and o is not None
-        print(
-            f"  Episode {ep}: mismatch={m.action_divergence.action_mismatch_rate:.1%}, "
-            f"pos_div={m.position_divergence.mean_trajectory_distance:.2f}, "
-            f"steps={o.reference_total_steps}/{o.candidate_total_steps}, "
-            f"survivor={o.longer_survivor}")
-    print()
+        out.list_row(
+            f"Episode {ep}",
+            f"mismatch={m.action_divergence.action_mismatch_rate:.1%}",
+            f"pos_div={m.position_divergence.mean_trajectory_distance:.2f}",
+            f"steps={o.reference_total_steps}/{o.candidate_total_steps}",
+            f"survivor={o.longer_survivor}",
+        )
 
-    print("  --- Statistical summary (across all valid episode pairs) ---")
-    print()
+    out.section("Statistical Summary")
     _print_metric("Action mismatch rate", s.action_mismatch_rate)
-    print(
-        "      How often the two agents chose different actions at the same "
-        "timestep.")
-    print(
-        "      0% = identical behavior, 100% = every decision differed.")
-    print()
+    out.hint("How often the two agents chose different actions at the same timestep.")
     _print_metric("Mean trajectory distance", s.mean_trajectory_distance)
-    print(
-        "      Average Manhattan distance (grid cells) between the two agents "
-        "per episode.")
-    print(
-        "      0 = agents always on the same cell, higher = paths diverged "
-        "on the grid.")
-    print()
+    out.hint("Average Manhattan distance between the two agents per episode.")
     _print_metric("Mean vitality difference", s.mean_vitality_difference)
-    print(
-        "      Average absolute difference in health (vitality) between the "
-        "agents per episode.")
-    print(
-        "      0 = identical health curves, higher = one agent was "
-        "consistently healthier.")
-    print()
+    out.hint("Average absolute difference in vitality between the two agents.")
     _print_metric("Final vitality delta", s.final_vitality_delta, signed=True)
-    print(
-        "      Candidate's final vitality minus reference's final vitality.")
-    print(
-        "      Positive = candidate ended healthier, "
-        "negative = reference ended healthier.")
-    print()
+    out.hint("Candidate final vitality minus reference final vitality.")
     _print_metric("Total steps delta", s.total_steps_delta, signed=True)
-    print(
-        "      Candidate's episode length minus reference's episode length.")
-    print(
-        "      Positive = candidate survived longer, "
-        "negative = reference survived longer.")
-    print()
-    print(
-        f"  Survival rates: reference={s.reference_survival_rate:.0%}, "
-        f"candidate={s.candidate_survival_rate:.0%}")
-    print(
-        "      Fraction of episodes where the agent reached max_steps "
-        "(was not terminated early).")
-    print()
-    print(
-        f"  Longer survivor: candidate={s.candidate_longer_count}, "
-        f"reference={s.reference_longer_count}, equal={s.equal_count}")
-    print(
-        "      Per-episode count of which system lasted more steps.")
+    out.hint("Candidate episode length minus reference episode length.")
+    out.kv(
+        "Survival rates",
+        f"reference={s.reference_survival_rate:.0%}  "
+        f"candidate={s.candidate_survival_rate:.0%}",
+    )
+    out.kv(
+        "Longer survivor",
+        f"candidate={s.candidate_longer_count}  "
+        f"reference={s.reference_longer_count}  equal={s.equal_count}",
+    )
 
 
 def _print_metric(label: str, stats, *, signed: bool = False) -> None:
+    out = stdout_output()
     fmt = "+.4f" if signed else ".4f"
-    print(
-        f"  {label}: mean={stats.mean:{fmt}}, std={stats.std:.4f}, "
-        f"min={stats.min:{fmt}}, max={stats.max:{fmt}} (n={stats.n})"
+    out.kv(
+        label,
+        f"mean={stats.mean:{fmt}}, std={stats.std:.4f}, "
+        f"min={stats.min:{fmt}}, max={stats.max:{fmt}} (n={stats.n})",
     )
 
 
 def _print_comparison_text(result) -> None:
     """Pretty-print a PairedTraceComparisonResult in text mode."""
-    print(f"Comparison: {result.result_mode.value}")
+    out = stdout_output()
+    out.title("Comparison")
+    out.kv("Result", result.result_mode.value)
     i = result.identity
-    print(f"  Reference: {i.reference_system_type}", end="")
+    ref = i.reference_system_type
     if i.reference_run_id:
-        print(f" run={i.reference_run_id}", end="")
-    print()
-    print(f"  Candidate: {i.candidate_system_type}", end="")
+        ref = f"{ref}  run={i.reference_run_id}"
+    cand = i.candidate_system_type
     if i.candidate_run_id:
-        print(f" run={i.candidate_run_id}", end="")
-    print()
+        cand = f"{cand}  run={i.candidate_run_id}"
+    out.kv("Reference", ref)
+    out.kv("Candidate", cand)
 
     v = result.validation
     if not v.is_valid_pair:
-        print(f"  Validation FAILED: {', '.join(v.errors)}")
+        out.section("Validation")
+        out.error(", ".join(v.errors))
         return
 
     if result.alignment:
         a = result.alignment
-        print(
-            f"  Alignment: {a.aligned_steps} aligned steps "
-            f"(ref={a.reference_total_steps}, cand={a.candidate_total_steps})")
+        out.section("Alignment")
+        out.kv(
+            "Aligned steps",
+            f"{a.aligned_steps}  "
+            f"(ref={a.reference_total_steps}, cand={a.candidate_total_steps})",
+        )
 
     if result.metrics:
         m = result.metrics
+        out.section("Metrics")
         ad = m.action_divergence
-        print(
-            f"  Action divergence: first={ad.first_action_divergence_step}, "
-            f"mismatch={ad.action_mismatch_count} "
-            f"({ad.action_mismatch_rate:.1%})")
+        out.kv(
+            "Action divergence",
+            f"first={ad.first_action_divergence_step}  "
+            f"mismatch={ad.action_mismatch_count}  "
+            f"rate={ad.action_mismatch_rate:.1%}",
+        )
         pd = m.position_divergence
-        print(
-            f"  Position divergence: mean={pd.mean_trajectory_distance:.2f}, "
-            f"max={pd.max_trajectory_distance}")
+        out.kv(
+            "Position divergence",
+            f"mean={pd.mean_trajectory_distance:.2f}  max={pd.max_trajectory_distance}",
+        )
         vd = m.vitality_divergence
-        print(
-            f"  Vitality divergence: mean={vd.mean_absolute_difference:.4f}, "
-            f"max={vd.max_absolute_difference:.4f}")
+        out.kv(
+            "Vitality divergence",
+            f"mean={vd.mean_absolute_difference:.4f}  max={vd.max_absolute_difference:.4f}",
+        )
 
     if result.outcome:
         o = result.outcome
-        print(
-            f"  Outcome: ref={o.reference_total_steps} steps "
-            f"({o.reference_termination_reason}), "
-            f"cand={o.candidate_total_steps} steps "
-            f"({o.candidate_termination_reason})")
-        print(
-            f"  Vitality delta: {o.final_vitality_delta:+.4f}, "
-            f"longer survivor: {o.longer_survivor}")
+        out.section("Outcome")
+        out.kv(
+            "Reference",
+            f"{o.reference_total_steps} steps  "
+            f"({o.reference_termination_reason})",
+        )
+        out.kv(
+            "Candidate",
+            f"{o.candidate_total_steps} steps  "
+            f"({o.candidate_termination_reason})",
+        )
+        out.kv("Vitality delta", f"{o.final_vitality_delta:+.4f}")
+        out.kv("Longer survivor", o.longer_survivor)
 
     if result.system_specific_analysis:
+        out.section("Extensions")
         for key, data in result.system_specific_analysis.items():
-            print(f"  Extension [{key}]:")
+            out.kv("Extension", key)
             if isinstance(data, dict):
                 for k, val in data.items():
-                    print(f"    {k}: {val}")
+                    out.kv(k, val, indent=4)

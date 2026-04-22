@@ -57,6 +57,8 @@ class EpisodeLogger:
         """Log every step in *trace* followed by an episode summary."""
         if self._noop:
             return
+        if self._config.console_enabled:
+            self._print_episode_start(trace, episode_index)
         for step in trace.steps:
             self.log_step(step, episode_index)
         self.log_episode_summary(trace, episode_index)
@@ -89,6 +91,15 @@ class EpisodeLogger:
 
     # -- Console formatting --------------------------------------------------
 
+    def _print_episode_start(
+        self, trace: BaseEpisodeTrace, ep: int,
+    ) -> None:
+        print(
+            f"[E{ep} START] "
+            f"system={trace.system_type}  "
+            f"steps={trace.total_steps}"
+        )
+
     def _print_step(self, step: BaseStepTrace, ep: int) -> None:
         cfg = self._config
         pb = step.agent_position_before
@@ -105,11 +116,17 @@ class EpisodeLogger:
             if cfg.include_decision_trace:
                 dd = step.system_data.get("decision_data")
                 if dd is not None:
-                    print(f"  decision: {json.dumps(dd, default=str)}")
+                    self._print_structured_block("Decision", dd)
             if cfg.include_transition_trace:
                 td = step.system_data.get("trace_data")
                 if td is not None:
-                    print(f"  transition: {json.dumps(td, default=str)}")
+                    self._print_structured_block("Transition", td)
+
+    def _print_structured_block(self, label: str, data: object) -> None:
+        print(f"  {label}:")
+        rendered = json.dumps(data, default=str, indent=2)
+        for line in rendered.splitlines():
+            print(f"    {line}")
 
     def _print_episode_summary(
         self, trace: BaseEpisodeTrace, ep: int,
