@@ -42,6 +42,7 @@ def append_primary_result(
     system_type: str | None = None,
     primary_run_id: str | None = None,
     baseline_run_id: str | None = None,
+    config_changes: dict | None = None,
 ) -> None:
     """Append an experiment-root result entry to ``primary_results``.
 
@@ -70,6 +71,8 @@ def append_primary_result(
         entry["primary_run_id"] = primary_run_id
     if baseline_run_id:
         entry["baseline_run_id"] = baseline_run_id
+    if config_changes:
+        entry["config_changes"] = config_changes
 
     results.append(entry)
 

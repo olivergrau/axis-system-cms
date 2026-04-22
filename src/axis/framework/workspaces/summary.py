@@ -32,6 +32,7 @@ class ArtifactEntry(BaseModel, frozen=True):
     system_type: str | None = None
     primary_run_id: str | None = None
     baseline_run_id: str | None = None
+    config_changes: dict[str, object] | None = None
 
 
 class WorkspaceSummary(BaseModel, frozen=True):
@@ -101,6 +102,7 @@ def _resolve_artifacts(
                 system_type=item.system_type,
                 primary_run_id=item.primary_run_id,
                 baseline_run_id=item.baseline_run_id,
+                config_changes=item.config_changes,
             ))
         elif isinstance(item, dict):
             p = item["path"]
@@ -114,6 +116,7 @@ def _resolve_artifacts(
                 system_type=item.get("system_type"),
                 primary_run_id=item.get("primary_run_id"),
                 baseline_run_id=item.get("baseline_run_id"),
+                config_changes=item.get("config_changes"),
             ))
         else:
             entries.append(ArtifactEntry(

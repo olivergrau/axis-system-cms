@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -68,7 +69,18 @@ class TestRunServiceInjection:
             save_yaml_roundtrip_fn=MagicMock(),
         )
 
-        result = svc.execute(Path("/ws"))
+        with (
+            patch(
+                "axis.framework.workspaces.types.load_manifest",
+                return_value=MagicMock(primary_results=[]),
+            ),
+            patch(
+                "axis.framework.workspaces.resolution.resolve_run_targets",
+                return_value=MagicMock(targets=[]),
+            ),
+        ):
+            result = svc.execute(Path("/ws"))
+
         execute_fn.assert_called_once_with(Path("/ws"), run_filter=None)
         assert result == []
 
@@ -115,10 +127,97 @@ class TestRunServiceInjection:
             save_yaml_roundtrip_fn=MagicMock(),
         )
 
-        summaries = svc.execute(Path("/ws"))
+        fake_plan = MagicMock(targets=[])
+        fake_manifest = MagicMock(primary_results=[])
+        with (
+            patch(
+                "axis.framework.workspaces.types.load_manifest",
+                return_value=fake_manifest,
+            ),
+            patch(
+                "axis.framework.workspaces.resolution.resolve_run_targets",
+                return_value=fake_plan,
+            ),
+        ):
+            summaries = svc.execute(Path("/ws"))
         sync_fn.assert_called_once()
         assert len(summaries) == 1
         assert summaries[0].experiment_id == "exp-001"
+
+    def test_execute_aborts_when_config_matches_previous_comparable_result(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "configs").mkdir()
+        (ws / "results" / "exp-001").mkdir(parents=True)
+
+        config_data = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 100},
+            "world": {"world_type": "grid_2d", "grid_width": 5, "grid_height": 5},
+            "system": {
+                "agent": {
+                    "initial_energy": 50,
+                    "max_energy": 100,
+                    "buffer_capacity": 5,
+                },
+                "policy": {
+                    "selection_mode": "sample",
+                    "temperature": 1.0,
+                    "stay_suppression": 0.1,
+                    "consume_weight": 2.5,
+                },
+                "transition": {
+                    "move_cost": 0.5,
+                    "consume_cost": 0.5,
+                    "stay_cost": 0.3,
+                    "max_consume": 1.0,
+                    "energy_gain_factor": 15.0,
+                },
+            },
+            "num_episodes_per_run": 5,
+        }
+        (ws / "configs" / "baseline.yaml").write_text(yaml.dump(config_data))
+        from axis.framework.cli import _load_config_file
+        normalized = _load_config_file(ws / "configs" / "baseline.yaml").model_dump(mode="json")
+        (ws / "results" / "exp-001" / "experiment_config.json").write_text(
+            json.dumps(normalized)
+        )
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_a",
+            "primary_configs": ["configs/baseline.yaml"],
+            "primary_results": [
+                {
+                    "path": "results/exp-001",
+                    "role": "system_under_test",
+                    "config": "results/exp-001/experiment_config.json",
+                },
+            ],
+        }))
+
+        execute_fn = MagicMock(return_value=[])
+        svc = _make_run_service(execute_fn=execute_fn)
+
+        fake_target = MagicMock(config_path="configs/baseline.yaml", role="system_under_test")
+        with patch(
+            "axis.framework.workspaces.resolution.resolve_run_targets",
+            return_value=MagicMock(targets=[fake_target]),
+        ):
+            with pytest.raises(ValueError, match="no config changes detected"):
+                svc.execute(ws)
+
+        execute_fn.assert_not_called()
 
 
 class TestCompareServiceInjection:

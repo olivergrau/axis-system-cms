@@ -444,6 +444,9 @@ def _print_artifact_section(label: str, entries: list) -> None:
         if annotations:
             extra = f"  ({', '.join(annotations)})"
         print(f"    [{marker}] {e.path}{extra}")
+        if getattr(e, "config_changes", None):
+            print("      Config changes vs previous comparable run:")
+            _print_changed_config_summary(e.config_changes, indent=8)
 
 
 def _print_config_summary(config: dict, indent: int = 4) -> None:
@@ -462,6 +465,21 @@ def _print_config_summary(config: dict, indent: int = 4) -> None:
                 continue
             if value is None:
                 continue
+            if isinstance(value, dict):
+                _flatten(value, full_key)
+            else:
+                print(f"{prefix}{full_key}: {value}")
+
+    _flatten(config)
+
+
+def _print_changed_config_summary(config: dict, indent: int = 8) -> None:
+    """Print a nested changed-config dict as flattened key-value pairs."""
+    prefix = " " * indent
+
+    def _flatten(obj: dict, path: str = "") -> None:
+        for key, value in obj.items():
+            full_key = f"{path}.{key}" if path else key
             if isinstance(value, dict):
                 _flatten(value, full_key)
             else:

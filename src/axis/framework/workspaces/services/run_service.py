@@ -47,7 +47,41 @@ class WorkspaceRunService:
 
         Returns a summary per experiment executed.
         """
+        from axis.framework.cli import _load_config_file
+        from axis.framework.workspaces.config_changes import (
+            has_same_config_as_previous_result,
+        )
+        from axis.framework.workspaces.resolution import resolve_run_targets
+        from axis.framework.workspaces.types import load_manifest
+
         ws = Path(workspace_path)
+        manifest = load_manifest(ws)
+        manifest_results = list(manifest.primary_results or [])
+        plan = resolve_run_targets(ws, run_filter=run_filter)
+
+        unchanged_targets: list[str] = []
+        for target in plan.targets:
+            config_path = ws / target.config_path
+            config = _load_config_file(config_path)
+            current_config = config.model_dump(mode="json")
+            if has_same_config_as_previous_result(
+                ws, current_config, manifest_results, target.role,
+            ):
+                unchanged_targets.append(target.config_path)
+
+        if unchanged_targets:
+            if len(unchanged_targets) == 1:
+                raise ValueError(
+                    "Workspace run aborted: no config changes detected for "
+                    f"'{unchanged_targets[0]}' compared to the previous "
+                    "comparable result."
+                )
+            paths = ", ".join(f"'{p}'" for p in unchanged_targets)
+            raise ValueError(
+                "Workspace run aborted: no config changes detected for "
+                f"{paths} compared to their previous comparable results."
+            )
+
         exec_results = self._execute_fn(ws, run_filter=run_filter)
 
         summaries: list[RunServiceResult] = []

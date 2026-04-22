@@ -66,6 +66,7 @@ class ResultEntry(BaseModel, frozen=True):
     baseline_run_id: str | None = None  # for sweep outputs
     config: str | None = None
     timestamp: str | None = None
+    config_changes: dict[str, Any] | None = None
 
 
 class WorkspaceManifest(BaseModel, frozen=True):

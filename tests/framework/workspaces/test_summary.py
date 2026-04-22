@@ -64,6 +64,34 @@ class TestSummarize:
         assert found["results/exp-001/runs/run-0000"] is True
         assert found["results/missing-path"] is False
 
+    def test_primary_results_include_config_changes(self, tmp_path):
+        ws = tmp_path / "test-ws"
+        manifest = WorkspaceManifest.model_validate({
+            "workspace_id": "test-ws",
+            "title": "Config changes test",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-01-01",
+            "question": "Do config changes show up?",
+            "system_under_test": "system_a",
+            "primary_results": [
+                {
+                    "path": "results/exp-001",
+                    "config_changes": {
+                        "system": {"policy": {"temperature": 2.0}},
+                    },
+                },
+            ],
+        })
+        scaffold_workspace(ws, manifest)
+
+        summary = summarize_workspace(ws)
+        assert summary.primary_results[0].config_changes == {
+            "system": {"policy": {"temperature": 2.0}},
+        }
+
     def test_primary_measurements_tracked(self, tmp_path):
         ws = tmp_path / "test-ws"
         manifest = WorkspaceManifest.model_validate({

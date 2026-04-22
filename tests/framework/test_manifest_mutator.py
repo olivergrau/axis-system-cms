@@ -54,6 +54,17 @@ class TestAppendPrimaryResult:
         append_primary_result(data, "exp-001")
         assert len(data["primary_results"]) == 2
 
+    def test_appends_config_changes_when_provided(self) -> None:
+        data: dict = {}
+        append_primary_result(
+            data, "exp-001",
+            config_changes={"system": {"policy": {"temperature": 2.0}}},
+        )
+        entry = data["primary_results"][0]
+        assert entry["config_changes"] == {
+            "system": {"policy": {"temperature": 2.0}},
+        }
+
 
 class TestUpdateDevelopmentResults:
 

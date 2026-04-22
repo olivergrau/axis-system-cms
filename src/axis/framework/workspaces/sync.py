@@ -14,6 +14,8 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 
+from axis.framework.workspaces.config_changes import compute_config_changes
+
 
 def _load_yaml_roundtrip(manifest_path: Path) -> tuple[YAML, dict]:
     """Load workspace.yaml preserving comments and ordering."""
@@ -75,6 +77,10 @@ def sync_manifest_after_run(
     ws = Path(workspace_path)
     manifest_path = ws / "workspace.yaml"
     yaml, data = _load_yaml_roundtrip(manifest_path)
+    existing_results = list(data.get("primary_results") or [])
+    config_changes = compute_config_changes(
+        ws, existing_results, experiment_id, role,
+    )
 
     append_primary_result(
         data, experiment_id,
@@ -84,6 +90,7 @@ def sync_manifest_after_run(
         system_type=system_type,
         primary_run_id=primary_run_id,
         baseline_run_id=baseline_run_id,
+        config_changes=config_changes,
     )
     update_development_results(data, experiment_id, role=role)
 

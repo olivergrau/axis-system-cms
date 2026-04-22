@@ -424,6 +424,18 @@ class TestCLIIntegration:
         assert len(data) >= 1
         assert "experiment_id" in data[0]
 
+    def test_run_aborts_when_config_is_unchanged(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 0
+        capsys.readouterr()
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 1
+        err = capsys.readouterr().err
+        assert "no config changes detected" in err
+
 
     def test_show_after_run_displays_real_artifacts(self, tmp_path, capsys):
         """After workspace run, show must display actual artifact paths."""
@@ -452,6 +464,132 @@ class TestCLIIntegration:
         # primary_results should have entries with exists=True
         assert len(data["primary_results"]) >= 1
         assert data["primary_results"][0]["exists"] is True
+
+    def test_show_displays_config_changes_between_runs(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+
+        results_root = ws / "results"
+        exp1 = results_root / "exp-001"
+        exp2 = results_root / "exp-002"
+        (exp1 / "runs" / "run-0000").mkdir(parents=True)
+        (exp2 / "runs" / "run-0000").mkdir(parents=True)
+
+        config1 = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 100},
+            "world": {"world_type": "grid_2d", "grid_width": 10, "grid_height": 10},
+            "system": {"policy": {"temperature": 1.0, "selection_mode": "sample"}},
+            "num_episodes_per_run": 5,
+        }
+        config2 = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 150},
+            "world": {"world_type": "grid_2d", "grid_width": 10, "grid_height": 10},
+            "system": {"policy": {"temperature": 2.0, "selection_mode": "sample"}},
+            "num_episodes_per_run": 5,
+        }
+        (exp1 / "experiment_config.json").write_text(json.dumps(config1))
+        (exp2 / "experiment_config.json").write_text(json.dumps(config2))
+
+        sync_manifest_after_run(
+            ws, "exp-001", ["run-0000"], "system_under_test",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+        sync_manifest_after_run(
+            ws, "exp-002", ["run-0000"], "system_under_test",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+
+        code = cli_main(["workspaces", "show", str(ws)])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Config changes vs previous comparable run:" in out
+        assert "execution.max_steps: 150" in out
+        assert "system.policy.temperature: 2.0" in out
+
+    def test_show_json_includes_config_changes_between_runs(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+
+        results_root = ws / "results"
+        exp1 = results_root / "exp-001"
+        exp2 = results_root / "exp-002"
+        (exp1 / "runs" / "run-0000").mkdir(parents=True)
+        (exp2 / "runs" / "run-0000").mkdir(parents=True)
+
+        config1 = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 100},
+            "system": {"policy": {"temperature": 1.0}},
+            "num_episodes_per_run": 5,
+        }
+        config2 = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 110},
+            "system": {"policy": {"temperature": 2.5}},
+            "num_episodes_per_run": 5,
+        }
+        (exp1 / "experiment_config.json").write_text(json.dumps(config1))
+        (exp2 / "experiment_config.json").write_text(json.dumps(config2))
+
+        sync_manifest_after_run(
+            ws, "exp-001", ["run-0000"], "system_under_test",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+        sync_manifest_after_run(
+            ws, "exp-002", ["run-0000"], "system_under_test",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+
+        code = cli_main(["workspaces", "show", str(ws), "--output", "json"])
+        assert code == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["primary_results"][0]["config_changes"] is None
+        assert data["primary_results"][1]["config_changes"] == {
+            "execution": {"max_steps": 110},
+            "system": {"policy": {"temperature": 2.5}},
+        }
+
+    def test_config_changes_use_previous_result_with_same_role(self, tmp_path):
+        ws = _scaffold_comparison(tmp_path)
+
+        results_root = ws / "results"
+        configs = {
+            "ref-001": {"system_type": "system_a", "system": {"policy": {"temperature": 1.0}}},
+            "cand-001": {"system_type": "system_a", "system": {"policy": {"temperature": 5.0}}},
+            "ref-002": {"system_type": "system_a", "system": {"policy": {"temperature": 2.0}}},
+        }
+        for exp_id, cfg in configs.items():
+            exp_dir = results_root / exp_id
+            (exp_dir / "runs" / "run-0000").mkdir(parents=True)
+            (exp_dir / "experiment_config.json").write_text(json.dumps(cfg))
+
+        sync_manifest_after_run(
+            ws, "ref-001", ["run-0000"], "reference",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+        sync_manifest_after_run(
+            ws, "cand-001", ["run-0000"], "candidate",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+        sync_manifest_after_run(
+            ws, "ref-002", ["run-0000"], "reference",
+            output_form="point", system_type="system_a", primary_run_id="run-0000",
+        )
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        assert data["primary_results"][0].get("config_changes") is None
+        assert data["primary_results"][1].get("config_changes") is None
+        assert data["primary_results"][2]["config_changes"] == {
+            "system": {"policy": {"temperature": 2.0}},
+        }
 
 
 # ---------------------------------------------------------------------------

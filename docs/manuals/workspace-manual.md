@@ -34,6 +34,12 @@ axis workspaces show workspaces/my-workspace
 
 Displays identity, classification, status, and declared artifacts with existence checks. Each entry under `primary_configs`, `primary_results`, `primary_comparisons`, and `primary_measurements` is shown with an `[OK]` or `[MISSING]` marker indicating whether the referenced file or directory exists on disk.
 
+For `primary_results`, the summary also shows any stored configuration changes
+relative to the previous comparable result. In single-system workspaces this is
+the previous run. In workspaces with roles (for example reference/candidate or
+baseline/candidate), the comparison is against the previous result with the
+same role.
+
 For development workspaces, the output also shows the current development state (pre-candidate / post-candidate), baseline and candidate configs, results lists, and the current validation comparison. When a validation comparison exists, the reference and candidate experiment IDs used in that comparison are displayed, so you can trace exactly which runs were compared.
 
 ### Execute workspace configs
@@ -45,6 +51,12 @@ axis workspaces run workspaces/my-workspace
 Resolves and executes all workspace configs. Results are written into the workspace's own `results/` directory and the manifest is updated with workspace-relative paths to the produced artifacts.
 
 For `investigation / single_system` workspaces, configs may use either `experiment_type: single_run` or `experiment_type: ofat`. All other workspace types require `single_run`. The command will fail before execution if any config uses a disallowed experiment type.
+
+The command also fails before execution if a target config is unchanged relative
+to the previous comparable result already recorded in the workspace. This helps
+prevent accidental duplicate runs. In single-system workspaces the comparison is
+against the previous run. In workspaces with roles, it is against the previous
+result with the same role.
 
 ### Run a workspace comparison
 
@@ -565,7 +577,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 The manifest tracks workspace-produced artifacts via four list fields:
 
 - **`primary_configs`** — workspace-relative paths to config files (populated at scaffold time).
-- **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`.
+- **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`. When possible, each entry also stores the changed config elements relative to the previous comparable result so `axis workspaces show` can surface iteration history directly from the manifest.
 - **`primary_comparisons`** — workspace-relative paths to comparison output files (accumulated after each `axis workspaces compare`), e.g. `comparisons/comparison-001.json`.
 - **`primary_measurements`** — workspace-relative paths to processed metrics.
 
