@@ -9,7 +9,13 @@ from axis.sdk.position import Position
 from axis.sdk.snapshot import snapshot_world
 from axis.sdk.world_types import BaseWorldConfig, CellView, WorldView
 from axis.world.grid_2d.factory import create_world
-from axis.world.grid_2d.model import Cell, CellType, RegenerationMode, World
+from axis.world.grid_2d.model import (
+    Cell,
+    CellType,
+    RegenerationMode,
+    TopologyMode,
+    World,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +54,16 @@ class TestRegenerationMode:
         assert RegenerationMode.SPARSE_FIXED_RATIO.value == "sparse_fixed_ratio"
 
 
+class TestTopologyMode:
+    """TopologyMode enum values."""
+
+    def test_bounded(self) -> None:
+        assert TopologyMode.BOUNDED.value == "bounded"
+
+    def test_toroidal(self) -> None:
+        assert TopologyMode.TOROIDAL.value == "toroidal"
+
+
 # ---------------------------------------------------------------------------
 # Cell
 # ---------------------------------------------------------------------------
@@ -70,6 +86,7 @@ class TestCell:
         cell = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
         assert cell.cell_type == CellType.OBSTACLE
         assert cell.regen_eligible is False
+        assert cell.cooldown_remaining == 0
 
     def test_resource_with_zero_value_raises(self) -> None:
         with pytest.raises(ValidationError, match="resource_value > 0"):
@@ -116,6 +133,22 @@ class TestCell:
         )
         assert cell.regen_eligible is False
 
+    def test_empty_cell_with_cooldown(self) -> None:
+        cell = Cell(
+            cell_type=CellType.EMPTY,
+            resource_value=0.0,
+            cooldown_remaining=3,
+        )
+        assert cell.cooldown_remaining == 3
+
+    def test_resource_cell_with_cooldown_raises(self) -> None:
+        with pytest.raises(ValidationError, match="cooldown_remaining == 0"):
+            Cell(
+                cell_type=CellType.RESOURCE,
+                resource_value=0.5,
+                cooldown_remaining=1,
+            )
+
 
 # ---------------------------------------------------------------------------
 # World construction
@@ -139,6 +172,7 @@ class TestWorldConstruction:
         world = World(grid=grid, agent_position=Position(x=0, y=0))
         assert world.width == 5
         assert world.height == 5
+        assert world.topology == "bounded"
 
     def test_agent_position(self) -> None:
         grid = _make_empty_grid()
@@ -169,6 +203,15 @@ class TestWorldConstruction:
         ]
         with pytest.raises(ValueError, match="width"):
             World(grid=grid, agent_position=Position(x=0, y=0))
+
+    def test_toroidal_canonicalizes_agent_position(self) -> None:
+        grid = _make_empty_grid(3, 3)
+        world = World(
+            grid=grid,
+            agent_position=Position(x=3, y=-1),
+            topology="toroidal",
+        )
+        assert world.agent_position == Position(x=0, y=2)
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +293,15 @@ class TestWorldViewConformance:
         assert world.width == 4
         assert world.height == 7
 
+    def test_canonicalize_position_toroidal_wraps(self) -> None:
+        grid = _make_empty_grid(3, 3)
+        world = World(
+            grid=grid,
+            agent_position=Position(x=0, y=0),
+            topology="toroidal",
+        )
+        assert world.canonicalize_position(Position(x=-1, y=3)) == Position(x=2, y=0)
+
 
 # ---------------------------------------------------------------------------
 # Internal mutation API
@@ -264,6 +316,16 @@ class TestWorldInternalAPI:
         world = World(grid=grid, agent_position=Position(x=0, y=0))
         world.agent_position = Position(x=3, y=3)
         assert world.agent_position == Position(x=3, y=3)
+
+    def test_set_agent_position_wraps_in_toroidal_mode(self) -> None:
+        grid = _make_empty_grid(5, 5)
+        world = World(
+            grid=grid,
+            agent_position=Position(x=0, y=0),
+            topology="toroidal",
+        )
+        world.agent_position = Position(x=-1, y=5)
+        assert world.agent_position == Position(x=4, y=0)
 
     def test_set_agent_position_obstacle_raises(self) -> None:
         grid = _make_empty_grid(5, 5)
@@ -335,6 +397,7 @@ class TestCreateWorld:
         world = create_world(config, Position(x=0, y=0))
         assert world.width == 5
         assert world.height == 5
+        assert world.topology == "bounded"
 
     def test_all_cells_empty(self) -> None:
         config = BaseWorldConfig(grid_width=3, grid_height=3)
@@ -349,6 +412,17 @@ class TestCreateWorld:
         pos = Position(x=2, y=3)
         world = create_world(config, pos)
         assert world.agent_position == pos
+
+    def test_topology_and_cooldown_config_applied(self) -> None:
+        config = BaseWorldConfig(
+            grid_width=5,
+            grid_height=5,
+            topology="toroidal",
+            resource_regen_cooldown_steps=3,
+        )
+        world = create_world(config, Position(x=5, y=-1))
+        assert world.topology == "toroidal"
+        assert world.agent_position == Position(x=0, y=4)
 
     def test_with_obstacles(self) -> None:
         config = BaseWorldConfig(

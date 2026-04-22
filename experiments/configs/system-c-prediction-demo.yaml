@@ -23,6 +23,8 @@ world:
   # Fast regeneration creates a dynamic landscape -- resources appear
   # and disappear, making predictions frequently wrong.
   resource_regen_rate: 0.4
+  resource_regen_cooldown_steps: 0
+  topology: "bounded"
   regeneration_mode: "sparse_fixed_ratio"
   regen_eligible_ratio: 0.25
 

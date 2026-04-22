@@ -10,6 +10,14 @@ from axis.systems.construction_kit.observation.types import CellObservation, Obs
 _OUT_OF_BOUNDS = CellObservation(traversability=0.0, resource=0.0)
 
 
+def _canonicalize_position(world_view: WorldView, position: Position) -> Position:
+    """Return a world-canonical position when the world exposes one."""
+    canonicalize = getattr(world_view, "canonicalize_position", None)
+    if callable(canonicalize):
+        return canonicalize(position)
+    return position
+
+
 class VonNeumannSensor:
     """Von Neumann neighborhood sensor.
 
@@ -46,6 +54,7 @@ class VonNeumannSensor:
 
         Out-of-bounds positions return (0.0, 0.0).
         """
+        position = _canonicalize_position(world_view, position)
         if not world_view.is_within_bounds(position):
             return _OUT_OF_BOUNDS
 

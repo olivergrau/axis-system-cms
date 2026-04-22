@@ -4,7 +4,7 @@ Generalized policy that receives pre-computed action scores (as a tuple
 of floats) rather than a specific drive output type. Applies:
 1. Admissibility masking (blocked directions -> -inf)
 2. Softmax with temperature multiplier beta
-3. Stochastic (sample) or deterministic (argmax) selection
+3. Stochastic (sample) or argmax selection with seeded tie-breaks
 """
 
 from __future__ import annotations
@@ -21,6 +21,8 @@ _ACTION_NAMES: tuple[str, ...] = (
     "up", "down", "left", "right", "consume", "stay")
 
 _NEG_INF = float("-inf")
+_ARGMAX_TIE_REL_TOL = 1e-9
+_ARGMAX_TIE_ABS_TOL = 1e-9
 
 
 class SoftmaxPolicy:
@@ -44,7 +46,7 @@ class SoftmaxPolicy:
         mask = self._compute_admissibility_mask(observation)
         masked = self._apply_mask(action_scores, mask)
         probs = self._softmax(action_scores, self._temperature, mask)
-        action_idx = self._select_from_distribution(probs, rng)
+        action_idx = self._select_action(masked, probs, rng)
         action = _ACTION_NAMES[action_idx]
 
         policy_data = {
@@ -107,17 +109,29 @@ class SoftmaxPolicy:
         z = sum(exp_values)
         return tuple(e / z for e in exp_values)  # type: ignore[return-value]
 
-    def _select_from_distribution(
+    def _select_action(
         self,
+        masked_scores: tuple[float, float, float, float, float, float],
         probabilities: tuple[float, float, float, float, float, float],
         rng: np.random.Generator,
     ) -> int:
-        """Select an action index from the probability distribution."""
+        """Select an action index from policy mode semantics."""
         if self._selection_mode == "argmax":
-            max_p = max(probabilities)
-            for i in range(6):
-                if probabilities[i] == max_p:
-                    return i
+            max_score = max(score for score in masked_scores if score != _NEG_INF)
+            tied_indices = [
+                i
+                for i, score in enumerate(masked_scores)
+                if score != _NEG_INF
+                and math.isclose(
+                    score,
+                    max_score,
+                    rel_tol=_ARGMAX_TIE_REL_TOL,
+                    abs_tol=_ARGMAX_TIE_ABS_TOL,
+                )
+            ]
+            if len(tied_indices) == 1:
+                return tied_indices[0]
+            return int(rng.choice(tied_indices))
 
         # SAMPLE mode
         return int(rng.choice(6, p=probabilities))

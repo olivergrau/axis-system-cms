@@ -8,6 +8,17 @@ from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome, MutableWorldProtocol
 
 
+def _canonicalize_position(
+    world: MutableWorldProtocol,
+    position: Position,
+) -> Position:
+    """Return a world-canonical position when the world exposes one."""
+    canonicalize = getattr(world, "canonicalize_position", None)
+    if callable(canonicalize):
+        return canonicalize(position)
+    return position
+
+
 def handle_scan(
     world: MutableWorldProtocol,
     *,
@@ -27,7 +38,10 @@ def handle_scan(
 
     for dy in range(-scan_radius, scan_radius + 1):
         for dx in range(-scan_radius, scan_radius + 1):
-            target = Position(x=pos.x + dx, y=pos.y + dy)
+            target = _canonicalize_position(
+                world,
+                Position(x=pos.x + dx, y=pos.y + dy),
+            )
             if world.is_within_bounds(target):
                 cell = world.get_cell(target)
                 total_resource += cell.resource_value

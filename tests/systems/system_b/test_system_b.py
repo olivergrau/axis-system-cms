@@ -324,20 +324,43 @@ class TestDecide:
         assert weights[0] == 0.0  # up
         assert weights[2] == 0.0  # left
 
-    def test_argmax_deterministic(self) -> None:
+    def test_argmax_unique_winner_stays_deterministic(self) -> None:
         cfg = SystemBConfig(
             agent=AgentConfig(initial_energy=30, max_energy=50),
             policy=PolicyConfig(selection_mode="argmax"),
         )
         system = SystemB(cfg)
         state = system.initialize_state()
-        world = World(_make_resource_grid(5, 5, 0.5), Position(x=2, y=2))
+        world = World(_make_grid(5, 5), Position(x=2, y=2))
         actions = set()
         for seed in range(10):
             rng = np.random.default_rng(seed)
             result = system.decide(world, state, rng)
             actions.add(result.action)
         assert len(actions) == 1
+        assert actions == {"scan"}
+
+    def test_argmax_tie_break_reproducible_and_tied_only(self) -> None:
+        cfg = SystemBConfig(
+            agent=AgentConfig(initial_energy=30, max_energy=50),
+            policy=PolicyConfig(selection_mode="argmax", scan_bonus=2.0),
+        )
+        system = SystemB(cfg)
+        state = system.initialize_state()
+        world = World(_make_resource_grid(5, 5, 0.5), Position(x=2, y=2))
+
+        actions = set()
+        for seed in range(30):
+            rng = np.random.default_rng(seed)
+            result = system.decide(world, state, rng)
+            actions.add(result.action)
+
+        assert actions <= {"up", "down", "left", "right", "scan"}
+        assert "stay" not in actions
+
+        r1 = system.decide(world, state, np.random.default_rng(123))
+        r2 = system.decide(world, state, np.random.default_rng(123))
+        assert r1.action == r2.action
 
     def test_sample_reproducible(self) -> None:
         system = SystemB(_default_config())

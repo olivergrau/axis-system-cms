@@ -64,7 +64,13 @@ def create_world(
     if regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO:
         _apply_sparse_eligibility(grid, gc.regen_eligible_ratio, seed)
 
-    return World(grid=grid, agent_position=agent_position, regen_rate=gc.resource_regen_rate)
+    return World(
+        grid=grid,
+        agent_position=agent_position,
+        regen_rate=gc.resource_regen_rate,
+        regen_cooldown_steps=gc.resource_regen_cooldown_steps,
+        topology=gc.topology,
+    )
 
 
 def _apply_obstacles(

@@ -19,5 +19,7 @@ class Grid2DWorldConfig(BaseModel):
     grid_height: int = Field(..., gt=0)
     obstacle_density: float = Field(default=0.0, ge=0.0, lt=1.0)
     resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
+    resource_regen_cooldown_steps: int = Field(default=0, ge=0)
+    topology: str = "bounded"
     regeneration_mode: str = "all_traversable"
     regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)

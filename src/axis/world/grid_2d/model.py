@@ -26,6 +26,13 @@ class RegenerationMode(str, enum.Enum):
     SPARSE_FIXED_RATIO = "sparse_fixed_ratio"
 
 
+class TopologyMode(str, enum.Enum):
+    """Topology mode for the grid world."""
+
+    BOUNDED = "bounded"
+    TOROIDAL = "toroidal"
+
+
 class Cell(BaseModel):
     """Internal cell representation.
 
@@ -40,6 +47,7 @@ class Cell(BaseModel):
     cell_type: CellType
     resource_value: float = Field(..., ge=0, le=1)
     regen_eligible: bool = True
+    cooldown_remaining: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def check_cell_invariants(self) -> Cell:
@@ -51,6 +59,10 @@ class Cell(BaseModel):
             raise ValueError("EMPTY cells must have resource_value == 0")
         if self.cell_type == CellType.OBSTACLE and self.regen_eligible:
             object.__setattr__(self, "regen_eligible", False)
+        if self.cell_type == CellType.OBSTACLE and self.cooldown_remaining != 0:
+            object.__setattr__(self, "cooldown_remaining", 0)
+        if self.cell_type == CellType.RESOURCE and self.cooldown_remaining != 0:
+            raise ValueError("RESOURCE cells must have cooldown_remaining == 0")
         return self
 
     @property
@@ -74,6 +86,8 @@ class World:
         agent_position: Position,
         *,
         regen_rate: float = 0.0,
+        regen_cooldown_steps: int = 0,
+        topology: TopologyMode | str = TopologyMode.BOUNDED,
     ) -> None:
         if not grid or not grid[0]:
             raise ValueError("Grid must be non-empty")
@@ -87,23 +101,45 @@ class World:
                     f"Row {y} has width {len(row)}, expected {width}"
                 )
 
-        if not (0 <= agent_position.x < width and 0 <= agent_position.y < height):
+        self._width: int = width
+        self._height: int = height
+        self._topology = TopologyMode(topology)
+
+        canonical_agent_position = self.canonicalize_position(agent_position)
+
+        if not (
+            0 <= canonical_agent_position.x < width
+            and 0 <= canonical_agent_position.y < height
+        ):
             raise ValueError(
-                f"Agent position {agent_position} is out of bounds "
+                f"Agent position {canonical_agent_position} is out of bounds "
                 f"for grid of size ({width}, {height})"
             )
 
-        cell_at_agent = grid[agent_position.y][agent_position.x]
+        cell_at_agent = grid[canonical_agent_position.y][canonical_agent_position.x]
         if not cell_at_agent.is_traversable:
             raise ValueError(
-                f"Agent position {agent_position} is on a non-traversable cell"
+                f"Agent position {canonical_agent_position} is on a non-traversable cell"
             )
 
         self._grid: list[list[Cell]] = grid
-        self._width: int = width
-        self._height: int = height
-        self._agent_position: Position = agent_position
+        self._agent_position: Position = canonical_agent_position
         self._regen_rate: float = regen_rate
+        self._regen_cooldown_steps: int = regen_cooldown_steps
+
+    @property
+    def topology(self) -> str:
+        """Configured topology mode."""
+        return self._topology.value
+
+    def canonicalize_position(self, position: Position) -> Position:
+        """Return the canonical in-world position for *position*."""
+        if self._topology is TopologyMode.TOROIDAL:
+            return Position(
+                x=position.x % self._width,
+                y=position.y % self._height,
+            )
+        return position
 
     # --- WorldView protocol (read-only) ---
 
@@ -125,6 +161,7 @@ class World:
     @agent_position.setter
     def agent_position(self, position: Position) -> None:
         """Set agent position. Validates bounds and traversability."""
+        position = self.canonicalize_position(position)
         if not self.is_within_bounds(position):
             raise ValueError(f"Position {position} is out of bounds")
         if not self._grid[position.y][position.x].is_traversable:
@@ -215,12 +252,14 @@ class World:
                 cell_type=CellType.EMPTY,
                 resource_value=0.0,
                 regen_eligible=cell.regen_eligible,
+                cooldown_remaining=self._regen_cooldown_steps,
             )
         else:
             new_cell = Cell(
                 cell_type=CellType.RESOURCE,
                 resource_value=remainder,
                 regen_eligible=cell.regen_eligible,
+                cooldown_remaining=0,
             )
         self.set_cell(position, new_cell)
         return delta

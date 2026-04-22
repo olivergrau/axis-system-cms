@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
@@ -11,6 +12,9 @@ from axis.sdk.position import Position
 from axis.sdk.types import DecideResult, TransitionResult
 from axis.systems.system_b.config import SystemBConfig
 from axis.systems.system_b.types import AgentState, ScanResult
+
+_ARGMAX_TIE_REL_TOL = 1e-9
+_ARGMAX_TIE_ABS_TOL = 1e-9
 
 
 class SystemB:
@@ -55,6 +59,12 @@ class SystemB:
         n = len(actions)
         weights = [1.0] * n
 
+        def _canonicalize(position: Position) -> Position:
+            canonicalize = getattr(world_view, "canonicalize_position", None)
+            if callable(canonicalize):
+                return canonicalize(position)
+            return position
+
         # Boost scan if we haven't scanned yet or last scan found nothing
         scan_idx = actions.index("scan")
         if agent_state.last_scan.total_resource == 0:
@@ -63,10 +73,10 @@ class SystemB:
         # Boost directions based on neighbor resources
         for i, direction in enumerate(("up", "down", "left", "right")):
             delta = MOVEMENT_DELTAS[direction]
-            target = Position(
+            target = _canonicalize(Position(
                 x=world_view.agent_position.x + delta[0],
                 y=world_view.agent_position.y + delta[1],
-            )
+            ))
             if (
                 world_view.is_within_bounds(target)
                 and world_view.is_traversable(target)
@@ -87,7 +97,22 @@ class SystemB:
         probs = [e / total for e in exp_w]
 
         if self._config.policy.selection_mode == "argmax":
-            action_idx = probs.index(max(probs))
+            max_weight = max(w for w in weights if w > 0)
+            tied_indices = [
+                i
+                for i, weight in enumerate(weights)
+                if weight > 0
+                and math.isclose(
+                    weight,
+                    max_weight,
+                    rel_tol=_ARGMAX_TIE_REL_TOL,
+                    abs_tol=_ARGMAX_TIE_ABS_TOL,
+                )
+            ]
+            if len(tied_indices) == 1:
+                action_idx = tied_indices[0]
+            else:
+                action_idx = int(rng.choice(tied_indices))
         else:
             action_idx = int(rng.choice(n, p=probs))
 

@@ -29,6 +29,13 @@ def apply_regeneration(world: MutableWorldProtocol, *, regen_rate: float) -> int
                 continue
             if not cell.regen_eligible:
                 continue
+            if getattr(cell, "cooldown_remaining", 0) > 0:
+                count += 1
+                new_cell = cell.model_copy(
+                    update={"cooldown_remaining": cell.cooldown_remaining - 1}
+                )
+                world.set_cell(pos, new_cell)
+                continue
 
             new_resource = min(1.0, cell.resource_value + regen_rate)
             if new_resource == cell.resource_value:
@@ -40,12 +47,14 @@ def apply_regeneration(world: MutableWorldProtocol, *, regen_rate: float) -> int
                     cell_type=CellType.RESOURCE,
                     resource_value=new_resource,
                     regen_eligible=cell.regen_eligible,
+                    cooldown_remaining=0,
                 )
             else:
                 new_cell = Cell(
                     cell_type=CellType.EMPTY,
                     resource_value=0.0,
                     regen_eligible=cell.regen_eligible,
+                    cooldown_remaining=0,
                 )
             world.set_cell(pos, new_cell)
 

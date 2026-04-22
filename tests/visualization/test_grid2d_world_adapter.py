@@ -48,6 +48,15 @@ class TestGrid2DWorldAdapter:
         result = adapter.topology_indicators(_make_snapshot(), {}, layout)
         assert result == []
 
+    def test_grid2d_toroidal_topology_indicators_present(self) -> None:
+        adapter = Grid2DWorldVisualizationAdapter(topology="toroidal")
+        layout = adapter.cell_layout(2, 2, 200.0, 200.0)
+        from tests.sdk.test_replay_contract import _make_snapshot
+        result = adapter.topology_indicators(_make_snapshot(), {}, layout)
+        assert len(result) == 4
+        edges = {indicator.data["edge"] for indicator in result}
+        assert edges == {"left", "right", "top", "bottom"}
+
     def test_grid2d_adapter_pixel_to_grid(self) -> None:
         adapter = Grid2DWorldVisualizationAdapter()
         layout = adapter.cell_layout(3, 2, 300.0, 200.0)
@@ -57,6 +66,10 @@ class TestGrid2DWorldAdapter:
     def test_grid2d_adapter_format_world_info_none(self) -> None:
         adapter = Grid2DWorldVisualizationAdapter()
         assert adapter.format_world_info({}) is None
+
+    def test_grid2d_adapter_format_world_info_toroidal(self) -> None:
+        adapter = Grid2DWorldVisualizationAdapter(topology="toroidal")
+        assert adapter.format_world_info({}) == "Toroidal topology (edges wrap)"
 
     def test_grid2d_adapter_metadata_sections_empty(self) -> None:
         adapter = Grid2DWorldVisualizationAdapter()
@@ -72,3 +85,18 @@ class TestGrid2DWorldAdapter:
         register_world_visualization("grid_2d", _grid_2d_vis_factory)
         result = resolve_world_adapter("grid_2d", {})
         assert type(result).__name__ == "Grid2DWorldVisualizationAdapter"
+
+    def test_grid2d_registration_preserves_topology_config(self) -> None:
+        from axis.visualization.registry import (
+            _clear_registries,
+            register_world_visualization,
+        )
+        from axis.world.grid_2d.visualization import _grid_2d_vis_factory
+
+        _clear_registries()
+        register_world_visualization("grid_2d", _grid_2d_vis_factory)
+        result = resolve_world_adapter("grid_2d", {"topology": "toroidal"})
+        layout = result.cell_layout(2, 2, 200.0, 200.0)
+        from tests.sdk.test_replay_contract import _make_snapshot
+
+        assert len(result.topology_indicators(_make_snapshot(), {}, layout)) == 4

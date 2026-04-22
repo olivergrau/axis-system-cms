@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import numpy as np
 import pytest
 
@@ -44,16 +45,17 @@ def _make_drive_output(
 class TestPolicy:
     """SoftmaxPolicy unit tests."""
 
-    def test_argmax_deterministic(self) -> None:
+    def test_argmax_unique_winner_stays_deterministic(self) -> None:
         policy = _make_policy("argmax")
         obs = _make_observation()
-        drive = _make_drive_output()
+        drive = _make_drive_output((0.1, 0.2, 0.3, 0.4, 0.5, -0.1))
         actions = set()
         for seed in range(10):
             rng = np.random.default_rng(seed)
             result = policy.select(drive.action_contributions, obs, rng)
             actions.add(result.action)
         assert len(actions) == 1
+        assert actions == {"consume"}
 
     def test_argmax_selects_highest(self) -> None:
         policy = _make_policy("argmax")
@@ -62,6 +64,59 @@ class TestPolicy:
         rng = np.random.default_rng(42)
         result = policy.select(drive.action_contributions, obs, rng)
         assert result.action == "consume"
+
+    def test_argmax_tied_top_actions_selected_only_from_tied_set(self) -> None:
+        policy = _make_policy("argmax")
+        obs = _make_observation()
+        drive = _make_drive_output((0.9, 0.9, 0.1, 0.2, 0.1, -0.5))
+        actions = set()
+        for seed in range(30):
+            rng = np.random.default_rng(seed)
+            result = policy.select(drive.action_contributions, obs, rng)
+            actions.add(result.action)
+        assert actions <= {"up", "down"}
+        assert actions == {"up", "down"}
+
+    def test_argmax_tied_selection_reproducible_with_fixed_seed(self) -> None:
+        policy = _make_policy("argmax")
+        obs = _make_observation()
+        drive = _make_drive_output((0.9, 0.9, 0.1, 0.2, 0.1, -0.5))
+
+        r1 = policy.select(
+            drive.action_contributions, obs, np.random.default_rng(123),
+        )
+        r2 = policy.select(
+            drive.action_contributions, obs, np.random.default_rng(123),
+        )
+
+        assert r1.action == r2.action
+
+    def test_argmax_masked_actions_excluded_from_tie_breaking(self) -> None:
+        policy = _make_policy("argmax")
+        obs = _make_observation(blocked_dirs=("up",))
+        drive = _make_drive_output((0.9, 0.9, 0.1, 0.2, 0.1, -0.5))
+
+        actions = set()
+        for seed in range(20):
+            rng = np.random.default_rng(seed)
+            result = policy.select(drive.action_contributions, obs, rng)
+            actions.add(result.action)
+
+        assert "up" not in actions
+        assert actions == {"down"}
+
+    def test_argmax_uses_tolerance_for_near_equal_top_scores(self) -> None:
+        policy = _make_policy("argmax")
+        obs = _make_observation()
+        drive = _make_drive_output((1.0, 1.0 - 1e-10, 0.0, 0.0, 0.0, -1.0))
+
+        actions = set()
+        for seed in range(20):
+            rng = np.random.default_rng(seed)
+            result = policy.select(drive.action_contributions, obs, rng)
+            actions.add(result.action)
+
+        assert actions == {"up", "down"}
 
     def test_sample_uses_rng(self) -> None:
         policy = _make_policy("sample")
@@ -83,6 +138,27 @@ class TestPolicy:
         r2 = policy.select(drive.action_contributions,
                            obs, np.random.default_rng(123))
         assert r1.action == r2.action
+
+    def test_softmax_mode_probabilities_unchanged(self) -> None:
+        policy = _make_policy("sample")
+        obs = _make_observation()
+        scores = (0.1, 0.2, 0.3, 0.4, 0.5, -0.1)
+        drive = _make_drive_output(scores)
+        rng = np.random.default_rng(42)
+
+        result = policy.select(drive.action_contributions, obs, rng)
+        probs = result.policy_data["probabilities"]
+        mask = result.policy_data["admissibility_mask"]
+
+        s_max = max(score for score, admissible in zip(scores, mask) if admissible)
+        exp_values = [
+            math.exp(score - s_max) if admissible else 0.0
+            for score, admissible in zip(scores, mask)
+        ]
+        z = sum(exp_values)
+        expected = tuple(value / z for value in exp_values)
+
+        assert probs == pytest.approx(expected, abs=1e-12)
 
     def test_obstacle_direction_zero_probability(self) -> None:
         policy = _make_policy("sample")

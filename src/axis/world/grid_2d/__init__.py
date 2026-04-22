@@ -3,12 +3,19 @@
 from axis.world.grid_2d.config import Grid2DWorldConfig
 from axis.world.grid_2d.dynamics import apply_regeneration
 from axis.world.grid_2d.factory import create_world
-from axis.world.grid_2d.model import Cell, CellType, RegenerationMode, World
+from axis.world.grid_2d.model import (
+    Cell,
+    CellType,
+    RegenerationMode,
+    TopologyMode,
+    World,
+)
 
 __all__ = [
     "Cell",
     "CellType",
     "RegenerationMode",
+    "TopologyMode",
     "World",
     "Grid2DWorldConfig",
     "create_world",

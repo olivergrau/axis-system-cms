@@ -9,6 +9,14 @@ from axis.sdk.position import Position
 from axis.sdk.world_types import ActionOutcome, MutableWorldProtocol
 
 
+def _canonicalize_position(world: MutableWorldProtocol, position: Position) -> Position:
+    """Return a world-canonical position when the world exposes one."""
+    canonicalize = getattr(world, "canonicalize_position", None)
+    if callable(canonicalize):
+        return canonicalize(position)
+    return position
+
+
 class ActionHandler(Protocol):
     """Protocol for action handlers.
 
@@ -37,7 +45,10 @@ def _handle_movement(
     """
     delta = MOVEMENT_DELTAS[action]
     pos = world.agent_position
-    target = Position(x=pos.x + delta[0], y=pos.y + delta[1])
+    target = _canonicalize_position(
+        world,
+        Position(x=pos.x + delta[0], y=pos.y + delta[1]),
+    )
 
     if world.is_within_bounds(target) and world.is_traversable(target):
         world.agent_position = target

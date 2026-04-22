@@ -485,7 +485,7 @@ def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
                 "",
                 indent=6,
             )
-            _print_changed_config_summary(e.config_changes, indent=8)
+            _print_changed_config_summary(e.config_changes, indent=8, out=out)
 
 
 def _flatten_config(
@@ -538,8 +538,9 @@ def _print_config_summary(
             out.line(line)
 
 
-def _print_changed_config_summary(config: dict, indent: int = 8) -> None:
+def _print_changed_config_summary(config: dict, indent: int = 8, *, out=None) -> None:
     """Print a nested changed-config dict as flattened key-value pairs."""
+    out = out or stdout_output()
     prefix = " " * indent
 
     def _flatten(obj: dict, path: str = "") -> None:
@@ -548,6 +549,6 @@ def _print_changed_config_summary(config: dict, indent: int = 8) -> None:
             if isinstance(value, dict):
                 _flatten(value, full_key)
             else:
-                print(f"{prefix}{full_key}: {value}")
+                out.line(out.styled(f"{prefix}{full_key}: {value}", role="diff"))
 
     _flatten(config)

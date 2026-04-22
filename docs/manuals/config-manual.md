@@ -125,6 +125,8 @@ An episode ends when either `max_steps` is reached (termination reason:
 | `grid_height`      | integer            | yes      | --      | > 0 |
 | `obstacle_density` | float              | no       | `0.0`   | >= 0.0 and < 1.0 |
 | `resource_regen_rate` | float           | no       | `0.0`   | 0.0--1.0 |
+| `resource_regen_cooldown_steps` | integer | no | `0` | >= 0 |
+| `topology`         | string             | no       | `"bounded"` | `"bounded"` or `"toroidal"` |
 | `regeneration_mode` | string            | no       | `"all_traversable"` | see Section 3.3.1 |
 | `regen_eligible_ratio` | float or null  | no       | `null`  | > 0 and <= 1.0 |
 | `world_type`       | string             | no       | `"grid_2d"` | Registered world type: `"grid_2d"`, `"toroidal"`, or `"signal_landscape"` |
@@ -135,12 +137,23 @@ world:
   grid_height: 10
   obstacle_density: 0.1
   resource_regen_rate: 0.05
+  resource_regen_cooldown_steps: 0
+  topology: "bounded"
 ```
 
 The `world` section defines the physical grid and its dynamics.
 Obstacles are placed randomly at initialization using the experiment
 seed. Regeneration parameters control how resources recover over time
 and are a property of the world, not the system.
+
+`resource_regen_cooldown_steps` delays regeneration after a resource cell
+is fully depleted. A value of `0` preserves the historical behavior:
+eligible empty cells can begin regenerating on the next world tick.
+
+`topology` controls boundary behavior for the default grid world.
+`"bounded"` blocks movement and sensing at the edges. `"toroidal"`
+wraps positions across opposite edges while keeping the same grid
+geometry and cell semantics.
 
 > **Architecture note:** At the SDK level, `BaseWorldConfig` is a minimal
 > type with only `world_type: str` defined. All other fields (`grid_width`,
@@ -165,9 +178,13 @@ The fields above apply to the default `"grid_2d"` world type. Other
 world types accept additional fields through the `BaseWorldConfig`
 extras mechanism:
 
-**`"toroidal"`** -- Accepts the same fields as `"grid_2d"` (grid
-dimensions, obstacles, regeneration). The only difference is that edges
-wrap around instead of blocking movement.
+**`"grid_2d"`** -- Supports both bounded and wrapping grids through the
+`topology` field. Use `topology: "bounded"` for the standard grid and
+`topology: "toroidal"` for wraparound edges.
+
+**`"toroidal"`** -- Legacy alias for a wrapping grid. Accepts the same
+fields as `"grid_2d"` and behaves like `world_type: "grid_2d"` with
+`topology: "toroidal"`.
 
 **`"signal_landscape"`** -- A dynamic signal-based world with drifting
 Gaussian hotspots. Accepts these additional fields:

@@ -116,6 +116,31 @@ class TestMovementActions:
         assert outcome.moved is False
         assert outcome.new_position == Position(x=0, y=0)
 
+    def test_move_wraps_in_toroidal_topology(self) -> None:
+        world = World(
+            grid=_make_open_grid(5, 5),
+            agent_position=Position(x=0, y=0),
+            topology="toroidal",
+        )
+        registry = create_action_registry()
+        outcome = registry.apply(world, "up")
+        assert outcome.moved is True
+        assert outcome.new_position == Position(x=0, y=4)
+        assert world.agent_position == Position(x=0, y=4)
+
+    def test_move_wrap_respects_obstacle(self) -> None:
+        grid = _make_open_grid(5, 5)
+        grid[4][0] = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
+        world = World(
+            grid=grid,
+            agent_position=Position(x=0, y=0),
+            topology="toroidal",
+        )
+        registry = create_action_registry()
+        outcome = registry.apply(world, "up")
+        assert outcome.moved is False
+        assert outcome.new_position == Position(x=0, y=0)
+
     def test_action_name_echoed(self) -> None:
         world = _make_world()
         registry = create_action_registry()

@@ -81,6 +81,17 @@ class TestBasicRegeneration:
         # 25 cells total, 1 non-eligible -> 24 updated
         assert count == 24
 
+    def test_zero_cooldown_preserves_immediate_regeneration(self) -> None:
+        cells = {
+            (1, 1): Cell(cell_type=CellType.EMPTY, resource_value=0.0),
+        }
+        world = _make_world_with_cells(cells, width=3, height=3)
+        count = apply_regeneration(world, regen_rate=0.1)
+        assert count == 9
+        cell = world.get_internal_cell(Position(x=1, y=1))
+        assert cell.cell_type == CellType.RESOURCE
+        assert cell.resource_value == 0.1
+
 
 # ---------------------------------------------------------------------------
 # Resource accumulation
@@ -178,6 +189,56 @@ class TestNonEligibleSkipped:
         apply_regeneration(world, regen_rate=0.1)
         cell = world.get_internal_cell(Position(x=2, y=2))
         assert cell.resource_value == 0.5  # unchanged
+
+
+class TestCooldownBehavior:
+    """Cooldown cells do not regenerate until cooldown expires."""
+
+    def test_cooldown_decrements_without_regrowth(self) -> None:
+        cells = {
+            (1, 1): Cell(
+                cell_type=CellType.EMPTY,
+                resource_value=0.0,
+                cooldown_remaining=2,
+            ),
+        }
+        world = _make_world_with_cells(cells, width=3, height=3)
+        count = apply_regeneration(world, regen_rate=0.1)
+        assert count == 9
+        cell = world.get_internal_cell(Position(x=1, y=1))
+        assert cell.cell_type == CellType.EMPTY
+        assert cell.resource_value == 0.0
+        assert cell.cooldown_remaining == 1
+
+    def test_cooldown_zero_after_tick_still_does_not_regrow_same_tick(self) -> None:
+        cells = {
+            (1, 1): Cell(
+                cell_type=CellType.EMPTY,
+                resource_value=0.0,
+                cooldown_remaining=1,
+            ),
+        }
+        world = _make_world_with_cells(cells, width=3, height=3)
+        apply_regeneration(world, regen_rate=0.1)
+        cell = world.get_internal_cell(Position(x=1, y=1))
+        assert cell.cell_type == CellType.EMPTY
+        assert cell.resource_value == 0.0
+        assert cell.cooldown_remaining == 0
+
+    def test_regrowth_resumes_after_cooldown_expires(self) -> None:
+        cells = {
+            (1, 1): Cell(
+                cell_type=CellType.EMPTY,
+                resource_value=0.0,
+                cooldown_remaining=1,
+            ),
+        }
+        world = _make_world_with_cells(cells, width=3, height=3)
+        apply_regeneration(world, regen_rate=0.1)
+        apply_regeneration(world, regen_rate=0.1)
+        cell = world.get_internal_cell(Position(x=1, y=1))
+        assert cell.cell_type == CellType.RESOURCE
+        assert cell.resource_value == 0.1
 
 
 # ---------------------------------------------------------------------------
