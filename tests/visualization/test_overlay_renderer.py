@@ -231,6 +231,257 @@ class TestIntegration:
         finally:
             painter.end()
 
+    def test_signed_bar_chart_draws_negative_left_of_baseline(self) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "bar_chart",
+            data={
+                "values": [-1.0, 1.0],
+                "labels": ["N", "P"],
+                "baseline": 0.0,
+                "max_value": 1.0,
+            },
+        )
+
+        class FakePainter:
+            def __init__(self) -> None:
+                self.rects = []
+            def setFont(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setPen(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setBrush(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawRect(self, rect):  # noqa: ANN001
+                self.rects.append(rect)
+            def drawText(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawLine(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        painter = FakePainter()
+        renderer._draw_bar_chart(painter, item, layout)
+
+        assert len(painter.rects) == 2
+        neg_rect, pos_rect = painter.rects
+        assert neg_rect.x() < pos_rect.x()
+
+    def test_baseline_bar_chart_draws_around_baseline(self) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "bar_chart",
+            data={
+                "values": [0.5, 1.5],
+                "labels": ["Low", "High"],
+                "baseline": 1.0,
+                "min_value": 0.0,
+                "max_value": 2.0,
+            },
+        )
+
+        class FakePainter:
+            def __init__(self) -> None:
+                self.rects = []
+            def setFont(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setPen(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setBrush(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawRect(self, rect):  # noqa: ANN001
+                self.rects.append(rect)
+            def drawText(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawLine(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        painter = FakePainter()
+        renderer._draw_bar_chart(painter, item, layout)
+
+        assert len(painter.rects) == 2
+        low_rect, high_rect = painter.rects
+        assert low_rect.x() < high_rect.x()
+
+    def test_signed_bar_chart_baseline_is_proportional_to_value_range(self) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "bar_chart",
+            data={
+                "values": [-0.1, 1.0],
+                "labels": ["Stay", "Consume"],
+            },
+        )
+
+        class FakePainter:
+            def __init__(self) -> None:
+                self.rects = []
+            def setFont(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setPen(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setBrush(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawRect(self, rect):  # noqa: ANN001
+                self.rects.append(rect)
+            def drawText(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawLine(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        painter = FakePainter()
+        renderer._draw_bar_chart(painter, item, layout)
+
+        assert len(painter.rects) == 2
+        neg_rect, pos_rect = painter.rects
+        assert neg_rect.width() < pos_rect.width()
+
+    def test_bar_chart_segments_split_single_bar_by_proportion(self) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item = _make_item(
+            "bar_chart",
+            data={
+                "values": [1.0],
+                "labels": ["A"],
+                "max_value": 1.0,
+                "segments": [[
+                    {"value": 1.0, "color": [0, 0, 255, 255]},
+                    {"value": 3.0, "color": [0, 255, 0, 255]},
+                ]],
+            },
+        )
+
+        class FakePainter:
+            def __init__(self) -> None:
+                self.rects = []
+                self._brush = None
+            def setFont(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setPen(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setBrush(self, brush):  # noqa: ANN001
+                self._brush = brush
+            def drawRect(self, rect):  # noqa: ANN001
+                self.rects.append((rect, self._brush))
+            def drawText(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawLine(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        painter = FakePainter()
+        renderer._draw_bar_chart(painter, item, layout)
+
+        assert len(painter.rects) == 2
+        first_rect, first_brush = painter.rects[0]
+        second_rect, second_brush = painter.rects[1]
+        assert first_rect.width() < second_rect.width()
+        assert second_rect.x() == pytest.approx(
+            first_rect.x() + first_rect.width(),
+        )
+        assert first_brush.getRgb() == (0, 0, 255, 255)
+        assert second_brush.getRgb() == (0, 255, 0, 255)
+
+    def test_multiple_bar_charts_at_same_cell_are_stacked_vertically(self) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item_a = _make_item(
+            "bar_chart",
+            data={
+                "values": [0.5],
+                "labels": ["A"],
+                "layout_mode": "stack",
+            },
+        )
+        item_b = _make_item(
+            "bar_chart",
+            data={
+                "values": [0.5],
+                "labels": ["B"],
+                "layout_mode": "stack",
+            },
+        )
+
+        class FakePainter:
+            def __init__(self) -> None:
+                self.rects = []
+            def setFont(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setPen(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setBrush(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawRect(self, rect):  # noqa: ANN001
+                self.rects.append(rect)
+            def drawText(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawLine(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        painter = FakePainter()
+        renderer.render(
+            painter,
+            (
+                _make_overlay(items=(item_a,)),
+                _make_overlay(items=(item_b,)),
+            ),
+            layout,
+        )
+
+        assert len(painter.rects) == 2
+        first_rect, second_rect = painter.rects
+        assert first_rect.y() < second_rect.y()
+
+    def test_multiple_bar_charts_default_to_overlay_same_band(self) -> None:
+        renderer = OverlayRenderer()
+        layout = _make_layout()
+        item_a = _make_item(
+            "bar_chart",
+            data={
+                "values": [0.5],
+                "labels": ["A"],
+            },
+        )
+        item_b = _make_item(
+            "bar_chart",
+            data={
+                "values": [0.5],
+                "labels": ["B"],
+            },
+        )
+
+        class FakePainter:
+            def __init__(self) -> None:
+                self.rects = []
+            def setFont(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setPen(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def setBrush(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawRect(self, rect):  # noqa: ANN001
+                self.rects.append(rect)
+            def drawText(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+            def drawLine(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        painter = FakePainter()
+        renderer.render(
+            painter,
+            (
+                _make_overlay(items=(item_a,)),
+                _make_overlay(items=(item_b,)),
+            ),
+            layout,
+        )
+
+        assert len(painter.rects) == 2
+        first_rect, second_rect = painter.rects
+        assert first_rect.y() == second_rect.y()
+
     def test_render_radius_circle_no_crash(self, qapp) -> None:
         renderer = OverlayRenderer()
         layout = _make_layout()

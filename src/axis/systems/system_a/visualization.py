@@ -24,6 +24,24 @@ ACTION_NAMES: tuple[str, ...] = (
 DIRECTION_ACTIONS: tuple[str, ...] = ("up", "down", "left", "right")
 
 
+def _action_score_bar_data(
+    values: tuple[float, ...] | list[float],
+) -> tuple[list[float], float]:
+    """Convert signed action scores into relative bar lengths.
+
+    The overlay is meant to show behavioral dominance, not signed distance
+    from zero. Shift scores so the minimum score maps to zero width and
+    higher-scoring actions produce longer bars.
+    """
+    vals = list(values)
+    if not vals:
+        return [], 1.0
+    min_value = min(vals)
+    shifted = [v - min_value for v in vals]
+    max_value = max(shifted, default=0.0) or 1.0
+    return shifted, max_value
+
+
 class SystemAVisualizationAdapter:
     """Visualization adapter for System A.
 
@@ -336,6 +354,9 @@ class SystemAVisualizationAdapter:
         agent_pos: tuple[int, int],
     ) -> OverlayData:
         drive = decision_data.get("drive", {})
+        display_values, display_max = _action_score_bar_data(
+            drive.get("action_contributions", ()),
+        )
         return OverlayData(
             overlay_type="drive_contribution",
             items=(
@@ -344,9 +365,9 @@ class SystemAVisualizationAdapter:
                     grid_position=agent_pos,
                     data={
                         "activation": drive.get("activation", 0.0),
-                        "values": list(
-                            drive.get("action_contributions", ())),
+                        "values": display_values,
                         "labels": list(ACTION_NAMES),
+                        "max_value": display_max,
                     },
                 ),
             ),

@@ -36,8 +36,41 @@ class OverlayRenderer:
         cell_layout: CellLayout,
     ) -> None:
         """Render all overlay items from all active overlays."""
+        bar_chart_counts: dict[tuple[int, int], int] = {}
         for overlay in overlay_data_list:
             for item in overlay.items:
+                if (
+                    item.item_type == "bar_chart"
+                    and item.data.get("layout_mode") == "stack"
+                ):
+                    pos = item.grid_position
+                    bar_chart_counts[pos] = bar_chart_counts.get(pos, 0) + 1
+
+        bar_chart_seen: dict[tuple[int, int], int] = {}
+        for overlay in overlay_data_list:
+            for item in overlay.items:
+                if (
+                    item.item_type == "bar_chart"
+                    and item.data.get("layout_mode") == "stack"
+                ):
+                    pos = item.grid_position
+                    stack_total = bar_chart_counts.get(pos, 1)
+                    stack_index = bar_chart_seen.get(pos, 0)
+                    bar_chart_seen[pos] = stack_index + 1
+                    if (
+                        stack_total > 1
+                        and "height_fraction" not in item.data
+                        and "y_offset_fraction" not in item.data
+                    ):
+                        item = item.model_copy(
+                            update={
+                                "data": {
+                                    **item.data,
+                                    "height_fraction": 1.0 / stack_total,
+                                    "y_offset_fraction": stack_index / stack_total,
+                                },
+                            },
+                        )
                 self._render_item(painter, item, cell_layout)
 
     def _render_item(
@@ -129,6 +162,8 @@ class OverlayRenderer:
 
         values = item.data.get("values", [])
         labels = item.data.get("labels", [])
+        baseline = item.data.get("baseline", None)
+        segments = item.data.get("segments", [])
 
         bx, by, bw, bh = bbox
         n = len(values)
@@ -138,18 +173,21 @@ class OverlayRenderer:
         # Normalize values so the longest bar fills the available width.
         # An explicit max_value in data overrides auto-detection.
         max_value = item.data.get("max_value", None)
-        if max_value is None or max_value <= 0:
-            max_value = max((abs(v) for v in values), default=1.0) or 1.0
+        signed_mode = baseline is not None or any(v < 0 for v in values)
 
         # Adaptive sizing: zoomed view has room for full labels on the left
         zoomed = bw >= 100
         font_size = 9 if zoomed else 7
         label_area = 0.4 if zoomed else 0.05
+        height_fraction = item.data.get("height_fraction", 1.0)
+        y_offset_fraction = item.data.get("y_offset_fraction", 0.0)
 
-        bar_h = bh * 0.7 / n
+        chart_h = bh * 0.7 * height_fraction
+        chart_y = by + bh * 0.15 + bh * 0.7 * y_offset_fraction
+        bar_h = chart_h / n
         bar_x = bx + bw * label_area
         max_bar_w = bw * (1.0 - label_area - 0.05)
-        y_start = by + bh * 0.15
+        y_start = chart_y
 
         painter.setFont(QFont("monospace", font_size))
         bar_color = item.data.get("bar_color", None)
@@ -157,13 +195,69 @@ class OverlayRenderer:
             bar_color = QColor(*bar_color)
         else:
             bar_color = QColor(100, 180, 255, 150)
+        positive_bar_color = item.data.get("positive_bar_color", None)
+        if positive_bar_color is not None:
+            positive_bar_color = QColor(*positive_bar_color)
+        negative_bar_color = item.data.get("negative_bar_color", None)
+        if negative_bar_color is not None:
+            negative_bar_color = QColor(*negative_bar_color)
+
+        if signed_mode:
+            if baseline is None:
+                baseline = 0.0
+            min_value = item.data.get("min_value", None)
+            if min_value is None:
+                min_value = min(values, default=baseline)
+                min_value = min(min_value, baseline)
+            if max_value is None:
+                max_value = max(values, default=baseline)
+                max_value = max(max_value, baseline)
+
+            total_span = max(max_value - min_value, 1e-9)
+            baseline_ratio = (baseline - min_value) / total_span
+            baseline_ratio = max(0.0, min(1.0, baseline_ratio))
+            baseline_x = bar_x + max_bar_w * baseline_ratio
+            negative_width = max_bar_w * baseline_ratio
+            positive_width = max_bar_w * (1.0 - baseline_ratio)
+            negative_span = max(baseline - min_value, 1e-9)
+            positive_span = max(max_value - baseline, 1e-9)
+            painter.setPen(QPen(QColor(230, 230, 230, 120), 1.0))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawLine(
+                QPointF(baseline_x, y_start - 1),
+                QPointF(baseline_x, y_start + n * bar_h - bar_h * 0.2),
+            )
+        else:
+            if max_value is None or max_value <= 0:
+                max_value = max((abs(v) for v in values), default=1.0) or 1.0
+
         for i, val in enumerate(values):
             y = y_start + i * bar_h
-            normalized = abs(val) / max_value
-            w = max(1.0, normalized * max_bar_w)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(bar_color)
-            painter.drawRect(QRectF(bar_x, y, w, bar_h * 0.8))
+            if signed_mode:
+                delta = val - baseline
+                if abs(delta) > 1e-12:
+                    if delta >= 0:
+                        normalized = min(delta / positive_span, 1.0)
+                        w = normalized * positive_width
+                        x = baseline_x
+                        color = positive_bar_color or bar_color
+                    else:
+                        normalized = min(abs(delta) / negative_span, 1.0)
+                        w = normalized * negative_width
+                        x = baseline_x - w
+                        color = negative_bar_color or bar_color
+                    self._draw_bar_fill(
+                        painter, QRectF(x, y, w, bar_h * 0.8), color,
+                        segments[i] if i < len(segments) else None,
+                    )
+            else:
+                normalized = abs(val) / max_value
+                if normalized > 1e-12:
+                    w = normalized * max_bar_w
+                    self._draw_bar_fill(
+                        painter, QRectF(bar_x, y, w, bar_h * 0.8), bar_color,
+                        segments[i] if i < len(segments) else None,
+                    )
             if i < len(labels):
                 if zoomed:
                     # Dark backdrop behind label for contrast
@@ -184,6 +278,62 @@ class OverlayRenderer:
                         QPointF(bar_x + 2, y + bar_h * 0.7),
                         labels[i][:1].upper(),
                     )
+
+    def _draw_bar_fill(
+        self,
+        painter: QPainter,
+        rect: QRectF,
+        default_color: QColor,
+        segments: list[dict[str, object]] | None,
+    ) -> None:
+        """Draw a solid bar or optional segmented fill within a bar rect."""
+        if rect.width() <= 0 or rect.height() <= 0:
+            return
+
+        if not segments:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(default_color)
+            painter.drawRect(rect)
+            return
+
+        segment_specs = []
+        for segment in segments:
+            value = float(segment.get("value", 0.0))
+            if value <= 1e-12:
+                continue
+            color_spec = segment.get("color", None)
+            color = self._coerce_color(color_spec) or default_color
+            segment_specs.append((value, color))
+
+        if not segment_specs:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(default_color)
+            painter.drawRect(rect)
+            return
+
+        total_value = sum(value for value, _ in segment_specs)
+        x = rect.x()
+        remaining_width = rect.width()
+        for index, (value, color) in enumerate(segment_specs):
+            if index == len(segment_specs) - 1:
+                segment_width = remaining_width
+            else:
+                segment_width = rect.width() * (value / total_value)
+                remaining_width -= segment_width
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(color)
+            painter.drawRect(QRectF(x, rect.y(), segment_width, rect.height()))
+            x += segment_width
+
+    def _coerce_color(
+        self, color_spec: object,
+    ) -> QColor | None:
+        """Convert `[r,g,b,a]` style color specs into QColor."""
+        if isinstance(color_spec, QColor):
+            return color_spec
+        if isinstance(color_spec, (list, tuple)) and 3 <= len(color_spec) <= 4:
+            return QColor(*color_spec)
+        return None
 
     def _draw_diamond_marker(
         self, painter: QPainter, item: OverlayItem, layout: CellLayout,

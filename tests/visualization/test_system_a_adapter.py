@@ -310,6 +310,33 @@ class TestOverlays:
         assert len(data["values"]) == 6
         assert len(data["labels"]) == 6
 
+    def test_drive_contribution_bar_chart_shows_relative_dominance(self) -> None:
+        data = _sample_system_data()
+        data["decision_data"]["drive"]["action_contributions"] = (
+            0.0, 0.0, 0.086, 0.0, 0.0, -0.0215,
+        )
+        snap = _make_snapshot()
+        step_trace = BaseStepTrace(
+            timestep=5,
+            action="down",
+            world_before=snap,
+            world_after=snap,
+            agent_position_before=Position(x=2, y=2),
+            agent_position_after=Position(x=2, y=2),
+            vitality_before=0.45,
+            vitality_after=0.435,
+            terminated=False,
+            system_data=data,
+        )
+        overlays = _adapter().build_overlays(step_trace)
+        bar_data = overlays[1].items[0].data
+        values = bar_data["values"]
+
+        stay_idx = 5
+        down_idx = 2
+        assert values[stay_idx] == pytest.approx(0.0)
+        assert values[down_idx] > values[stay_idx]
+
     def test_consumption_opportunity_overlay(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
         assert overlays[2].overlay_type == "consumption_opportunity"

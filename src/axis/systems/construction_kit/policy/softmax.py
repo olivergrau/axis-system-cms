@@ -3,7 +3,7 @@
 Generalized policy that receives pre-computed action scores (as a tuple
 of floats) rather than a specific drive output type. Applies:
 1. Admissibility masking (blocked directions -> -inf)
-2. Softmax with inverse temperature beta
+2. Softmax with temperature multiplier beta
 3. Stochastic (sample) or deterministic (argmax) selection
 """
 
@@ -89,7 +89,7 @@ class SoftmaxPolicy:
         beta: float,
         mask: tuple[bool, bool, bool, bool, bool, bool],
     ) -> tuple[float, float, float, float, float, float]:
-        """Numerically stable softmax with inverse temperature beta.
+        """Numerically stable softmax with temperature multiplier beta.
 
         P(a_i) = exp(beta * (s_i - s_max)) / SUM_j exp(beta * (s_j - s_max))
         where s_max is taken over admissible actions only.

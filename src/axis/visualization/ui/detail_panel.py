@@ -7,6 +7,9 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from axis.visualization.types import CellColorConfig
 from axis.visualization.ui.agent_cell_zoom import AgentCellZoomWidget
+from axis.visualization.ui.policy_distribution_widget import (
+    PolicyDistributionWidget,
+)
 from axis.visualization.ui.prediction_summary_widget import PredictionSummaryWidget
 from axis.visualization.view_models import (
     GridCellViewModel,
@@ -29,6 +32,8 @@ class DetailPanel(QWidget):
         self._content_label = QLabel()
         self._content_label.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._content_label.setWordWrap(True)
+        self._policy_widget = PolicyDistributionWidget()
+        self._policy_widget.setVisible(False)
         self._prediction_widget = PredictionSummaryWidget()
         self._prediction_widget.setVisible(False)
 
@@ -36,6 +41,7 @@ class DetailPanel(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.addWidget(self._zoom_widget)
         layout.addWidget(self._content_label)
+        layout.addWidget(self._policy_widget)
         layout.addWidget(self._prediction_widget)
 
     def set_frame(
@@ -82,6 +88,7 @@ class DetailPanel(QWidget):
                     lines.append(f"  {row_data.label}: {row_data.value}")
 
         self._content_label.setText("\n".join(lines))
+        self._policy_widget.set_data(frame.policy_widget_data)
         self._prediction_widget.set_data(frame.system_widget_data)
 
     @staticmethod

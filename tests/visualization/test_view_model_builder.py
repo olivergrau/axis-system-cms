@@ -90,17 +90,20 @@ def _make_step(
     timestep: int = 0,
     agent_pos_before: Position | None = None,
     agent_pos_after: Position | None = None,
+    action: str = "right",
+    system_data: dict[str, Any] | None = None,
 ) -> BaseStepTrace:
     pos_b = agent_pos_before or Position(x=1, y=1)
     pos_a = agent_pos_after or Position(x=2, y=1)
     return BaseStepTrace(
-        timestep=timestep, action="right",
+        timestep=timestep, action=action,
         world_before=_make_snapshot(agent_pos=pos_b),
         world_after=_make_snapshot(agent_pos=pos_a),
         agent_position_before=pos_b,
         agent_position_after=pos_a,
         vitality_before=0.8, vitality_after=0.75,
         terminated=False,
+        system_data=system_data or {},
     )
 
 
@@ -108,10 +111,12 @@ def _sample_episode_handle(
     num_steps: int = 5,
     grid_width: int = 5,
     grid_height: int = 5,
+    steps: tuple[BaseStepTrace, ...] | None = None,
 ) -> ReplayEpisodeHandle:
-    steps = tuple(_make_step(timestep=i) for i in range(num_steps))
+    steps = steps or tuple(_make_step(timestep=i) for i in range(num_steps))
+    total_steps = len(steps)
     episode = BaseEpisodeTrace(
-        system_type="test", steps=steps, total_steps=num_steps,
+        system_type="test", steps=steps, total_steps=total_steps,
         termination_reason="max_steps", final_vitality=0.75,
         final_position=Position(x=0, y=0),
     )
@@ -121,10 +126,10 @@ def _sample_episode_handle(
             has_intermediate_snapshots=(), has_agent_position=True,
             has_vitality=True, has_world_state=True,
         )
-        for i in range(num_steps)
+        for i in range(total_steps)
     )
     validation = ReplayValidationResult(
-        valid=True, total_steps=num_steps,
+        valid=True, total_steps=total_steps,
         grid_width=grid_width, grid_height=grid_height,
         step_descriptors=descriptors,
     )
@@ -484,6 +489,46 @@ class TestAdapterDelegation:
         frame = _build_frame(state)
         assert len(frame.overlay_data) == 1
         assert frame.overlay_data[0].overlay_type == "test_overlay"
+
+    def test_policy_widget_data_from_nested_policy_trace(self) -> None:
+        step = _make_step(system_data={
+            "decision_data": {
+                "policy": {
+                    "raw_contributions": (0.1, 0.4, 0.0, 0.0, -0.1, -0.2),
+                    "masked_contributions": (0.1, 0.4, 0.0, 0.0, -0.1, -0.2),
+                    "probabilities": (0.16, 0.24, 0.16, 0.16, 0.14, 0.14),
+                    "selected_action": "down",
+                    "temperature": 1.5,
+                    "selection_mode": "sample",
+                },
+            },
+        })
+        state = create_initial_state(_sample_episode_handle(steps=(step,)), 3)
+        frame = _build_frame(state)
+        assert frame.policy_widget_data is not None
+        assert frame.policy_widget_data["selected_action"] == "down"
+        assert frame.policy_widget_data["labels"] == [
+            "up", "down", "left", "right", "consume", "stay",
+        ]
+
+    def test_policy_widget_data_from_system_b_style_trace(self) -> None:
+        step = _make_step(
+            action="scan",
+            system_data={
+                "decision_data": {
+                    "weights": [0.2, 0.3, 0.0, 0.5, 1.0, 0.1],
+                    "probabilities": [0.10, 0.12, 0.09, 0.15, 0.44, 0.10],
+                    "last_scan": {"total_resource": 1.5, "cell_count": 3},
+                },
+            },
+        )
+        state = create_initial_state(_sample_episode_handle(steps=(step,)), 3)
+        frame = _build_frame(state)
+        assert frame.policy_widget_data is not None
+        assert frame.policy_widget_data["selected_action"] == "scan"
+        assert frame.policy_widget_data["labels"] == [
+            "up", "down", "left", "right", "scan", "stay",
+        ]
 
 
 # ---------------------------------------------------------------------------

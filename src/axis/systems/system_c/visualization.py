@@ -25,6 +25,27 @@ ACTION_NAMES: tuple[str, ...] = (
 DIRECTION_ACTIONS: tuple[str, ...] = ("up", "down", "left", "right")
 
 
+def _relative_action_score_bar_data(
+    *value_groups: tuple[float, ...] | list[float],
+) -> tuple[list[list[float]], float]:
+    """Convert one or more signed action-score sequences into a shared
+    relative dominance scale.
+
+    The visualization should answer "which action is winning?" rather than
+    "how far from zero is this score?". Shift all groups by the shared
+    minimum so the weakest action maps to zero width and higher-scoring
+    actions produce longer bars on the same scale.
+    """
+    groups = [list(values) for values in value_groups]
+    flat = [value for group in groups for value in group]
+    if not flat:
+        return [[] for _ in groups], 1.0
+    min_value = min(flat)
+    shifted_groups = [[value - min_value for value in group] for group in groups]
+    max_value = max((value for group in shifted_groups for value in group), default=0.0) or 1.0
+    return shifted_groups, max_value
+
+
 class SystemCVisualizationAdapter:
     """Visualization adapter for System C.
 
@@ -362,11 +383,8 @@ class SystemCVisualizationAdapter:
         raw = list(drive.get("action_contributions", ()))
         pred = decision_data.get("prediction", {})
         modulated = list(pred.get("modulated_scores", ()))
-        # Shared scale: max across raw AND modulated so overlays are comparable
-        shared_max = max(
-            max((abs(v) for v in raw), default=1.0),
-            max((abs(v) for v in modulated), default=1.0),
-        ) or 1.0
+        shifted_groups, shared_max = _relative_action_score_bar_data(raw, modulated)
+        display_raw = shifted_groups[0] if shifted_groups else []
         return OverlayData(
             overlay_type="drive_contribution",
             items=(
@@ -375,7 +393,7 @@ class SystemCVisualizationAdapter:
                     grid_position=agent_pos,
                     data={
                         "activation": drive.get("activation", 0.0),
-                        "values": raw,
+                        "values": display_raw,
                         "labels": list(ACTION_NAMES),
                         "max_value": shared_max,
                     },
@@ -391,11 +409,8 @@ class SystemCVisualizationAdapter:
         raw = list(drive.get("action_contributions", ()))
         pred = decision_data.get("prediction", {})
         modulated = list(pred.get("modulated_scores", ()))
-        # Same shared scale as raw drive overlay
-        shared_max = max(
-            max((abs(v) for v in raw), default=1.0),
-            max((abs(v) for v in modulated), default=1.0),
-        ) or 1.0
+        shifted_groups, shared_max = _relative_action_score_bar_data(raw, modulated)
+        display_modulated = shifted_groups[1] if len(shifted_groups) > 1 else []
         return OverlayData(
             overlay_type="modulated_contribution",
             items=(
@@ -403,10 +418,10 @@ class SystemCVisualizationAdapter:
                     item_type="bar_chart",
                     grid_position=agent_pos,
                     data={
-                        "values": modulated,
+                        "values": display_modulated,
                         "labels": list(ACTION_NAMES),
                         "max_value": shared_max,
-                        "bar_color": [255, 140, 0, 220],
+                        "bar_color": [255, 140, 0, 120],
                     },
                 ),
             ),
@@ -478,8 +493,10 @@ class SystemCVisualizationAdapter:
                         "values": values,
                         "labels": list(ACTION_NAMES),
                         "baseline": 1.0,
+                        "min_value": 0.0,
                         "max_value": 2.0,
-                        "bar_color": [220, 50, 220, 220],
+                        "positive_bar_color": [80, 220, 80, 220],
+                        "negative_bar_color": [220, 80, 80, 220],
                     },
                 ),
             ),

@@ -24,6 +24,67 @@ ACTION_NAMES: tuple[str, ...] = (
 DIRECTION_ACTIONS: tuple[str, ...] = ("up", "down", "left", "right")
 
 
+def _action_score_bar_data(
+    values: tuple[float, ...] | list[float],
+) -> tuple[list[float], float]:
+    """Convert signed action scores into relative bar lengths."""
+    vals = list(values)
+    if not vals:
+        return [], 1.0
+    min_value = min(vals)
+    shifted = [v - min_value for v in vals]
+    max_value = max(shifted, default=0.0) or 1.0
+    return shifted, max_value
+
+
+def _weighted_drive_segments(
+    decision_data: dict[str, Any],
+) -> list[list[dict[str, Any]]]:
+    """Build per-action hunger/curiosity segments for combined bars.
+
+    The enclosing bar length still represents relative dominance of the
+    final combined score. Segment widths show the relative magnitude of
+    the weighted hunger and curiosity terms inside that combined score.
+    Faded segments indicate a term opposing the action's net tendency.
+    """
+    hunger = decision_data.get("hunger_drive", {})
+    curiosity = decision_data.get("curiosity_drive", {})
+    arbitration = decision_data.get("arbitration", {})
+
+    hunger_scale = (
+        float(hunger.get("activation", 0.0))
+        * float(arbitration.get("hunger_weight", 0.0))
+    )
+    curiosity_scale = (
+        float(curiosity.get("activation", 0.0))
+        * float(arbitration.get("curiosity_weight", 0.0))
+    )
+
+    hunger_values = list(hunger.get("action_contributions", ()))
+    curiosity_values = list(curiosity.get("action_contributions", ()))
+    action_count = max(len(hunger_values), len(curiosity_values))
+
+    segments: list[list[dict[str, Any]]] = []
+    for index in range(action_count):
+        hunger_term = hunger_scale * (
+            hunger_values[index] if index < len(hunger_values) else 0.0
+        )
+        curiosity_term = curiosity_scale * (
+            curiosity_values[index] if index < len(curiosity_values) else 0.0
+        )
+        segments.append([
+            {
+                "value": abs(hunger_term),
+                "color": [100, 180, 255, 210 if hunger_term >= 0 else 100],
+            },
+            {
+                "value": abs(curiosity_term),
+                "color": [100, 255, 100, 210 if curiosity_term >= 0 else 100],
+            },
+        ])
+    return segments
+
+
 class SystemAWVisualizationAdapter:
     """Visualization adapter for System A+W.
 
@@ -110,12 +171,16 @@ class SystemAWVisualizationAdapter:
             ),
             OverlayTypeDeclaration(
                 key="drive_contribution",
-                label="Drive Contribution",
-                description="Stacked bars: hunger (blue) + curiosity "
-                            "(green) per action.",
+                label="Combined Action Scores",
+                description="Per-action bars showing the final gated "
+                            "combined scores after hunger-curiosity "
+                            "arbitration, with internal blue/green "
+                            "split showing drive influence.",
                 legend_html=(
                     "<span style='color:#64B4FF'>\u25a0</span>=hunger "
                     "<span style='color:#64FF64'>\u25a0</span>=curiosity "
+                    "<span style='color:#C8AA32'>\u25a0</span>=combined "
+                    "score length "
                     "U/D/L/R/C/S"
                 ),
             ),
@@ -342,11 +407,11 @@ class SystemAWVisualizationAdapter:
         self, decision_data: dict[str, Any],
     ) -> AnalysisSection:
         policy = decision_data.get("policy", {})
-        raw = policy.get("raw_scores", ())
+        raw = policy.get("raw_contributions", ())
         mask = policy.get("admissibility_mask", ())
         masked = tuple(
             v if v is not None else float("-inf")
-            for v in policy.get("masked_scores", ())
+            for v in policy.get("masked_contributions", ())
         )
         probs = policy.get("probabilities", ())
 
@@ -560,8 +625,9 @@ class SystemAWVisualizationAdapter:
         self, decision_data: dict[str, Any],
         agent_pos: tuple[int, int],
     ) -> OverlayData:
-        hunger = decision_data.get("hunger_drive", {})
-        curiosity = decision_data.get("curiosity_drive", {})
+        combined = decision_data.get("combined_scores", ())
+        combined_values, combined_max = _action_score_bar_data(combined)
+        segments = _weighted_drive_segments(decision_data)
         return OverlayData(
             overlay_type="drive_contribution",
             items=(
@@ -569,22 +635,11 @@ class SystemAWVisualizationAdapter:
                     item_type="bar_chart",
                     grid_position=agent_pos,
                     data={
-                        "drive": "hunger",
-                        "activation": hunger.get("activation", 0.0),
-                        "values": list(
-                            hunger.get("action_contributions", ())),
+                        "values": combined_values,
                         "labels": list(ACTION_NAMES),
-                    },
-                ),
-                OverlayItem(
-                    item_type="bar_chart",
-                    grid_position=agent_pos,
-                    data={
-                        "drive": "curiosity",
-                        "activation": curiosity.get("activation", 0.0),
-                        "values": list(
-                            curiosity.get("action_contributions", ())),
-                        "labels": list(ACTION_NAMES),
+                        "bar_color": [200, 170, 50, 210],
+                        "max_value": combined_max,
+                        "segments": segments,
                     },
                 ),
             ),

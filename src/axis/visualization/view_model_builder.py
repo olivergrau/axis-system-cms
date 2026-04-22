@@ -138,6 +138,7 @@ class ViewModelBuilder:
         )
 
         overlay_data = self._build_overlays(step_trace, state)
+        policy_widget_data = self._build_policy_widget_data(step_trace)
 
         # -- System widget data (optional) ----------------------------------
         system_widget_data = None
@@ -157,6 +158,7 @@ class ViewModelBuilder:
             world_metadata_sections=tuple(world_metadata_sections),
             analysis_sections=tuple(analysis_sections),
             overlay_data=tuple(overlay_data),
+            policy_widget_data=policy_widget_data,
             system_widget_data=system_widget_data,
         )
 
@@ -212,3 +214,59 @@ class ViewModelBuilder:
             od for od in all_overlays
             if od.overlay_type in cfg.enabled_overlays
         ]
+
+    @staticmethod
+    def _build_policy_widget_data(
+        step_trace: BaseStepTrace,
+    ) -> dict[str, object] | None:
+        """Build generic policy distribution data for the detail panel."""
+        dd = step_trace.system_data.get("decision_data", {})
+        policy = dd.get("policy", {})
+
+        raw = list(policy.get("raw_contributions", ()))
+        masked = list(policy.get("masked_contributions", ()))
+        probabilities = list(policy.get("probabilities", ()))
+        selected_action = policy.get("selected_action")
+        temperature = policy.get("temperature")
+        selection_mode = policy.get("selection_mode")
+
+        # System B exposes a flatter decision payload without nested policy.
+        if not probabilities and "probabilities" in dd:
+            probabilities = list(dd.get("probabilities", ()))
+        if not raw and "weights" in dd:
+            raw = list(dd.get("weights", ()))
+        if not masked and raw:
+            masked = list(raw)
+        if selected_action is None:
+            selected_action = step_trace.action
+
+        if not raw and not probabilities:
+            return None
+
+        labels = ViewModelBuilder._default_action_labels(
+            dd, max(len(raw), len(masked), len(probabilities)),
+        )
+
+        return {
+            "labels": labels,
+            "raw_scores": raw,
+            "masked_scores": masked,
+            "probabilities": probabilities,
+            "selected_action": selected_action,
+            "temperature": temperature,
+            "selection_mode": selection_mode,
+        }
+
+    @staticmethod
+    def _default_action_labels(
+        decision_data: dict[str, object],
+        count: int,
+    ) -> list[str]:
+        """Best-effort action labels for generic policy visualization."""
+        if count <= 0:
+            return []
+        if "weights" in decision_data and "last_scan" in decision_data:
+            return ["up", "down", "left", "right", "scan", "stay"][:count]
+        if count == 6:
+            return ["up", "down", "left", "right", "consume", "stay"]
+        return [f"a{i}" for i in range(count)]

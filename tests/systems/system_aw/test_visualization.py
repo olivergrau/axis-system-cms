@@ -52,9 +52,11 @@ def _sample_system_data() -> dict[str, Any]:
             },
             "combined_scores": (0.153, 0.192, 0.057, 0.296, 0.233, -0.088),
             "policy": {
-                "raw_scores": (0.153, 0.192, 0.057, 0.296, 0.233, -0.088),
+                "raw_contributions": (
+                    0.153, 0.192, 0.057, 0.296, 0.233, -0.088,
+                ),
                 "admissibility_mask": (True, False, True, True, True, True),
-                "masked_scores": (
+                "masked_contributions": (
                     0.153, float("-inf"), 0.057, 0.296, 0.233, -0.088),
                 "probabilities": (0.18, 0.0, 0.14, 0.28, 0.25, 0.15),
                 "selected_action": "right",
@@ -144,9 +146,9 @@ def _curiosity_zero_system_data() -> dict[str, Any]:
             },
             "combined_scores": (0.0, 0.0, 0.0, 0.0, 0.625, -0.05),
             "policy": {
-                "raw_scores": (0.0, 0.0, 0.0, 0.0, 0.625, -0.05),
+                "raw_contributions": (0.0, 0.0, 0.0, 0.0, 0.625, -0.05),
                 "admissibility_mask": (True, True, True, True, True, True),
-                "masked_scores": (0.0, 0.0, 0.0, 0.0, 0.625, -0.05),
+                "masked_contributions": (0.0, 0.0, 0.0, 0.0, 0.625, -0.05),
                 "probabilities": (0.12, 0.12, 0.12, 0.12, 0.40, 0.12),
                 "selected_action": "consume",
                 "temperature": 2.00,
@@ -288,9 +290,19 @@ class TestOverlays:
     def test_drive_contribution_has_both_drives(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())
         dc = [o for o in overlays if o.overlay_type == "drive_contribution"][0]
-        assert len(dc.items) == 2
-        drives = {item.data["drive"] for item in dc.items}
-        assert drives == {"hunger", "curiosity"}
+        assert len(dc.items) == 1
+        item = dc.items[0]
+        assert item.item_type == "bar_chart"
+        assert item.data["values"] == pytest.approx(
+            [0.241, 0.28, 0.145, 0.384, 0.321, 0.0],
+        )
+        assert item.data["max_value"] == pytest.approx(0.384)
+        assert item.data["segments"][0][0]["value"] == pytest.approx(0.035625)
+        assert item.data["segments"][0][1]["value"] == pytest.approx(0.116875)
+        assert item.data["segments"][4][0]["value"] == pytest.approx(0.1484375)
+        assert item.data["segments"][4][1]["value"] == pytest.approx(0.06375)
+        assert item.data["segments"][5][0]["color"] == [100, 180, 255, 100]
+        assert item.data["segments"][5][1]["color"] == [100, 255, 100, 100]
 
     def test_visit_count_heatmap_items(self) -> None:
         overlays = _adapter().build_overlays(_sample_step_trace())

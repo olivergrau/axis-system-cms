@@ -103,6 +103,7 @@ def _make_frame(
     agent_selected: bool = False,
     world_metadata: tuple[MetadataSection, ...] = (),
     status: StatusBarViewModel | None = None,
+    policy_widget_data: dict[str, object] | None = None,
 ) -> ViewerFrameViewModel:
     cells = tuple(
         _make_grid_cell(row=r, col=c, resource_value=0.3 if (
@@ -128,6 +129,7 @@ def _make_frame(
         world_metadata_sections=world_metadata,
         analysis_sections=(),
         overlay_data=(),
+        policy_widget_data=policy_widget_data,
     )
 
 
@@ -309,6 +311,41 @@ class TestDetailPanel:
         text = panel._content_label.text()
         assert "Topology" in text
         assert "Type: Toroidal" in text
+
+    def test_detail_panel_policy_widget_visibility(self, qapp) -> None:
+        panel = DetailPanel(_default_color_config())
+        frame = _make_frame(
+            policy_widget_data={
+                "labels": ["up", "down", "left", "right", "consume", "stay"],
+                "raw_scores": [0.1, 0.4, 0.0, 0.0, -0.1, -0.2],
+                "masked_scores": [0.1, 0.4, 0.0, 0.0, -0.1, -0.2],
+                "probabilities": [0.16, 0.24, 0.16, 0.16, 0.14, 0.14],
+                "selected_action": "down",
+                "temperature": 1.5,
+                "selection_mode": "sample",
+            },
+        )
+        panel.set_frame(frame)
+        assert not panel._policy_widget.isHidden()
+
+    def test_detail_panel_policy_widget_tolerates_none_scores(self, qapp) -> None:
+        panel = DetailPanel(_default_color_config())
+        frame = _make_frame(
+            policy_widget_data={
+                "labels": ["up", "down", "left", "right", "consume", "stay"],
+                "raw_scores": [None, 0.4, 0.0, 0.0, -0.1, -0.2],
+                "masked_scores": [None, 0.4, 0.0, 0.0, None, float("-inf")],
+                "probabilities": [0.16, 0.24, 0.16, 0.16, 0.14, 0.14],
+                "selected_action": "down",
+                "temperature": 1.5,
+                "selection_mode": "sample",
+            },
+        )
+        panel.set_frame(frame)
+        panel._policy_widget.resize(260, panel._policy_widget.height())
+        panel._policy_widget.show()
+        qapp.processEvents()
+        assert not panel._policy_widget.isHidden()
 
 
 # ---------------------------------------------------------------------------
