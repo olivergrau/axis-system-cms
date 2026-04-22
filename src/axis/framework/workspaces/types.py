@@ -20,11 +20,11 @@ class WorkspaceType(StrEnum):
 
 
 class WorkspaceStatus(StrEnum):
-    IDEA = "idea"
     DRAFT = "draft"
-    RUNNING = "running"
+    ACTIVE = "active"
     ANALYZING = "analyzing"
     COMPLETED = "completed"
+    CLOSED = "closed"
 
 
 class WorkspaceLifecycleStage(StrEnum):
@@ -32,7 +32,9 @@ class WorkspaceLifecycleStage(StrEnum):
     DRAFT = "draft"
     SPEC = "spec"
     IMPLEMENTATION = "implementation"
+    ANALYSIS = "analysis"
     DOCUMENTATION = "documentation"
+    FINAL = "final"
 
 
 class ArtifactKind(StrEnum):

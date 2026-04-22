@@ -164,6 +164,15 @@ def set_candidate_config(
         primary_configs.append(config_path)
 
 
+def close_workspace(data: dict) -> None:
+    """Close a workspace by setting its final workflow state."""
+    if data.get("status") == "closed":
+        raise ValueError("Workspace is already closed.")
+
+    data["status"] = "closed"
+    data["lifecycle_stage"] = "final"
+
+
 # -----------------------------------------------------------------------
 # Scaffold mutations
 # -----------------------------------------------------------------------

@@ -368,11 +368,17 @@ The checker verifies:
 - Baseline and candidate config paths are valid
 - Development state is consistent
 
-When development is complete, update the manifest status:
+When development is complete, close the workspace explicitly:
+
+```bash
+axis workspaces close workspaces/develop-system-d
+```
+
+This finalizes the workflow state by setting:
 
 ```yaml
-status: completed
-lifecycle_stage: documentation
+status: closed
+lifecycle_stage: final
 ```
 
 ---

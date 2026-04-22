@@ -41,7 +41,14 @@ class WorkspaceCompareService:
 
         Returns summary information about the produced comparison.
         """
+        from axis.framework.workspaces.types import load_manifest
+
         ws = Path(workspace_path)
+        manifest = load_manifest(ws)
+        if manifest.status.value == "closed":
+            raise ValueError(
+                "Workspace is closed; no further comparisons are allowed."
+            )
         envelope, ws_relative_path = self._compare_fn(
             ws, reference_experiment, candidate_experiment,
         )

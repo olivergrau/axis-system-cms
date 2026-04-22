@@ -9,6 +9,26 @@ from pathlib import Path
 from axis.framework.cli.output import fail, stdout_output
 
 
+def _format_workspace_status(status: object, *, out=None) -> str:
+    """Return a visually emphasized workspace status label."""
+    out = out or stdout_output()
+    status_text = str(status)
+    role = {
+        "draft": "warning",
+        "active": "success",
+        "analyzing": "info",
+        "completed": "success",
+        "closed": "error",
+    }.get(status_text, "emphasis")
+    return out.styled(status_text.upper(), role=role)
+
+
+def _format_workspace_lifecycle(stage: object, *, out=None) -> str:
+    """Return a visually emphasized lifecycle label."""
+    out = out or stdout_output()
+    return out.styled(str(stage).upper(), role="emphasis")
+
+
 def cmd_workspaces_scaffold(output: str) -> None:
     """Interactive workspace scaffolding."""
     import questionary
@@ -146,6 +166,27 @@ def cmd_workspaces_check(
             out.list_row(f"[drift:{issue.severity}]", issue.message)
 
 
+def cmd_workspaces_close(
+    workspace_path: str,
+    output: str,
+    workflow_service: object = None,
+) -> None:
+    """Close a workspace and finalize its workflow state."""
+    result = workflow_service.close(Path(workspace_path))
+
+    if output == "json":
+        print(json.dumps({
+            "workspace_path": result.workspace_path,
+            "status": result.status,
+            "lifecycle_stage": result.lifecycle_stage,
+        }, indent=2))
+    else:
+        out = stdout_output()
+        out.success(f"workspace closed: {Path(workspace_path).name}")
+        out.kv("Status", result.status)
+        out.kv("Lifecycle", result.lifecycle_stage)
+
+
 def cmd_workspaces_show(
     workspace_path: str, output: str,
     inspection_service: object = None,
@@ -162,8 +203,15 @@ def cmd_workspaces_show(
         out.kv("Title", summary.title)
         out.kv("Class", summary.workspace_class)
         out.kv("Type", summary.workspace_type)
-        out.kv("Status", summary.status)
-        out.kv("Lifecycle", summary.lifecycle_stage)
+        out.kv("Status", _format_workspace_status(summary.status, out=out))
+        out.kv(
+            "Lifecycle",
+            _format_workspace_lifecycle(summary.lifecycle_stage, out=out),
+        )
+        if str(summary.status) == "closed":
+            out.hint(
+                "Workspace is closed; execution and comparison commands are disabled."
+            )
         if summary.description:
             out.kv("Description", summary.description)
         if summary.question:

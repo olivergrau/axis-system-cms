@@ -154,7 +154,7 @@ examples:
     # -- workspaces ------------------------------------------------------------
     ws_parser = entity_sub.add_parser(
         "workspaces",
-        help="Manage experiment workspaces (scaffold, check, show, run, compare)",
+        help="Manage experiment workspaces (scaffold, close, check, show, run, compare)",
     )
     ws_action = ws_parser.add_subparsers(dest="action", title="actions")
 
@@ -162,6 +162,12 @@ examples:
         "scaffold", parents=[common],
         help="Interactively create a new workspace",
     )
+
+    ws_close_p = ws_action.add_parser(
+        "close", parents=[common], help="Close a workspace",
+    )
+    ws_close_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
 
     ws_check_p = ws_action.add_parser(
         "check", parents=[common], help="Validate a workspace",

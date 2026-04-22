@@ -16,6 +16,7 @@ from axis.framework.cli.commands.runs import cmd_runs_list, cmd_runs_show
 from axis.framework.cli.commands.visualize import cmd_visualize
 from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_check,
+    cmd_workspaces_close,
     cmd_workspaces_compare,
     cmd_workspaces_comparison_result,
     cmd_workspaces_run,
@@ -83,6 +84,10 @@ def dispatch(
         elif args.entity == "workspaces":
             if args.action == "scaffold":
                 cmd_workspaces_scaffold(output)
+            elif args.action == "close":
+                cmd_workspaces_close(
+                    args.workspace_path, output,
+                    workflow_service=ctx.workflow_service)
             elif args.action == "check":
                 cmd_workspaces_check(
                     args.workspace_path, output,

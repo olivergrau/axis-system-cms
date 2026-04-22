@@ -18,6 +18,9 @@ from axis.framework.workspaces.services.compare_service import (
 from axis.framework.workspaces.services.inspection_service import (
     WorkspaceInspectionService,
 )
+from axis.framework.workspaces.services.workflow_service import (
+    WorkspaceWorkflowService,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +52,18 @@ def _make_inspection_service(
         check_fn=check_fn or MagicMock(),
         drift_fn=drift_fn or MagicMock(return_value=[]),
         sweep_result_fn=sweep_result_fn or MagicMock(),
+    )
+
+
+def _make_workflow_service(
+    close_workspace_fn=None,
+    load_yaml_roundtrip_fn=None,
+    save_yaml_roundtrip_fn=None,
+):
+    return WorkspaceWorkflowService(
+        close_workspace_fn=close_workspace_fn or MagicMock(),
+        load_yaml_roundtrip_fn=load_yaml_roundtrip_fn or MagicMock(),
+        save_yaml_roundtrip_fn=save_yaml_roundtrip_fn or MagicMock(),
     )
 
 
@@ -219,6 +234,56 @@ class TestRunServiceInjection:
 
         execute_fn.assert_not_called()
 
+    def test_execute_rejects_closed_workspace(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "closed",
+            "lifecycle_stage": "final",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_a",
+        }))
+
+        execute_fn = MagicMock(return_value=[])
+        svc = _make_run_service(execute_fn=execute_fn)
+
+        with pytest.raises(ValueError, match="no further executions"):
+            svc.execute(ws)
+
+        execute_fn.assert_not_called()
+
+    def test_set_candidate_rejects_closed_workspace(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "configs").mkdir()
+        (ws / "configs" / "candidate.yaml").write_text("system_type: system_a\n")
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "development",
+            "workspace_type": "system_development",
+            "status": "closed",
+            "lifecycle_stage": "final",
+            "created_at": "2026-04-22",
+            "development_goal": "Build it",
+            "artifact_kind": "system",
+            "artifact_under_development": "system_d",
+        }))
+
+        svc = _make_run_service()
+
+        with pytest.raises(ValueError, match="candidate config cannot be changed"):
+            svc.set_candidate(ws, "configs/candidate.yaml")
+
 
 class TestCompareServiceInjection:
     """CompareService delegates to injected callables."""
@@ -229,11 +294,40 @@ class TestCompareServiceInjection:
         sync_fn = MagicMock()
         svc = WorkspaceCompareService(compare_fn=compare_fn, sync_fn=sync_fn)
 
-        result = svc.compare(Path("/ws"))
+        with patch(
+            "axis.framework.workspaces.types.load_manifest",
+            return_value=MagicMock(status=MagicMock(value="draft")),
+        ):
+            result = svc.compare(Path("/ws"))
         compare_fn.assert_called_once()
         sync_fn.assert_called_once_with(Path("/ws"), "comparisons/c-001.json")
         assert result.comparison_number == 1
         assert result.output_path == "comparisons/c-001.json"
+
+    def test_compare_rejects_closed_workspace(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "closed",
+            "lifecycle_stage": "final",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_a",
+        }))
+
+        compare_fn = MagicMock()
+        svc = _make_compare_service(compare_fn=compare_fn)
+
+        with pytest.raises(ValueError, match="no further comparisons"):
+            svc.compare(ws)
+
+        compare_fn.assert_not_called()
 
 
 class TestInspectionServiceInjection:
@@ -260,6 +354,35 @@ class TestInspectionServiceInjection:
         sweep_fn.assert_called_once_with(Path("/ws"), experiment="e1")
 
 
+class TestWorkflowServiceInjection:
+
+    def test_close_updates_manifest_via_injected_collaborators(self) -> None:
+        yaml_obj = object()
+        data = {
+            "status": "draft",
+            "lifecycle_stage": "implementation",
+        }
+        load_fn = MagicMock(return_value=(yaml_obj, data))
+        close_fn = MagicMock(side_effect=lambda d: d.update({
+            "status": "closed",
+            "lifecycle_stage": "final",
+        }))
+        save_fn = MagicMock()
+        svc = _make_workflow_service(
+            close_workspace_fn=close_fn,
+            load_yaml_roundtrip_fn=load_fn,
+            save_yaml_roundtrip_fn=save_fn,
+        )
+
+        result = svc.close(Path("/ws"))
+
+        load_fn.assert_called_once_with(Path("/ws") / "workspace.yaml")
+        close_fn.assert_called_once_with(data)
+        save_fn.assert_called_once_with(Path("/ws") / "workspace.yaml", yaml_obj, data)
+        assert result.status == "closed"
+        assert result.lifecycle_stage == "final"
+
+
 # ---------------------------------------------------------------------------
 # set_candidate
 # ---------------------------------------------------------------------------
@@ -282,6 +405,20 @@ class TestSetCandidate:
             save_yaml_roundtrip_fn=_save_yaml_roundtrip,
         )
 
+    def _valid_dev_manifest(self) -> dict:
+        return {
+            "workspace_id": "my_ws",
+            "title": "Workspace",
+            "workspace_class": "development",
+            "workspace_type": "system_development",
+            "status": "draft",
+            "lifecycle_stage": "implementation",
+            "created_at": "2026-04-22",
+            "development_goal": "Build it",
+            "artifact_kind": "system",
+            "artifact_under_development": "system_d",
+        }
+
     def test_set_candidate_updates_manifest(self, tmp_path: Path) -> None:
         import yaml
 
@@ -290,10 +427,9 @@ class TestSetCandidate:
         configs_dir = ws / "configs"
         configs_dir.mkdir()
         (configs_dir / "candidate.yaml").write_text("system_type: sys_a")
-        (ws / "workspace.yaml").write_text(yaml.dump({
-            "workspace_type": "system_development",
-            "primary_configs": ["configs/baseline.yaml"],
-        }))
+        data = self._valid_dev_manifest()
+        data["primary_configs"] = ["configs/baseline.yaml"]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
 
         svc = self._make_real_run_service()
         svc.set_candidate(ws, "configs/candidate.yaml")
@@ -307,9 +443,15 @@ class TestSetCandidate:
 
         ws = tmp_path / "my_ws"
         ws.mkdir()
-        (ws / "workspace.yaml").write_text(yaml.dump({
-            "workspace_type": "single_system",
-        }))
+        bad_manifest = self._valid_dev_manifest()
+        bad_manifest["workspace_class"] = "investigation"
+        bad_manifest["workspace_type"] = "single_system"
+        bad_manifest["question"] = "Q?"
+        bad_manifest.pop("development_goal")
+        bad_manifest.pop("artifact_kind")
+        bad_manifest.pop("artifact_under_development")
+        bad_manifest["system_under_test"] = "system_a"
+        (ws / "workspace.yaml").write_text(yaml.dump(bad_manifest))
         (ws / "configs").mkdir()
         (ws / "configs" / "c.yaml").write_text("x: 1")
 
@@ -322,9 +464,7 @@ class TestSetCandidate:
 
         ws = tmp_path / "my_ws"
         ws.mkdir()
-        (ws / "workspace.yaml").write_text(yaml.dump({
-            "workspace_type": "system_development",
-        }))
+        (ws / "workspace.yaml").write_text(yaml.dump(self._valid_dev_manifest()))
 
         svc = self._make_real_run_service()
         with pytest.raises(ValueError, match="does not exist"):
@@ -347,7 +487,13 @@ class TestSetCandidate:
         ws = Path("/fake/ws")
         # We need the config file "to exist" — mock Path.exists
         import unittest.mock
-        with unittest.mock.patch.object(Path, "exists", return_value=True):
+        with (
+            unittest.mock.patch.object(Path, "exists", return_value=True),
+            patch(
+                "axis.framework.workspaces.types.load_manifest",
+                return_value=MagicMock(status=MagicMock(value="draft")),
+            ),
+        ):
             svc.set_candidate(ws, "configs/c.yaml")
 
         load_fn.assert_called_once()
@@ -369,6 +515,7 @@ class TestContextIncludesServices:
         assert isinstance(ctx.run_service, WorkspaceRunService)
         assert isinstance(ctx.compare_service, WorkspaceCompareService)
         assert isinstance(ctx.inspection_service, WorkspaceInspectionService)
+        assert isinstance(ctx.workflow_service, WorkspaceWorkflowService)
 
     def test_services_have_injected_deps(self, tmp_path: Path) -> None:
         """Services must have real collaborators, not None."""
@@ -386,3 +533,6 @@ class TestContextIncludesServices:
         assert ctx.inspection_service._check_fn is not None
         assert ctx.inspection_service._drift_fn is not None
         assert ctx.inspection_service._sweep_result_fn is not None
+        assert ctx.workflow_service._close_workspace_fn is not None
+        assert ctx.workflow_service._load_yaml_roundtrip_fn is not None
+        assert ctx.workflow_service._save_yaml_roundtrip_fn is not None

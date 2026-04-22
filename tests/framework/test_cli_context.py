@@ -37,7 +37,10 @@ class TestBuildContext:
 
         # RunService
         from axis.framework.workspaces.execute import execute_workspace
-        from axis.framework.workspaces.manifest_mutator import set_candidate_config
+        from axis.framework.workspaces.manifest_mutator import (
+            close_workspace,
+            set_candidate_config,
+        )
         from axis.framework.workspaces.sync import (
             _load_yaml_roundtrip,
             _save_yaml_roundtrip,
@@ -64,6 +67,11 @@ class TestBuildContext:
         assert ctx.inspection_service._check_fn is check_workspace
         assert ctx.inspection_service._drift_fn is detect_drift
         assert ctx.inspection_service._sweep_result_fn is resolve_sweep_result
+
+        # WorkflowService
+        assert ctx.workflow_service._close_workspace_fn is close_workspace
+        assert ctx.workflow_service._load_yaml_roundtrip_fn is _load_yaml_roundtrip
+        assert ctx.workflow_service._save_yaml_roundtrip_fn is _save_yaml_roundtrip
 
 
 class TestCLIMainUsesContext:

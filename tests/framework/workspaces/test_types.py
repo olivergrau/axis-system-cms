@@ -95,6 +95,18 @@ class TestValidManifests:
         assert ref.id == "exp-001"
         assert ref.role == "reference"
 
+    def test_accepts_new_status_values(self):
+        data = _minimal_investigation_single()
+        data["status"] = "active"
+        m = WorkspaceManifest.model_validate(data)
+        assert m.status == WorkspaceStatus.ACTIVE
+
+    def test_accepts_new_lifecycle_values(self):
+        data = _minimal_investigation_single()
+        data["lifecycle_stage"] = "final"
+        m = WorkspaceManifest.model_validate(data)
+        assert m.lifecycle_stage == WorkspaceLifecycleStage.FINAL
+
 
 # -- Invalid manifests --------------------------------------------------------
 
@@ -145,6 +157,18 @@ class TestInvalidManifests:
         data = _minimal_development_system()
         del data["artifact_kind"]
         with pytest.raises(ValueError, match="artifact_kind"):
+            WorkspaceManifest.model_validate(data)
+
+    def test_removed_legacy_status_idea_is_rejected(self):
+        data = _minimal_investigation_single()
+        data["status"] = "idea"
+        with pytest.raises(ValueError, match="status"):
+            WorkspaceManifest.model_validate(data)
+
+    def test_removed_legacy_status_running_is_rejected(self):
+        data = _minimal_investigation_single()
+        data["status"] = "running"
+        with pytest.raises(ValueError, match="status"):
             WorkspaceManifest.model_validate(data)
 
 

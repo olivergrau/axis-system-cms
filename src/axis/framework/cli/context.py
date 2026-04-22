@@ -37,6 +37,9 @@ class CLIContext:
     inspection_service: object = field(default=None)
     """``WorkspaceInspectionService`` instance."""
 
+    workflow_service: object = field(default=None)
+    """``WorkspaceWorkflowService`` instance."""
+
 
 def build_context(root: Path) -> CLIContext:
     """Assemble the application context from the given root path.
@@ -49,7 +52,10 @@ def build_context(root: Path) -> CLIContext:
     from axis.framework.workspaces.compare import compare_workspace
     from axis.framework.workspaces.drift import detect_drift
     from axis.framework.workspaces.execute import execute_workspace
-    from axis.framework.workspaces.manifest_mutator import set_candidate_config
+    from axis.framework.workspaces.manifest_mutator import (
+        close_workspace,
+        set_candidate_config,
+    )
     from axis.framework.workspaces.services.compare_service import (
         WorkspaceCompareService,
     )
@@ -58,6 +64,9 @@ def build_context(root: Path) -> CLIContext:
     )
     from axis.framework.workspaces.services.run_service import (
         WorkspaceRunService,
+    )
+    from axis.framework.workspaces.services.workflow_service import (
+        WorkspaceWorkflowService,
     )
     from axis.framework.workspaces.summary import summarize_workspace
     from axis.framework.workspaces.sweep_result import resolve_sweep_result
@@ -91,5 +100,10 @@ def build_context(root: Path) -> CLIContext:
             check_fn=check_workspace,
             drift_fn=detect_drift,
             sweep_result_fn=resolve_sweep_result,
+        ),
+        workflow_service=WorkspaceWorkflowService(
+            close_workspace_fn=close_workspace,
+            load_yaml_roundtrip_fn=_load_yaml_roundtrip,
+            save_yaml_roundtrip_fn=_save_yaml_roundtrip,
         ),
     )

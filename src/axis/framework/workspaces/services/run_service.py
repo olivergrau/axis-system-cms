@@ -56,6 +56,10 @@ class WorkspaceRunService:
 
         ws = Path(workspace_path)
         manifest = load_manifest(ws)
+        if manifest.status.value == "closed":
+            raise ValueError(
+                "Workspace is closed; no further executions are allowed."
+            )
         manifest_results = list(manifest.primary_results or [])
         plan = resolve_run_targets(ws, run_filter=run_filter)
 
@@ -121,7 +125,14 @@ class WorkspaceRunService:
         Validates the config file exists, then delegates the manifest
         mutation to the manifest mutator via roundtrip YAML IO.
         """
+        from axis.framework.workspaces.types import load_manifest
+
         ws = Path(workspace_path)
+        manifest = load_manifest(ws)
+        if manifest.status.value == "closed":
+            raise ValueError(
+                "Workspace is closed; candidate config cannot be changed."
+            )
         if not (ws / config_path).exists():
             raise ValueError(
                 f"Config file does not exist: {ws / config_path}"

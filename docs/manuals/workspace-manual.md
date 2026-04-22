@@ -17,6 +17,9 @@ This launches an interactive prompt that guides you through workspace creation, 
 - Workspace ID and title
 - Class (development or investigation) and type
 - Type-specific fields (system under test, reference/candidate systems, etc.)
+- Workflow state:
+  - `status`: `draft`, `active`, `analyzing`, `completed`, `closed`
+  - `lifecycle_stage`: `idea`, `draft`, `spec`, `implementation`, `analysis`, `documentation`, `final`
 
 ### Validate a workspace
 
@@ -33,6 +36,9 @@ axis workspaces show workspaces/my-workspace
 ```
 
 Displays identity, classification, status, and declared artifacts with existence checks. Each entry under `primary_configs`, `primary_results`, `primary_comparisons`, and `primary_measurements` is shown with an `[OK]` or `[MISSING]` marker indicating whether the referenced file or directory exists on disk.
+
+If a workspace is closed, `show` makes that explicit and warns that execution
+and comparison commands are disabled.
 
 For `primary_results`, the summary also shows any stored configuration changes
 relative to the previous comparable result. In single-system workspaces this is
@@ -57,6 +63,8 @@ to the previous comparable result already recorded in the workspace. This helps
 prevent accidental duplicate runs. In single-system workspaces the comparison is
 against the previous run. In workspaces with roles, it is against the previous
 result with the same role.
+
+If the workspace has `status: closed`, the run command aborts before execution.
 
 ### Run a workspace comparison
 
@@ -92,6 +100,34 @@ axis workspaces compare workspaces/my-workspace \
 Both flags must be provided together. The referenced experiments must exist under `<workspace>/results/`.
 
 If no execution results exist in the workspace, the compare command aborts with a clear error directing you to run `axis workspaces run` first.
+
+If the workspace has `status: closed`, the compare command aborts before
+comparison.
+
+### Close a workspace
+
+```bash
+axis workspaces close workspaces/my-workspace
+```
+
+Closes the workspace by updating the manifest to:
+
+- `status: closed`
+- `lifecycle_stage: final`
+
+Closed workspaces remain fully inspectable:
+
+- `axis workspaces show`
+- `axis workspaces check`
+- `axis workspaces sweep-result`
+- `axis visualize --workspace ...`
+
+But they are operationally read-only. These commands are rejected for closed
+workspaces:
+
+- `axis workspaces run`
+- `axis workspaces compare`
+- `axis workspaces set-candidate`
 
 ### Inspect comparison results
 
@@ -553,8 +589,8 @@ The manifest is the authoritative source of workspace identity and semantics.
 | `title` | Human-readable title |
 | `workspace_class` | `development` or `investigation` |
 | `workspace_type` | One of the three workspace types |
-| `status` | `idea`, `draft`, `running`, `analyzing`, `completed` |
-| `lifecycle_stage` | `idea`, `draft`, `spec`, `implementation`, `documentation` |
+| `status` | `draft`, `active`, `analyzing`, `completed`, `closed` |
+| `lifecycle_stage` | `idea`, `draft`, `spec`, `implementation`, `analysis`, `documentation`, `final` |
 | `created_at` | Creation date (YYYY-MM-DD) |
 
 ### Type-specific required fields
@@ -659,6 +695,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | Command | Description |
 |---|---|
 | `axis workspaces scaffold` | Interactive workspace creation |
+| `axis workspaces close <path>` | Close a workspace and finalize its workflow state |
 | `axis workspaces check <path>` | Validate workspace structure and manifest |
 | `axis workspaces show <path>` | Display workspace summary with artifact existence checks |
 | `axis workspaces run <path>` | Execute all workspace configs |
@@ -683,3 +720,18 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--candidate-only` | `run` | Run only candidate config (system_development) |
 | `--experiment <id>` | `visualize --workspace` | Select a specific experiment to visualize |
 | `--run <id>` | `visualize --workspace` | Select a specific run (required for sweep experiments) |
+
+### Workflow semantics
+
+`status` is the operational workflow field.
+
+- Open states:
+  - `draft`
+  - `active`
+  - `analyzing`
+  - `completed`
+- Closed state:
+  - `closed`
+
+`lifecycle_stage` is descriptive in this version. It is shown in summaries but
+does not independently grant or deny command permissions.

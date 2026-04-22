@@ -83,6 +83,7 @@ class CLITextOutput:
         code = {
             "title": "1",
             "section": "1",
+            "emphasis": "1",
             "success": "1;32",
             "warning": "1;33",
             "error": "1;31",

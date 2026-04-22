@@ -379,6 +379,7 @@ my-workspace/
 
 ```
 axis workspaces scaffold                       Interactive workspace creation
+axis workspaces close <path>                  Close a workspace
 axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments

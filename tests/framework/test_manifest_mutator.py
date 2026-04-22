@@ -7,6 +7,7 @@ import pytest
 from axis.framework.workspaces.manifest_mutator import (
     append_primary_comparison,
     append_primary_result,
+    close_workspace,
     merge_scaffold_fields,
     set_candidate_config,
     set_primary_configs,
@@ -155,6 +156,20 @@ class TestSetCandidateConfig:
         data: dict = {"workspace_type": "system_development"}
         set_candidate_config(data, "configs/c.yaml")
         assert data["primary_configs"] == ["configs/c.yaml"]
+
+
+class TestCloseWorkspace:
+
+    def test_sets_closed_and_final(self) -> None:
+        data: dict = {"status": "draft", "lifecycle_stage": "implementation"}
+        close_workspace(data)
+        assert data["status"] == "closed"
+        assert data["lifecycle_stage"] == "final"
+
+    def test_rejects_already_closed(self) -> None:
+        data: dict = {"status": "closed", "lifecycle_stage": "final"}
+        with pytest.raises(ValueError, match="already closed"):
+            close_workspace(data)
 
 
 class TestSetPrimaryConfigs:
