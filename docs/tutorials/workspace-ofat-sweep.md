@@ -63,7 +63,6 @@ workspaces/system-a-energy-gain-sweep/
     system_a-baseline.yaml          # single_run baseline (declared as primary)
   results/
   comparisons/
-  measurements/
   exports/
 ```
 
@@ -309,7 +308,7 @@ axis workspaces compare workspaces/my-workspace
 | Runs per experiment | 1 | N (one per parameter value) |
 | Output form | `point` | `sweep` |
 | Used in workspace compare | Yes (auto-resolved) | No |
-| Inspected with | `comparison-result` | `sweep-result` |
+| Inspected with | `comparison-summary` | `sweep-result` |
 | Visualization | Automatic run selection | Requires `--run` flag |
 | Result entry fields | `primary_run_id` | `baseline_run_id` |
 

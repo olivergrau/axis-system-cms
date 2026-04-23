@@ -72,7 +72,6 @@ workspaces/system-a-vs-system-c-grid2d/
     candidate-system_c.yaml
   results/
   comparisons/
-  measurements/
   exports/
 ```
 
@@ -169,7 +168,7 @@ Workspace comparison #1 completed.
 ## Step 5: Analyze the Results
 
 ```bash
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d
 ```
 
 The output includes:
@@ -239,11 +238,11 @@ Review all comparisons:
 
 ```bash
 # List comparisons
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d
 
 # View specific comparison
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --number 1
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --number 2
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d --number 1
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d --number 2
 ```
 
 ---
@@ -292,7 +291,7 @@ random variation.
 | Scaffold | `axis workspaces scaffold` |
 | Run both | `axis workspaces run <ws>` |
 | Compare | `axis workspaces compare <ws>` |
-| Inspect | `axis workspaces comparison-result <ws>` |
+| Inspect | `axis workspaces comparison-summary <ws>` |
 | Visualize | `axis visualize --workspace <ws> --role reference --episode N` |
 | Iterate | edit config, re-run, re-compare |
 

@@ -39,8 +39,7 @@ class WorkspaceCheckResult(BaseModel, frozen=True):
 
 # Required top-level items (files and directories) per spec Section 12.
 _REQUIRED_FILES = ("README.md", "notes.md")
-_REQUIRED_DIRS = ("configs", "results", "comparisons",
-                  "measurements", "exports")
+_REQUIRED_DIRS = ("configs", "results", "comparisons", "exports")
 
 
 def check_workspace(workspace_path: Path) -> WorkspaceCheckResult:
@@ -122,8 +121,6 @@ def check_workspace(workspace_path: Path) -> WorkspaceCheckResult:
                           "primary_results", issues)
     _check_declared_paths(ws, manifest.primary_comparisons,
                           "primary_comparisons", issues)
-    _check_declared_paths(ws, manifest.primary_measurements,
-                          "primary_measurements", issues)
 
     # --- Config experiment_type guardrail ---
     issues.extend(check_config_experiment_types(
@@ -133,7 +130,7 @@ def check_workspace(workspace_path: Path) -> WorkspaceCheckResult:
 
     # --- Warnings for empty investigation dirs ---
     if manifest.workspace_class == WorkspaceClass.INVESTIGATION:
-        for dname in ("comparisons", "measurements"):
+        for dname in ("comparisons",):
             d = ws / dname
             if d.is_dir() and not any(d.iterdir()):
                 issues.append(WorkspaceCheckIssue(

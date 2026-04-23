@@ -20,11 +20,13 @@ class WorkspaceInspectionService:
         check_fn: Callable[..., Any],
         drift_fn: Callable[..., Any],
         sweep_result_fn: Callable[..., Any],
+        run_summary_target_fn: Callable[..., Any],
     ) -> None:
         self._summarize_fn = summarize_fn
         self._check_fn = check_fn
         self._drift_fn = drift_fn
         self._sweep_result_fn = sweep_result_fn
+        self._run_summary_target_fn = run_summary_target_fn
 
     def summarize(self, workspace_path: Path):
         """Return a ``WorkspaceSummary`` for the workspace."""
@@ -44,3 +46,19 @@ class WorkspaceInspectionService:
     ) -> dict[str, Any]:
         """Resolve and return sweep result data."""
         return self._sweep_result_fn(workspace_path, experiment=experiment)
+
+    def run_summary_target(
+        self,
+        workspace_path: Path,
+        *,
+        role: str | None = None,
+        experiment: str | None = None,
+        run: str | None = None,
+    ):
+        """Resolve and return one concrete run target for workspace inspection."""
+        return self._run_summary_target_fn(
+            workspace_path,
+            role=role,
+            experiment=experiment,
+            run=run,
+        )

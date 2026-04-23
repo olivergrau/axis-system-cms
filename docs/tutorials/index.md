@@ -10,6 +10,7 @@ and includes tests alongside each step.
 |---|---|---|
 | [Building a System](building-a-system.md) | System A from contract to visualization adapter | 16 |
 | [Building a World](building-a-world.md) | Grid 2D world from cell model to plugin registration | 12 |
+| [Using AXIS Without Workspaces](direct-cli-workflow.md) | Direct CLI workflow using configs, experiment IDs, runs, comparison, and visualization | -- |
 | [Understanding Prediction-Error-Driven Behavior](prediction-error-tutorial.md) | A conceptual walkthrough of prediction, context quantization, traces, and behavior shaping | -- |
 
 ## Workspace Tutorials

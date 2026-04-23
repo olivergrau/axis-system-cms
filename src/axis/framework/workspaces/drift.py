@@ -42,7 +42,6 @@ def detect_drift(workspace_path: Path) -> list[WorkspaceCheckIssue]:
         ("primary_configs", manifest.primary_configs),
         ("primary_results", manifest.primary_results),
         ("primary_comparisons", manifest.primary_comparisons),
-        ("primary_measurements", manifest.primary_measurements),
     ]:
         if not paths:
             continue

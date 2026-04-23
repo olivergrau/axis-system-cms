@@ -92,26 +92,6 @@ class TestSummarize:
             "system": {"policy": {"temperature": 2.0}},
         }
 
-    def test_primary_measurements_tracked(self, tmp_path):
-        ws = tmp_path / "test-ws"
-        manifest = WorkspaceManifest.model_validate({
-            "workspace_id": "test-ws",
-            "title": "Measurement test",
-            "workspace_class": "investigation",
-            "workspace_type": "single_system",
-            "status": "draft",
-            "lifecycle_stage": "idea",
-            "created_at": "2026-01-01",
-            "question": "Measurements?",
-            "system_under_test": "system_a",
-            "primary_measurements": ["measurements/summary.md"],
-        })
-        scaffold_workspace(ws, manifest)
-        # Don't create the file — should show as missing.
-        summary = summarize_workspace(ws)
-        assert len(summary.primary_measurements) == 1
-        assert summary.primary_measurements[0].exists is False
-
     def test_empty_primary_fields(self, tmp_path):
         ws = tmp_path / "test-ws"
         manifest = WorkspaceManifest.model_validate({
@@ -129,7 +109,6 @@ class TestSummarize:
         summary = summarize_workspace(ws)
         assert summary.primary_results == []
         assert summary.primary_comparisons == []
-        assert summary.primary_measurements == []
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3] / "workspaces"

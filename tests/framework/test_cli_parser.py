@@ -35,10 +35,10 @@ def test_parser_accepts_compare_allow_world_changes():
 def test_parser_accepts_workspace_comparison_result_allow_world_changes():
     parser = build_parser()
     args = parser.parse_args([
-        "workspaces", "comparison-result", "/tmp/ws", "--allow-world-changes",
+        "workspaces", "comparison-summary", "/tmp/ws", "--allow-world-changes",
     ])
     assert args.entity == "workspaces"
-    assert args.action == "comparison-result"
+    assert args.action == "comparison-summary"
     assert args.allow_world_changes is True
 
 
@@ -50,3 +50,19 @@ def test_parser_accepts_workspace_run_allow_world_changes():
     assert args.entity == "workspaces"
     assert args.action == "run"
     assert args.allow_world_changes is True
+
+
+def test_parser_accepts_workspace_run_summary_arguments():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "run-summary", "/tmp/ws",
+        "--role", "reference",
+        "--experiment", "exp-123",
+        "--run", "run-0001",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "run-summary"
+    assert args.workspace_path == "/tmp/ws"
+    assert args.role == "reference"
+    assert args.experiment == "exp-123"
+    assert args.run == "run-0001"

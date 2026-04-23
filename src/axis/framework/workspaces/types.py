@@ -106,8 +106,6 @@ class WorkspaceManifest(BaseModel, frozen=True):
     primary_configs: list[str] | None = None
     primary_results: list[ResultEntry] | None = None
     primary_comparisons: list[str] | None = None
-    primary_measurements: list[str] | None = None
-
     # --- Development workflow fields (system_development only) ---
     baseline_config: str | None = None
     candidate_config: str | None = None

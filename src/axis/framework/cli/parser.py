@@ -234,8 +234,8 @@ examples:
     )
 
     ws_cr_p = ws_action.add_parser(
-        "comparison-result", parents=[common],
-        help="Display stored workspace comparison result(s)",
+        "comparison-summary", parents=[common],
+        help="Display stored workspace comparison summary result(s)",
     )
     ws_cr_p.add_argument(
         "workspace_path", help="Path to workspace directory")
@@ -263,6 +263,23 @@ examples:
         "config_path",
         help="Workspace-relative path to the candidate config file "
              "(e.g. configs/candidate-system_demo.yaml)")
+
+    ws_sr_p = ws_action.add_parser(
+        "run-summary", parents=[common],
+        help="Inspect one resolved run in a workspace",
+    )
+    ws_sr_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_sr_p.add_argument(
+        "--role", default=None,
+        help="Role selector for comparison/development workspaces "
+             "(reference, candidate, baseline)")
+    ws_sr_p.add_argument(
+        "--experiment", default=None,
+        help="Explicit experiment ID in workspace results")
+    ws_sr_p.add_argument(
+        "--run", default=None,
+        help="Explicit run ID (required for sweep outputs)")
 
     ws_sr_p = ws_action.add_parser(
         "sweep-result", parents=[common],

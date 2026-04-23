@@ -1,6 +1,6 @@
 # Experiment Workspaces
 
-Experiment Workspaces provide structured containers for AXIS work contexts. A workspace bundles intent, configuration, execution outputs, comparisons, measurements, and notes into a single coherent directory.
+Experiment Workspaces provide structured containers for AXIS work contexts. A workspace bundles intent, configuration, execution outputs, comparisons, and notes into a single coherent directory.
 
 > **Supported experiment types:** Workspaces support `experiment_type: single_run` configs across all workspace types. Additionally, `investigation / single_system` workspaces also support `experiment_type: ofat` configs for one-factor-at-a-time parameter sweeps. OFAT is **not** supported in `system_comparison` or `system_development` workspaces — use `axis experiments run` directly for OFAT experiments in those contexts.
 
@@ -35,7 +35,7 @@ Reports errors, warnings, and drift issues. Use `--output json` for machine-read
 axis workspaces show workspaces/my-workspace
 ```
 
-Displays identity, classification, status, and declared artifacts with existence checks. Each entry under `primary_configs`, `primary_results`, `primary_comparisons`, and `primary_measurements` is shown with an `[OK]` or `[MISSING]` marker indicating whether the referenced file or directory exists on disk.
+Displays identity, classification, status, and declared artifacts with existence checks. Each entry under `primary_configs`, `primary_results`, and `primary_comparisons` is shown with an `[OK]` or `[MISSING]` marker indicating whether the referenced file or directory exists on disk.
 
 If a workspace is closed, `show` makes that explicit and warns that execution
 and comparison commands are disabled.
@@ -143,6 +143,7 @@ Closed workspaces remain fully inspectable:
 
 - `axis workspaces show`
 - `axis workspaces check`
+- `axis workspaces run-summary`
 - `axis workspaces sweep-result`
 - `axis visualize --workspace ...`
 
@@ -156,7 +157,7 @@ workspaces:
 ### Inspect comparison results
 
 ```bash
-axis workspaces comparison-result workspaces/my-workspace
+axis workspaces comparison-summary workspaces/my-workspace
 ```
 
 Displays stored comparison results. If only one comparison exists, it is shown directly. If multiple comparisons exist, a listing is displayed with comparison numbers, system types, and timestamps.
@@ -166,7 +167,7 @@ If multiple comparison results exist and `--number` is omitted, AXIS now shows t
 Select a specific comparison by number:
 
 ```bash
-axis workspaces comparison-result workspaces/my-workspace --number 2
+axis workspaces comparison-summary workspaces/my-workspace --number 2
 ```
 
 The output includes the comparison metrics (same format as `axis compare`) followed by a summary of the reference and candidate configurations that were in effect when the comparison was run.
@@ -175,7 +176,7 @@ If a stored comparison was created under the default strict rules, you
 can re-render it with relaxed world-config validation:
 
 ```bash
-axis workspaces comparison-result workspaces/my-workspace --number 2 --allow-world-changes
+axis workspaces comparison-summary workspaces/my-workspace --number 2 --allow-world-changes
 ```
 
 In that case AXIS recomputes the comparison from the stored run
@@ -198,6 +199,43 @@ axis workspaces sweep-result workspaces/my-workspace --experiment <experiment-id
 ```
 
 If multiple sweep outputs exist, the most recent is shown by default. Use `--output json` for machine-readable output.
+
+### Inspect one run in a workspace
+
+```bash
+axis workspaces run-summary workspaces/my-workspace
+```
+
+This command is the workspace-native equivalent of `axis runs show`. It
+resolves a run from the workspace-local `results/` directory and then
+displays the same run-level inspection output.
+
+Default behavior:
+
+- **`single_system`**: resolves the newest manifest-declared result and shows its primary run
+- **`system_comparison`**: requires `--role reference` or `--role candidate`
+- **`system_development`**: requires `--role baseline` or `--role candidate`
+
+Examples:
+
+```bash
+axis workspaces run-summary workspaces/my-single-system
+axis workspaces run-summary workspaces/my-comparison --role reference
+axis workspaces run-summary workspaces/my-dev-workspace --role candidate
+```
+
+If you want to inspect a specific experiment explicitly:
+
+```bash
+axis workspaces run-summary workspaces/my-workspace --experiment <experiment-id>
+```
+
+For sweep (OFAT) outputs, you must also specify the run:
+
+```bash
+axis workspaces run-summary workspaces/my-workspace \
+  --experiment <experiment-id> --run <run-id>
+```
 
 ### Visualize from a workspace
 
@@ -278,7 +316,7 @@ axis workspaces compare workspaces/my-comparison \
 **5. Analyze**
 
 ```bash
-axis workspaces comparison-result workspaces/my-comparison
+axis workspaces comparison-summary workspaces/my-comparison
 ```
 
 Displays per-episode metrics, statistical summary, and the full configurations that produced the result. Use `--number N` to inspect a specific comparison when multiple exist.
@@ -312,7 +350,7 @@ axis workspaces run workspaces/system-a-vs-system-c-grid2d
 axis workspaces compare workspaces/system-a-vs-system-c-grid2d
 
 # Inspect results
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d
 
 # Tweak candidate config, re-run, re-compare
 # Edit configs/candidate-system_c.yaml — change prediction parameters
@@ -320,8 +358,8 @@ axis workspaces run workspaces/system-a-vs-system-c-grid2d
 axis workspaces compare workspaces/system-a-vs-system-c-grid2d
 
 # Compare both iterations side by side
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --number 1
-axis workspaces comparison-result workspaces/system-a-vs-system-c-grid2d --number 2
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d --number 1
+axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d --number 2
 ```
 
 ---
@@ -394,7 +432,7 @@ Displays the parameter variations, per-run metrics, and delta values relative to
 **7. Analyze**
 
 ```bash
-axis workspaces comparison-result workspaces/my-workspace
+axis workspaces comparison-summary workspaces/my-workspace
 ```
 
 Displays per-episode metrics, statistical summary, and the full configurations for both runs. Since configs are embedded as copies, you can see exactly which parameter changes produced the observed differences.
@@ -431,7 +469,7 @@ axis workspaces run workspaces/system-a-consume-weight
 axis workspaces compare workspaces/system-a-consume-weight
 
 # Inspect the comparison
-axis workspaces comparison-result workspaces/system-a-consume-weight
+axis workspaces comparison-summary workspaces/system-a-consume-weight
 
 # Try another value: consume_weight=1.0
 # Edit config, run, compare
@@ -441,8 +479,8 @@ axis workspaces compare workspaces/system-a-consume-weight \
   --candidate-experiment <latest-eid>
 
 # Review both comparisons
-axis workspaces comparison-result workspaces/system-a-consume-weight --number 1
-axis workspaces comparison-result workspaces/system-a-consume-weight --number 2
+axis workspaces comparison-summary workspaces/system-a-consume-weight --number 1
+axis workspaces comparison-summary workspaces/system-a-consume-weight --number 2
 ```
 
 ---
@@ -537,7 +575,7 @@ Auto-resolution uses the latest baseline result as reference and `current_candid
 **7. Analyze**
 
 ```bash
-axis workspaces comparison-result workspaces/my-dev-workspace
+axis workspaces comparison-summary workspaces/my-dev-workspace
 ```
 
 Shows per-episode metrics, statistical summary, and the full configs for both sides.
@@ -575,12 +613,12 @@ axis workspaces run workspaces/develop-system-d --candidate-only
 axis workspaces compare workspaces/develop-system-d
 
 # Inspect
-axis workspaces comparison-result workspaces/develop-system-d
+axis workspaces comparison-summary workspaces/develop-system-d
 
 # Iterate: modify candidate, re-run, re-compare
 axis workspaces run workspaces/develop-system-d --candidate-only
 axis workspaces compare workspaces/develop-system-d
-axis workspaces comparison-result workspaces/develop-system-d --number 2
+axis workspaces comparison-summary workspaces/develop-system-d --number 2
 
 # Check workspace state at any time
 axis workspaces show workspaces/develop-system-d
@@ -641,7 +679,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 
 - `description`, `tags`
 - `baseline_artifacts`, `validation_scenarios`
-- `primary_configs`, `primary_results`, `primary_comparisons`, `primary_measurements`
+- `primary_configs`, `primary_results`, `primary_comparisons`
 - `linked_experiments`, `linked_runs`, `linked_comparisons`
 
 ### Primary artifact tracking
@@ -651,8 +689,6 @@ The manifest tracks workspace-produced artifacts via four list fields:
 - **`primary_configs`** — workspace-relative paths to config files (populated at scaffold time).
 - **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`. When possible, each entry also stores the changed config elements relative to the previous comparable result so `axis workspaces show` can surface iteration history directly from the manifest.
 - **`primary_comparisons`** — workspace-relative paths to comparison output files (accumulated after each `axis workspaces compare`), e.g. `comparisons/comparison-001.json`.
-- **`primary_measurements`** — workspace-relative paths to processed metrics.
-
 These fields are updated automatically by the workspace commands. The manifest uses comment-preserving YAML round-trip writes, so manual comments and ordering in `workspace.yaml` are retained.
 
 ---
@@ -669,7 +705,6 @@ my-workspace/
   configs/                # Executable config files
   results/                # Execution result artifacts
   comparisons/            # Comparison outputs
-  measurements/           # Processed metrics
   exports/                # Curated export artifacts
   concept/                # Conceptual modeling (development only)
   engineering/            # Engineering planning (development only)
@@ -739,7 +774,8 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `axis workspaces run <path> --candidate-only` | Run only candidate config (system_development) |
 | `axis workspaces set-candidate <path> <config>` | Set candidate config for a development workspace |
 | `axis workspaces compare <path>` | Run workspace comparison (sequential, self-contained) |
-| `axis workspaces comparison-result <path>` | Display stored comparison result(s) |
+| `axis workspaces comparison-summary <path>` | Display stored comparison result(s) |
+| `axis workspaces run-summary <path>` | Display one resolved run summary from workspace-local results |
 | `axis workspaces sweep-result <path>` | Display sweep (OFAT) results (single_system only) |
 | `axis visualize --workspace <path> --episode N` | Visualize from workspace |
 
@@ -750,8 +786,11 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--output json` | All commands | Machine-readable JSON output |
 | `--reference-experiment <id>` | `compare` | Explicit reference experiment ID |
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
-| `--number <N>` | `comparison-result` | Select a specific comparison by number |
-| `--allow-world-changes` | `run`, `compare`, `comparison-result` | Allow world-only changes as the intentional variable |
+| `--number <N>` | `comparison-summary` | Select a specific comparison by number |
+| `--allow-world-changes` | `run`, `compare`, `comparison-summary` | Allow world-only changes as the intentional variable |
+| `--role <name>` | `run-summary`, `visualize --workspace` | Select role-specific workspace output |
+| `--experiment <id>` | `run-summary` | Select a specific experiment in workspace results |
+| `--run <id>` | `run-summary` | Select a specific run (required for sweep outputs) |
 | `--experiment <id>` | `sweep-result` | Select a specific sweep experiment |
 | `--baseline-only` | `run` | Run only baseline config (system_development) |
 | `--candidate-only` | `run` | Run only candidate config (system_development) |

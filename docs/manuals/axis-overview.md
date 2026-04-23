@@ -369,7 +369,6 @@ my-workspace/
   configs/                # Executable config files
   results/                # Execution result artifacts
   comparisons/            # Comparison outputs (self-contained JSON envelopes)
-  measurements/           # Processed metrics
   exports/                # Curated export artifacts
   concept/                # Conceptual modeling (development only)
   engineering/            # Engineering planning (development only)
@@ -383,9 +382,9 @@ axis workspaces close <path>                  Close a workspace
 axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments
-axis workspaces comparison-result <path>       Display comparison results
+axis workspaces comparison-summary <path>       Display comparison results
 
-Use `--allow-world-changes` with `compare` or `comparison-result` when
+Use `--allow-world-changes` with `compare` or `comparison-summary` when
 the world configuration itself was changed intentionally and should not
 block pairing.
 
@@ -399,8 +398,8 @@ axis workspaces set-candidate <path> <config>  Set candidate config (development
 ### Manifest and Artifact Tracking
 
 The ``workspace.yaml`` manifest is the authoritative source of workspace
-identity. It tracks primary configs, results, comparisons, and
-measurements as workspace-relative paths. Each entry under
+identity. It tracks primary configs, results, and comparisons as
+workspace-relative paths. Each entry under
 ``primary_results`` is annotated with output semantics (``output_form``:
 ``point`` or ``sweep``), enabling the framework to route point outputs
 to comparison and sweep outputs to sweep-result inspection.

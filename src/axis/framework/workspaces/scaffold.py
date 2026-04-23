@@ -16,8 +16,7 @@ from axis.framework.workspaces.types import (
 
 
 # Shared required top-level items.
-_REQUIRED_DIRS = ("configs", "results", "comparisons",
-                  "measurements", "exports")
+_REQUIRED_DIRS = ("configs", "results", "comparisons", "exports")
 
 
 def scaffold_workspace(path: Path, manifest: WorkspaceManifest) -> Path:

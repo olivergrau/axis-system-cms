@@ -71,7 +71,6 @@ workspaces/develop-system-d/
     baseline-system_d.yaml       # placeholder baseline config
   results/
   comparisons/
-  measurements/
   exports/
   concept/                       # for design docs, diagrams
   engineering/                   # for specs, work packages
@@ -251,7 +250,7 @@ Workspace comparison #1 completed.
 ## Step 7: Analyze
 
 ```bash
-axis workspaces comparison-result workspaces/develop-system-d
+axis workspaces comparison-summary workspaces/develop-system-d
 ```
 
 Review the metrics to evaluate your changes:
@@ -307,8 +306,8 @@ latest baseline, and the candidate points to the new run.
 
 ```bash
 # Compare results across iterations
-axis workspaces comparison-result workspaces/develop-system-d --number 1
-axis workspaces comparison-result workspaces/develop-system-d --number 2
+axis workspaces comparison-summary workspaces/develop-system-d --number 1
+axis workspaces comparison-summary workspaces/develop-system-d --number 2
 ```
 
 Each comparison file embeds the full configs, so you can trace exactly
@@ -424,7 +423,7 @@ configure baseline --> run baseline --> [baseline established]
 | Create candidate | copy config, edit, then `axis workspaces set-candidate <ws> <config>` |
 | Run candidate | `axis workspaces run <ws> --candidate-only` |
 | Compare | `axis workspaces compare <ws>` |
-| Inspect | `axis workspaces comparison-result <ws>` |
+| Inspect | `axis workspaces comparison-summary <ws>` |
 | Show state | `axis workspaces show <ws>` |
 | Validate | `axis workspaces check <ws>` |
 | Iterate | edit candidate, `--candidate-only`, compare, repeat |

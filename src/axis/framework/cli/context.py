@@ -69,6 +69,9 @@ def build_context(root: Path) -> CLIContext:
         WorkspaceWorkflowService,
     )
     from axis.framework.workspaces.summary import summarize_workspace
+    from axis.framework.workspaces.run_summary import (
+        resolve_run_summary_target,
+    )
     from axis.framework.workspaces.sweep_result import resolve_sweep_result
     from axis.framework.workspaces.sync import (
         _load_yaml_roundtrip,
@@ -100,6 +103,7 @@ def build_context(root: Path) -> CLIContext:
             check_fn=check_workspace,
             drift_fn=detect_drift,
             sweep_result_fn=resolve_sweep_result,
+            run_summary_target_fn=resolve_run_summary_target,
         ),
         workflow_service=WorkspaceWorkflowService(
             close_workspace_fn=close_workspace,

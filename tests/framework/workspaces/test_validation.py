@@ -32,7 +32,7 @@ def tmp_workspace(tmp_path):
     (ws / "workspace.yaml").write_text(yaml.dump(manifest))
     (ws / "README.md").write_text("# Test\n")
     (ws / "notes.md").write_text("")
-    for d in ("configs", "results", "comparisons", "measurements", "exports"):
+    for d in ("configs", "results", "comparisons", "exports"):
         (ws / d).mkdir()
     (ws / "configs" / "baseline.yaml").write_text("system_type: system_a\n")
     return ws
@@ -79,7 +79,7 @@ class TestCheckWorkspace:
         (ws / "workspace.yaml").write_text(yaml.dump(manifest))
         (ws / "README.md").write_text("# Dev\n")
         (ws / "notes.md").write_text("")
-        for d in ("configs", "results", "comparisons", "measurements", "exports"):
+        for d in ("configs", "results", "comparisons", "exports"):
             (ws / d).mkdir()
         (ws / "configs" / "baseline.yaml").write_text("system_type: system_a\n")
         # Missing concept/ and engineering/
@@ -133,7 +133,7 @@ class TestCheckWorkspace:
         (ws / "workspace.yaml").write_text(yaml.dump(manifest))
         (ws / "README.md").write_text("# Test\n")
         (ws / "notes.md").write_text("")
-        for d in ("configs", "results", "comparisons", "measurements", "exports"):
+        for d in ("configs", "results", "comparisons", "exports"):
             (ws / d).mkdir()
         ofat_config = {
             "system_type": "system_a",

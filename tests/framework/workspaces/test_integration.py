@@ -808,7 +808,7 @@ class TestSingleSystemComparison:
         _, ws_path = compare_workspace(ws)
         sync_manifest_after_compare(ws, ws_path)
 
-        code = cli_main(["workspaces", "comparison-result", str(ws)])
+        code = cli_main(["workspaces", "comparison-summary", str(ws)])
         assert code == 0
         out = capsys.readouterr().out
         assert "Comparison #1" in out
@@ -889,12 +889,12 @@ class TestMultipleComparisons:
 
 
 # ---------------------------------------------------------------------------
-# CLI: comparison-result command
+# CLI: comparison-summary command
 # ---------------------------------------------------------------------------
 
 
 class TestComparisonResultCLI:
-    """Verify axis workspaces comparison-result command."""
+    """Verify axis workspaces comparison-summary command."""
 
     def _prepare_workspace_with_comparison(self, tmp_path):
         from axis.framework.workspaces.execute import execute_workspace
@@ -916,7 +916,7 @@ class TestComparisonResultCLI:
 
     def test_comparison_result_shows_single(self, tmp_path, capsys):
         ws = self._prepare_workspace_with_comparison(tmp_path)
-        code = cli_main(["workspaces", "comparison-result", str(ws)])
+        code = cli_main(["workspaces", "comparison-summary", str(ws)])
         assert code == 0
         out = capsys.readouterr().out
         assert "Comparison #1" in out
@@ -924,7 +924,7 @@ class TestComparisonResultCLI:
     def test_comparison_result_json(self, tmp_path, capsys):
         ws = self._prepare_workspace_with_comparison(tmp_path)
         code = cli_main([
-            "workspaces", "comparison-result", str(ws), "--output", "json",
+            "workspaces", "comparison-summary", str(ws), "--output", "json",
         ])
         assert code == 0
         out = capsys.readouterr().out
@@ -950,7 +950,7 @@ class TestComparisonResultCLI:
         sync_manifest_after_compare(ws, ws_path)
 
         code = cli_main([
-            "workspaces", "comparison-result", str(ws), "--number", "2",
+            "workspaces", "comparison-summary", str(ws), "--number", "2",
         ])
         assert code == 0
         out = capsys.readouterr().out
@@ -966,7 +966,7 @@ class TestComparisonResultCLI:
         _, ws_path = compare_workspace(ws)
         sync_manifest_after_compare(ws, ws_path)
 
-        code = cli_main(["workspaces", "comparison-result", str(ws)])
+        code = cli_main(["workspaces", "comparison-summary", str(ws)])
         assert code == 0
         out = capsys.readouterr().out
         assert "Comparison #2" in out
@@ -974,7 +974,7 @@ class TestComparisonResultCLI:
 
     def test_comparison_result_error_no_comparisons(self, tmp_path, capsys):
         ws = _scaffold_comparison(tmp_path)
-        code = cli_main(["workspaces", "comparison-result", str(ws)])
+        code = cli_main(["workspaces", "comparison-summary", str(ws)])
         assert code == 1
 
     def test_comparison_result_can_recompute_with_allow_world_changes(
@@ -1000,7 +1000,7 @@ class TestComparisonResultCLI:
         sync_manifest_after_compare(ws, ws_path)
 
         code = cli_main([
-            "workspaces", "comparison-result", str(ws), "--allow-world-changes",
+            "workspaces", "comparison-summary", str(ws), "--allow-world-changes",
         ])
         assert code == 0
         out = capsys.readouterr().out
@@ -1474,6 +1474,154 @@ class TestStrictVisualizationResolution:
             resolve_visualization_target(
                 ws, episode=1, experiment="exp-002", run="run-9999",
             )
+
+
+class TestWorkspaceRunSummaryResolution:
+    """run-summary resolves workspace-local runs using workspace semantics."""
+
+    def test_single_system_defaults_to_latest_point_result(self, tmp_path):
+        import yaml
+
+        from axis.framework.workspaces.run_summary import (
+            resolve_run_summary_target,
+        )
+
+        ws = _scaffold_single_system(tmp_path)
+        _add_point_experiment_to_workspace(ws, "exp-old")
+        _add_point_experiment_to_workspace(ws, "exp-new")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["primary_results"] = [
+            {"path": "results/exp-old", "output_form": "point"},
+            {"path": "results/exp-new", "output_form": "point"},
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        target = resolve_run_summary_target(ws)
+        assert target.experiment_id == "exp-new"
+        assert target.run_id == "run-0000"
+
+    def test_single_system_sweep_requires_explicit_run(self, tmp_path):
+        import yaml
+
+        from axis.framework.workspaces.run_summary import (
+            resolve_run_summary_target,
+        )
+
+        ws = _scaffold_single_system(tmp_path)
+        _add_sweep_experiment_to_workspace(ws, "exp-sweep")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["primary_results"] = [
+            {"path": "results/exp-sweep", "output_form": "sweep"},
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        with pytest.raises(ValueError, match="explicit run selection"):
+            resolve_run_summary_target(ws)
+
+        target = resolve_run_summary_target(
+            ws, experiment="exp-sweep", run="run-0001",
+        )
+        assert target.experiment_id == "exp-sweep"
+        assert target.run_id == "run-0001"
+
+    def test_comparison_requires_role_and_uses_latest_role_entry(self, tmp_path):
+        import yaml
+
+        from axis.framework.persistence import (
+            ExperimentMetadata, ExperimentRepository, ExperimentStatus,
+            RunMetadata, RunStatus,
+        )
+        from axis.framework.workspaces.run_summary import (
+            resolve_run_summary_target,
+        )
+
+        ws = _scaffold_comparison(tmp_path)
+        repo = ExperimentRepository(ws / "results")
+
+        def _add_point_experiment(eid: str, system_type: str) -> None:
+            repo.create_experiment_dir(eid)
+            repo.save_experiment_metadata(eid, ExperimentMetadata(
+                experiment_id=eid,
+                created_at="2025-01-01T00:00:00",
+                experiment_type="single_run",
+                system_type=system_type,
+                output_form="point",
+                primary_run_id="run-0000",
+            ))
+            repo.save_experiment_status(eid, ExperimentStatus.COMPLETED)
+            repo.create_run_dir(eid, "run-0000")
+            repo.save_run_metadata(eid, "run-0000", RunMetadata(
+                run_id="run-0000",
+                experiment_id=eid,
+                created_at="2025-01-01T00:00:00",
+                base_seed=42,
+            ))
+            repo.save_run_status(eid, "run-0000", RunStatus.COMPLETED)
+
+        _add_point_experiment("ref-old", "system_a")
+        _add_point_experiment("ref-new", "system_a")
+        _add_point_experiment("cand-old", "system_a")
+        _add_point_experiment("cand-new", "system_a")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["primary_results"] = [
+            {"path": "results/ref-old", "role": "reference", "output_form": "point"},
+            {"path": "results/cand-old", "role": "candidate", "output_form": "point"},
+            {"path": "results/ref-new", "role": "reference", "output_form": "point"},
+            {"path": "results/cand-new", "role": "candidate", "output_form": "point"},
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        with pytest.raises(ValueError, match="requires --role"):
+            resolve_run_summary_target(ws)
+
+        ref_target = resolve_run_summary_target(ws, role="reference")
+        cand_target = resolve_run_summary_target(ws, role="candidate")
+        assert ref_target.experiment_id == "ref-new"
+        assert cand_target.experiment_id == "cand-new"
+
+    def test_development_uses_baseline_and_candidate_roles(self, tmp_path):
+        from axis.framework.workspaces.run_summary import (
+            resolve_run_summary_target,
+        )
+
+        ws = _scaffold_development(tmp_path)
+        _add_point_experiment_to_workspace(ws, "base-exp")
+        _add_point_experiment_to_workspace(ws, "cand-exp")
+
+        manifest_path = ws / "workspace.yaml"
+        data = yaml.safe_load(manifest_path.read_text())
+        data["baseline_results"] = ["results/base-exp"]
+        data["candidate_results"] = ["results/cand-exp"]
+        data["current_candidate_result"] = "results/cand-exp"
+        manifest_path.write_text(yaml.dump(data))
+
+        baseline = resolve_run_summary_target(ws, role="baseline")
+        candidate = resolve_run_summary_target(ws, role="candidate")
+        assert baseline.experiment_id == "base-exp"
+        assert candidate.experiment_id == "cand-exp"
+
+    def test_cli_run_summary_uses_workspace_results(self, tmp_path, capsys):
+        import yaml
+
+        from axis.framework.cli import main as cli_main
+
+        ws = _scaffold_single_system(tmp_path)
+        _add_point_experiment_to_workspace(ws, "exp-001")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["primary_results"] = [
+            {"path": "results/exp-001", "output_form": "point"},
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        code = cli_main(["workspaces", "run-summary", str(ws)])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "Run run-0000" in captured.out
+        assert "exp-001" in captured.out
 
 
 class TestStrictCompareResolution:

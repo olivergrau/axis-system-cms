@@ -20,6 +20,7 @@ from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_compare,
     cmd_workspaces_comparison_result,
     cmd_workspaces_run,
+    cmd_workspaces_run_summary,
     cmd_workspaces_scaffold,
     cmd_workspaces_set_candidate,
     cmd_workspaces_show,
@@ -118,7 +119,7 @@ def dispatch(
                     allow_world_changes=getattr(
                         args, "allow_world_changes", False),
                     compare_service=ctx.compare_service)
-            elif args.action == "comparison-result":
+            elif args.action == "comparison-summary":
                 cmd_workspaces_comparison_result(
                     args.workspace_path, output,
                     comparison_number=getattr(args, "number", None),
@@ -129,6 +130,14 @@ def dispatch(
                 cmd_workspaces_set_candidate(
                     args.workspace_path, args.config_path, output,
                     run_service=ctx.run_service)
+            elif args.action == "run-summary":
+                cmd_workspaces_run_summary(
+                    args.workspace_path, output,
+                    role=getattr(args, "role", None),
+                    experiment=getattr(args, "experiment", None),
+                    run=getattr(args, "run", None),
+                    inspection_service=ctx.inspection_service,
+                )
             elif args.action == "sweep-result":
                 cmd_workspaces_sweep_result(
                     args.workspace_path, output,

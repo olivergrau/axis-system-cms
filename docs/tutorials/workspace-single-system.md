@@ -66,7 +66,6 @@ workspaces/system-a-consume-weight/
     system_a-baseline.yaml          # baseline config
   results/
   comparisons/
-  measurements/
   exports/
 ```
 
@@ -184,7 +183,7 @@ Workspace comparison #1 completed.
 ## Step 5: Analyze the Results
 
 ```bash
-axis workspaces comparison-result workspaces/system-a-consume-weight
+axis workspaces comparison-summary workspaces/system-a-consume-weight
 ```
 
 This displays the full comparison report:
@@ -231,8 +230,8 @@ Each comparison is preserved as a separate numbered file. Review any
 comparison by number:
 
 ```bash
-axis workspaces comparison-result workspaces/system-a-consume-weight --number 1
-axis workspaces comparison-result workspaces/system-a-consume-weight --number 2
+axis workspaces comparison-summary workspaces/system-a-consume-weight --number 1
+axis workspaces comparison-summary workspaces/system-a-consume-weight --number 2
 ```
 
 Since each comparison file stores complete config copies, you can always
@@ -274,7 +273,7 @@ shift the agent toward active foraging.
 | Run baseline | `axis workspaces run <ws>` |
 | Modify config, run again | edit config, then `axis workspaces run <ws>` |
 | Compare | `axis workspaces compare <ws>` |
-| Inspect results | `axis workspaces comparison-result <ws>` |
+| Inspect results | `axis workspaces comparison-summary <ws>` |
 | Validate | `axis workspaces check <ws>` |
 
 The workspace keeps everything together: configs, results, comparisons,

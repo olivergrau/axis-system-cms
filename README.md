@@ -106,7 +106,7 @@ axis workspaces run <path> --baseline-only     Run only baseline (development)
 axis workspaces run <path> --candidate-only    Run only candidate (development)
 axis workspaces set-candidate <path> <config>  Set candidate config (development)
 axis workspaces compare <path>                 Compare workspace experiments
-axis workspaces comparison-result <path>       Display comparison results
+axis workspaces comparison-summary <path>       Display comparison results
 axis workspaces check <path>                   Validate workspace structure
 ```
 

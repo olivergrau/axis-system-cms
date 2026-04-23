@@ -230,8 +230,6 @@ def cmd_workspaces_show(
         _print_artifact_section("Primary results", summary.primary_results, out=out)
         _print_artifact_section(
             "Primary comparisons", summary.primary_comparisons, out=out)
-        _print_artifact_section(
-            "Primary measurements", summary.primary_measurements, out=out)
         if summary.development_state:
             out.section("Development")
             out.kv("Development state", summary.development_state)
@@ -305,6 +303,30 @@ def cmd_workspaces_sweep_result(
             parts.append(
                 f"delta_vitality={rd['delta_mean_final_vitality']:+.3f}")
         out.list_row(*parts)
+
+
+def cmd_workspaces_run_summary(
+    workspace_path: str,
+    output: str,
+    *,
+    role: str | None = None,
+    experiment: str | None = None,
+    run: str | None = None,
+    inspection_service: object = None,
+) -> None:
+    """Inspect one resolved run from a workspace."""
+    from axis.framework.cli.commands.runs import cmd_runs_show
+    from axis.framework.persistence import ExperimentRepository
+
+    ws = Path(workspace_path)
+    target = inspection_service.run_summary_target(
+        ws,
+        role=role,
+        experiment=experiment,
+        run=run,
+    )
+    repo = ExperimentRepository(ws / "results")
+    cmd_runs_show(repo, target.experiment_id, target.run_id, output)
 
 
 def cmd_workspaces_set_candidate(
@@ -392,7 +414,7 @@ def cmd_workspaces_comparison_result(
         WorkspaceType.SINGLE_SYSTEM,
     ):
         fail(
-            f"comparison-result is only valid for "
+            f"comparison-summary is only valid for "
             f"system_comparison, system_development, or single_system "
             f"workspaces, got '{manifest.workspace_type}'."
         )

@@ -10,7 +10,8 @@
 >
 > **Tutorials:**
 > [Building a System](../tutorials/building-a-system.md) |
-> [Building a World](../tutorials/building-a-world.md)
+> [Building a World](../tutorials/building-a-world.md) |
+> [Using AXIS Without Workspaces](../tutorials/direct-cli-workflow.md)
 
 ## Overview
 

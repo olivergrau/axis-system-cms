@@ -47,6 +47,7 @@ nav:
 
   - Tutorials:
       - tutorials/index.md
+      - "CLI basic Usage": tutorials/direct-cli-workflow.md
       - "Building a System": tutorials/building-a-system.md
       - "Building a World": tutorials/building-a-world.md
       - "Understanding Prediction-Error-Driven Behavior": tutorials/prediction-error-tutorial.md

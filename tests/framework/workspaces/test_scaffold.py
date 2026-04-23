@@ -35,7 +35,7 @@ class TestScaffold:
         assert (ws / "workspace.yaml").exists()
         assert (ws / "README.md").exists()
         assert (ws / "notes.md").exists()
-        for d in ("configs", "results", "comparisons", "measurements", "exports"):
+        for d in ("configs", "results", "comparisons", "exports"):
             assert (ws / d).is_dir()
         # Should have 1 baseline config
         configs = list((ws / "configs").glob("*.yaml"))

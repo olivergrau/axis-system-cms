@@ -64,8 +64,6 @@ class WorkspaceSummary(BaseModel, frozen=True):
     primary_configs: list[ArtifactEntry] = []
     primary_results: list[ArtifactEntry] = []
     primary_comparisons: list[ArtifactEntry] = []
-    primary_measurements: list[ArtifactEntry] = []
-
     # Checker result
     check_result: WorkspaceCheckResult | None = None
 
@@ -236,8 +234,6 @@ def summarize_workspace(workspace_path: Path) -> WorkspaceSummary:
         primary_configs=_resolve_artifacts(ws, manifest.primary_configs),
         primary_results=_resolve_artifacts(ws, manifest.primary_results),
         primary_comparisons=_resolve_artifacts(ws, manifest.primary_comparisons),
-        primary_measurements=_resolve_artifacts(
-            ws, manifest.primary_measurements),
         check_result=check_result,
         **dev_kwargs,
     )
