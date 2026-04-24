@@ -71,7 +71,7 @@ class SoftmaxPolicy:
             observation.down.traversability > 0,      # DOWN
             observation.left.traversability > 0,      # LEFT
             observation.right.traversability > 0,     # RIGHT
-            True,                                      # CONSUME always admissible
+            observation.current.resource > 0,          # CONSUME only on resource
             True,                                      # STAY always admissible
         )
 

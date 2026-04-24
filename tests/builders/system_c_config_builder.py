@@ -10,8 +10,11 @@ from tests.constants import (
     DEFAULT_MEMORY_LEARNING_RATE,
     DEFAULT_MODULATION_MAX,
     DEFAULT_MODULATION_MIN,
+    DEFAULT_MODULATION_MODE,
     DEFAULT_NEGATIVE_SENSITIVITY,
     DEFAULT_NEGATIVE_WEIGHTS,
+    DEFAULT_PREDICTION_BIAS_CLIP,
+    DEFAULT_PREDICTION_BIAS_SCALE,
     DEFAULT_POSITIVE_SENSITIVITY,
     DEFAULT_POSITIVE_WEIGHTS,
 )
@@ -34,6 +37,9 @@ class SystemCConfigBuilder(SystemAConfigBuilder):
             "negative_sensitivity": DEFAULT_NEGATIVE_SENSITIVITY,
             "modulation_min": DEFAULT_MODULATION_MIN,
             "modulation_max": DEFAULT_MODULATION_MAX,
+            "modulation_mode": DEFAULT_MODULATION_MODE,
+            "prediction_bias_scale": DEFAULT_PREDICTION_BIAS_SCALE,
+            "prediction_bias_clip": DEFAULT_PREDICTION_BIAS_CLIP,
             "positive_weights": DEFAULT_POSITIVE_WEIGHTS,
             "negative_weights": DEFAULT_NEGATIVE_WEIGHTS,
         }
@@ -68,6 +74,18 @@ class SystemCConfigBuilder(SystemAConfigBuilder):
 
     def with_modulation_max(self, value: float) -> SystemCConfigBuilder:
         self._prediction["modulation_max"] = value
+        return self
+
+    def with_modulation_mode(self, value: str) -> SystemCConfigBuilder:
+        self._prediction["modulation_mode"] = value
+        return self
+
+    def with_prediction_bias_scale(self, value: float) -> SystemCConfigBuilder:
+        self._prediction["prediction_bias_scale"] = value
+        return self
+
+    def with_prediction_bias_clip(self, value: float) -> SystemCConfigBuilder:
+        self._prediction["prediction_bias_clip"] = value
         return self
 
     def with_positive_weights(self, value: tuple[float, ...]) -> SystemCConfigBuilder:

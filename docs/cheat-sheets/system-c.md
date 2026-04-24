@@ -158,7 +158,7 @@ where:
 
 ## 7. Predictive Modulation
 
-Prediction acts by modulating the hunger scores action-wise.
+Prediction acts on the hunger scores action-wise.
 
 For each action:
 
@@ -173,7 +173,7 @@ $$
 The final action score is:
 
 $$
-\psi_t(a) = h_t(a)\,\mu_t(a)
+\psi_t^{mult}(a) = h_t(a)\,\mu_t(a)
 $$
 
 So:
@@ -181,6 +181,34 @@ So:
 - frustration suppresses an action
 - confidence amplifies an action
 - hunger still provides the base motivational structure
+
+### Additive and hybrid modes
+
+System C also supports two richer action-level correction modes:
+
+$$
+\psi_t^{add}(a) = h_t(a) + \lambda_{\mathrm{pred}} \cdot \delta_t(a)
+$$
+
+$$
+\psi_t^{hyb}(a) = h_t(a)\,\mu_t(a) + \lambda_{\mathrm{pred}} \cdot \delta_t(a)
+$$
+
+where:
+
+- $\delta_t(a)$ is a bounded prediction bias derived from the same
+  confidence/frustration trace state
+- $\lambda_{\mathrm{pred}}$ is a small scaling factor
+
+Interpretation:
+
+- `multiplicative` is the most conservative mode
+- `additive` lets prediction gently shape actions even when $h_t(a)=0$
+- `hybrid` preserves reliability scaling while also allowing small tie-breaks
+
+Prediction still does not become a full drive in these modes, because the
+additive bias is explicitly bounded and intended as a correction rather than a
+new motivational layer
 
 ## 8. Transition
 
@@ -420,6 +448,9 @@ adds a `prediction` section.
 | `negative_sensitivity` | $\lambda_-$ in $\tilde\mu=\exp(\lambda_+ c - \lambda_- f)$ | Increases how strongly frustration suppresses an action. |
 | `modulation_min` | lower clip bound $\mu_{\min}$ | Prevents predictive suppression from driving an action below this multiplier. |
 | `modulation_max` | upper clip bound $\mu_{\max}$ | Prevents predictive amplification from exceeding this multiplier. |
+| `modulation_mode` | selects `multiplicative`, `additive`, or `hybrid` composition | Chooses whether prediction only rescales drive scores or also adds a bounded correction term. |
+| `prediction_bias_scale` | $\lambda_{\mathrm{pred}}$ | Sets the weight of the additive prediction correction. |
+| `prediction_bias_clip` | bound on $\delta_t(a)$ | Prevents the additive correction from dominating the drive layer. |
 | `positive_weights` | weights $w_j^+$ in $\varepsilon_t^+=\sum_j w_j^+\delta_{t,j}^+$ | Redistributes which predicted feature improvements count most as positive surprise. |
 | `negative_weights` | weights $w_j^-$ in $\varepsilon_t^-=\sum_j w_j^-\delta_{t,j}^-$ | Redistributes which predicted disappointments count most as negative surprise. |
 

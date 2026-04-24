@@ -32,6 +32,9 @@ MOD_PARAMS = dict(
     negative_sensitivity=1.5,
     modulation_min=0.3,
     modulation_max=2.0,
+    modulation_mode="multiplicative",
+    prediction_bias_scale=0.2,
+    prediction_bias_clip=1.0,
 )
 
 

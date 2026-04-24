@@ -36,6 +36,13 @@ def _required_height(n_actions: int) -> int:
     )
 
 
+def _visible_modulation_bar_width(delta: float, half_gauge_width: float) -> float:
+    """Return a visible width for non-neutral modulation values."""
+    if abs(delta) <= 1e-9:
+        return 0.0
+    return max(min(abs(delta), 1.0) * half_gauge_width, 1.0)
+
+
 class PredictionSummaryWidget(QWidget):
     """Graphical summary of prediction state: context, traces, modulation."""
 
@@ -215,11 +222,11 @@ class PredictionSummaryWidget(QWidget):
             delta = mu - 1.0
             painter.setPen(Qt.PenStyle.NoPen)
             if delta > 0:
-                bar_w = min(delta, 1.0) * (gauge_w / 2.0)
+                bar_w = _visible_modulation_bar_width(delta, gauge_w / 2.0)
                 painter.setBrush(QColor(60, 200, 80, 160))
                 painter.drawRect(QRectF(center_x, y, bar_w, _ROW_H))
             elif delta < 0:
-                bar_w = min(abs(delta), 1.0) * (gauge_w / 2.0)
+                bar_w = _visible_modulation_bar_width(delta, gauge_w / 2.0)
                 painter.setBrush(QColor(220, 60, 60, 160))
                 painter.drawRect(QRectF(
                     center_x - bar_w, y, bar_w, _ROW_H))

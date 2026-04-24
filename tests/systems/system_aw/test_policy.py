@@ -16,6 +16,14 @@ def _open_observation() -> Observation:
     return Observation(current=cell, up=cell, down=cell, left=cell, right=cell)
 
 
+def _resource_observation() -> Observation:
+    current = CellObservation(traversability=1.0, resource=0.5)
+    neighbor = CellObservation(traversability=1.0, resource=0.0)
+    return Observation(
+        current=current, up=neighbor, down=neighbor, left=neighbor, right=neighbor,
+    )
+
+
 def _blocked_left_observation() -> Observation:
     cell = CellObservation(traversability=1.0, resource=0.0)
     blocked = CellObservation(traversability=0.0, resource=0.0)
@@ -35,7 +43,7 @@ class TestBasicBehavior:
         policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
-        result = policy.select(scores, _open_observation(), rng)
+        result = policy.select(scores, _resource_observation(), rng)
         probs = result.policy_data["probabilities"]
         for p in probs:
             assert p == pytest.approx(1.0 / 6, abs=0.001)
@@ -44,7 +52,7 @@ class TestBasicBehavior:
         policy = SoftmaxPolicy(temperature=5.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.0, 0.0, 0.0, 0.0, 10.0, 0.0)
-        result = policy.select(scores, _open_observation(), rng)
+        result = policy.select(scores, _resource_observation(), rng)
         probs = result.policy_data["probabilities"]
         assert probs[4] > 0.99
 
@@ -56,13 +64,22 @@ class TestBasicBehavior:
         probs = result.policy_data["probabilities"]
         assert probs[2] == 0.0  # LEFT blocked
 
-    def test_consume_stay_always_admissible(self) -> None:
+    def test_consume_and_stay_admissible_on_resource_cell(self) -> None:
+        policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
+        rng = np.random.default_rng(42)
+        scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+        result = policy.select(scores, _resource_observation(), rng)
+        probs = result.policy_data["probabilities"]
+        assert probs[4] > 0.0  # CONSUME
+        assert probs[5] > 0.0  # STAY
+
+    def test_consume_masked_on_empty_cell(self) -> None:
         policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         result = policy.select(scores, _all_blocked_observation(), rng)
         probs = result.policy_data["probabilities"]
-        assert probs[4] > 0.0  # CONSUME
+        assert probs[4] == 0.0  # CONSUME
         assert probs[5] > 0.0  # STAY
         # All movement blocked
         for i in range(4):
@@ -124,7 +141,7 @@ class TestWorkedExamples:
         policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.405, 0.405, 0.527, 0.405, -0.237, -0.243)
-        result = policy.select(scores, _open_observation(), rng)
+        result = policy.select(scores, _resource_observation(), rng)
         probs = result.policy_data["probabilities"]
         assert probs[0] == pytest.approx(0.193, abs=0.02)  # UP
         assert probs[1] == pytest.approx(0.193, abs=0.02)  # DOWN
@@ -149,7 +166,7 @@ class TestWorkedExamples:
         policy = SoftmaxPolicy(temperature=1.0, selection_mode="sample")
         rng = np.random.default_rng(42)
         scores = (0.002, 0.002, 0.002, 0.170, 1.051, -0.085)
-        result = policy.select(scores, _open_observation(), rng)
+        result = policy.select(scores, _resource_observation(), rng)
         probs = result.policy_data["probabilities"]
         assert probs[4] > 0.3  # CONSUME dominates
 

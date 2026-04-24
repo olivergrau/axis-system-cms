@@ -37,6 +37,9 @@ from axis.visualization.ui.replay_controls_panel import (  # noqa: E402
     ReplayControlsPanel,
 )
 from axis.visualization.ui.overlay_panel import OverlayPanel  # noqa: E402
+from axis.visualization.ui.prediction_summary_widget import (  # noqa: E402
+    _visible_modulation_bar_width,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -407,6 +410,17 @@ class TestDetailPanel:
         panel._policy_widget.show()
         qapp.processEvents()
         assert not panel._policy_widget.isHidden()
+
+
+class TestPredictionSummaryWidget:
+
+    def test_small_nonzero_modulation_gets_visible_width(self, qapp) -> None:
+        width = _visible_modulation_bar_width(-0.0088, 80.0)
+        assert width >= 1.0
+
+    def test_zero_modulation_gets_zero_width(self, qapp) -> None:
+        width = _visible_modulation_bar_width(0.0, 80.0)
+        assert width == 0.0
 
 
 # ---------------------------------------------------------------------------

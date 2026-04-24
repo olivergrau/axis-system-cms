@@ -20,12 +20,13 @@ def _make_policy(
 
 
 def _make_observation(
-    *, blocked_dirs: tuple[str, ...] = (),
+    *, blocked_dirs: tuple[str, ...] = (), current_resource: float = 0.5,
 ) -> Observation:
     open_cell = CellObservation(traversability=1.0, resource=0.5)
+    current_cell = CellObservation(traversability=1.0, resource=current_resource)
     blocked_cell = CellObservation(traversability=0.0, resource=0.0)
     return Observation(
-        current=open_cell,
+        current=current_cell,
         up=blocked_cell if "up" in blocked_dirs else open_cell,
         down=blocked_cell if "down" in blocked_dirs else open_cell,
         left=blocked_cell if "left" in blocked_dirs else open_cell,
@@ -182,6 +183,17 @@ class TestPolicy:
         assert probs[3] == 0.0  # right
         assert probs[4] > 0.0  # consume
         assert probs[5] > 0.0  # stay
+
+    def test_consume_masked_when_current_cell_empty(self) -> None:
+        policy = _make_policy("sample")
+        obs = _make_observation(current_resource=0.0)
+        drive = _make_drive_output()
+        rng = np.random.default_rng(42)
+        result = policy.select(drive.action_contributions, obs, rng)
+        mask = result.policy_data["admissibility_mask"]
+        probs = result.policy_data["probabilities"]
+        assert mask[4] is False
+        assert probs[4] == 0.0
 
     def test_returns_policy_result(self) -> None:
         policy = _make_policy()

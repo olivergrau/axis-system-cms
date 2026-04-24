@@ -27,6 +27,9 @@ class TestPredictionConfig:
         assert cfg.negative_sensitivity == 1.5
         assert cfg.modulation_min == 0.3
         assert cfg.modulation_max == 2.0
+        assert cfg.modulation_mode == "multiplicative"
+        assert cfg.prediction_bias_scale == 0.2
+        assert cfg.prediction_bias_clip == 1.0
         assert cfg.positive_weights == (0.5, 0.125, 0.125, 0.125, 0.125)
         assert cfg.negative_weights == (0.5, 0.125, 0.125, 0.125, 0.125)
 
@@ -40,10 +43,12 @@ class TestPredictionConfig:
             memory_learning_rate=0.1,
             frustration_rate=0.3,
             positive_sensitivity=2.0,
+            modulation_mode="hybrid",
         )
         assert cfg.memory_learning_rate == 0.1
         assert cfg.frustration_rate == 0.3
         assert cfg.positive_sensitivity == 2.0
+        assert cfg.modulation_mode == "hybrid"
 
     def test_rejects_wrong_positive_weight_length(self) -> None:
         with pytest.raises(ValidationError):
@@ -74,6 +79,10 @@ class TestPredictionConfig:
     def test_rejects_inverted_modulation_bounds(self) -> None:
         with pytest.raises(ValidationError):
             PredictionConfig(modulation_min=1.2, modulation_max=1.1)
+
+    def test_rejects_invalid_modulation_mode(self) -> None:
+        with pytest.raises(ValidationError):
+            PredictionConfig(modulation_mode="unknown")  # type: ignore[arg-type]
 
 
 class TestSystemCConfig:

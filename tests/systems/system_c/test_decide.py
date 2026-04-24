@@ -90,6 +90,10 @@ class TestDecideFreshState:
         pred = result.decision_data["prediction"]
         assert "context" in pred
         assert "features" in pred
+        assert "raw_scores" in pred
+        assert "reliability_factors" in pred
+        assert "prediction_biases" in pred
+        assert "final_scores" in pred
         assert "modulated_scores" in pred
 
     def test_zero_traces_neutral_modulation(
@@ -102,6 +106,46 @@ class TestDecideFreshState:
         modulated = result.decision_data["prediction"]["modulated_scores"]
         for raw, mod in zip(drive_contributions, modulated):
             assert raw == pytest.approx(mod)
+
+    def test_additive_mode_can_raise_zero_score_action(
+        self, resource_world: World, rng: np.random.Generator,
+    ) -> None:
+        cfg = SystemCConfig(**(
+            SystemCConfigBuilder()
+            .with_modulation_mode("additive")
+            .with_prediction_bias_scale(0.2)
+            .build()
+        ))
+        system = SystemC(cfg)
+        state = system.initialize_state()
+        zero_world = World(
+            [
+                [Cell(cell_type=CellType.EMPTY, resource_value=0.0) for _ in range(5)]
+                for _ in range(5)
+            ],
+            Position(x=2, y=2),
+        )
+
+        traces = state.trace_state
+        for _ in range(5):
+            traces = update_traces(
+                traces, context=0, action="up",
+                scalar_positive=1.0, scalar_negative=0.0,
+                frustration_rate=0.5, confidence_rate=0.5,
+            )
+        state = AgentStateC(
+            energy=state.energy,
+            observation_buffer=state.observation_buffer,
+            predictive_memory=state.predictive_memory,
+            trace_state=traces,
+            last_observation=state.last_observation,
+        )
+
+        result = system.decide(zero_world, state, rng)
+        raw = result.decision_data["prediction"]["raw_scores"]
+        final_scores = result.decision_data["prediction"]["final_scores"]
+        assert raw[0] == pytest.approx(0.0)
+        assert final_scores[0] > 0.0
 
 
 class TestDecideWithTraces:

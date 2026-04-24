@@ -156,6 +156,21 @@ An episode ends when either `max_steps` is reached (termination reason:
 - Start with `max_workers` near your available CPU cores, then benchmark on
   your real workload.
 
+#### 3.2.4 System C prediction modulation modes
+
+`system_c` additionally supports multiple prediction modulation modes in its
+own `system.prediction` section:
+
+- `multiplicative` -- legacy behavior. Prediction only scales an existing
+  drive score.
+- `additive` -- prediction contributes a small bounded correction term and can
+  therefore influence actions whose current drive score is `0`.
+- `hybrid` -- combines reliability scaling with the bounded additive
+  correction.
+
+These modes are system-specific configuration, not framework-level execution
+settings.
+
 ### 3.3 `world` -- Grid structure
 
 | Field              | Type               | Required | Default | Constraints |

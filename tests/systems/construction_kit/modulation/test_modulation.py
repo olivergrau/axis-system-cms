@@ -7,6 +7,8 @@ import math
 import pytest
 
 from axis.systems.construction_kit.modulation.modulation import (
+    compute_prediction_bias,
+    describe_action_modulation,
     compute_modulation,
     modulate_action_scores,
 )
@@ -163,3 +165,76 @@ class TestModulateActionScores:
         )
         for a, b in zip(result, scores):
             assert a == pytest.approx(b)
+
+    def test_additive_mode_can_move_zero_score(self) -> None:
+        state = create_trace_state()
+        for _ in range(4):
+            state = update_traces(
+                state, context=5, action="up",
+                scalar_positive=1.0, scalar_negative=0.0,
+                frustration_rate=0.5, confidence_rate=0.5,
+            )
+        scores = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        result = modulate_action_scores(
+            scores, context=5, actions=self.ACTIONS, trace_state=state,
+            modulation_mode="additive",
+            prediction_bias_scale=0.2,
+            prediction_bias_clip=1.0,
+            **self.PARAMS,
+        )
+        assert result[0] > 0.0
+
+    def test_hybrid_mode_combines_multiplicative_and_additive(self) -> None:
+        state = create_trace_state()
+        for _ in range(4):
+            state = update_traces(
+                state, context=5, action="up",
+                scalar_positive=1.0, scalar_negative=0.0,
+                frustration_rate=0.5, confidence_rate=0.5,
+            )
+        details = describe_action_modulation(
+            (0.5, 0.0, 0.0, 0.0, 0.0, 0.0),
+            context=5,
+            actions=self.ACTIONS,
+            trace_state=state,
+            modulation_mode="hybrid",
+            prediction_bias_scale=0.2,
+            prediction_bias_clip=1.0,
+            **self.PARAMS,
+        )
+        assert details.modulation_factors[0] > 1.0
+        assert details.prediction_biases[0] > 0.0
+        assert details.final_scores[0] > 0.5
+
+
+class TestPredictionBias:
+
+    def test_zero_signal_gives_zero_bias(self) -> None:
+        delta = compute_prediction_bias(
+            frustration=0.0,
+            confidence=0.0,
+            positive_sensitivity=1.0,
+            negative_sensitivity=1.5,
+            prediction_bias_clip=1.0,
+        )
+        assert delta == pytest.approx(0.0)
+
+    def test_positive_confidence_gives_positive_bias(self) -> None:
+        delta = compute_prediction_bias(
+            frustration=0.0,
+            confidence=0.5,
+            positive_sensitivity=1.0,
+            negative_sensitivity=1.5,
+            prediction_bias_clip=1.0,
+        )
+        assert delta > 0.0
+
+    def test_negative_signal_clips_symmetrically(self) -> None:
+        delta = compute_prediction_bias(
+            frustration=10.0,
+            confidence=0.0,
+            positive_sensitivity=1.0,
+            negative_sensitivity=1.5,
+            prediction_bias_clip=0.5,
+        )
+        assert delta == pytest.approx(-0.5)

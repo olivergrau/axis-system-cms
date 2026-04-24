@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import model_validator
@@ -32,6 +33,9 @@ class PredictionConfig(BaseModel):
     negative_sensitivity: float = Field(default=1.5, ge=0)
     modulation_min: float = Field(default=0.3, gt=0, le=1)
     modulation_max: float = Field(default=2.0, ge=1)
+    modulation_mode: Literal["multiplicative", "additive", "hybrid"] = "multiplicative"
+    prediction_bias_scale: float = Field(default=0.2, ge=0)
+    prediction_bias_clip: float = Field(default=1.0, gt=0, le=1)
     positive_weights: tuple[float, ...] = (0.5, 0.125, 0.125, 0.125, 0.125)
     negative_weights: tuple[float, ...] = (0.5, 0.125, 0.125, 0.125, 0.125)
 

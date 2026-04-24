@@ -9,7 +9,9 @@ import numpy as np
 from axis.sdk.types import DecideResult, TransitionResult
 from axis.systems.construction_kit.drives.hunger import HungerDrive
 from axis.systems.construction_kit.memory.types import ObservationBuffer
-from axis.systems.construction_kit.modulation.modulation import modulate_action_scores
+from axis.systems.construction_kit.modulation.modulation import (
+    describe_action_modulation,
+)
 from axis.systems.construction_kit.observation.sensor import VonNeumannSensor
 from axis.systems.construction_kit.policy.softmax import SoftmaxPolicy
 from axis.systems.construction_kit.prediction.context import encode_context
@@ -97,7 +99,7 @@ class SystemC:
             features, threshold=pred_cfg.context_threshold)
 
         # Step 4: Action score modulation
-        modulated_scores = modulate_action_scores(
+        modulation = describe_action_modulation(
             drive_output.action_contributions,
             context,
             actions,
@@ -106,7 +108,11 @@ class SystemC:
             negative_sensitivity=pred_cfg.negative_sensitivity,
             modulation_min=pred_cfg.modulation_min,
             modulation_max=pred_cfg.modulation_max,
+            modulation_mode=pred_cfg.modulation_mode,
+            prediction_bias_scale=pred_cfg.prediction_bias_scale,
+            prediction_bias_clip=pred_cfg.prediction_bias_clip,
         )
+        modulated_scores = modulation.final_scores
 
         # Step 5: Policy selection
         policy_result = self._policy.select(modulated_scores, observation, rng)
@@ -122,6 +128,13 @@ class SystemC:
             "prediction": {
                 "context": context,
                 "features": features,
+                "modulation_mode": pred_cfg.modulation_mode,
+                "raw_scores": drive_output.action_contributions,
+                "reliability_factors": modulation.modulation_factors,
+                "prediction_biases": modulation.prediction_biases,
+                "confidence_by_action": dict(zip(actions, modulation.confidences)),
+                "frustration_by_action": dict(zip(actions, modulation.frustrations)),
+                "final_scores": modulation.final_scores,
                 "modulated_scores": modulated_scores,
             },
             "policy": policy_result.policy_data,
