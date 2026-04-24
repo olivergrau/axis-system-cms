@@ -1,13 +1,38 @@
 from __future__ import annotations
 
+import pytest
+
 from axis.framework.cli.parser import build_parser
+from axis.version import __version__
 
 
 def test_parser_help_epilog_has_no_duplicate_run_example():
     parser = build_parser()
     help_text = parser.format_help()
+    assert "Complex Mechanistic Systems" in help_text
+    assert f"Version {__version__}" in help_text
+    assert "Documentation" in help_text
+    assert "make docs-serve" in help_text
+    assert "http://localhost:8000" in help_text
     assert help_text.count("axis experiments run config.yaml") == 1
     assert "axis workspaces show <workspace-path>" in help_text
+
+
+def test_parser_help_contains_ascii_banner():
+    parser = build_parser()
+    help_text = parser.format_help()
+    assert "█████╗" in help_text
+    assert "C M S" in help_text
+    assert "=" * 78 in help_text
+
+
+def test_parser_version_flag_exits_with_version(capsys):
+    parser = build_parser()
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["--version"])
+    captured = capsys.readouterr()
+    assert exc.value.code == 0
+    assert captured.out.strip() == f"axis {__version__}"
 
 
 def test_parser_accepts_workspaces_close_subcommand():

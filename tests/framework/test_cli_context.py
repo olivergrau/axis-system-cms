@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from axis.version import __version__
 from axis.framework.cli.context import CLIContext, build_context
 
 
@@ -77,10 +78,23 @@ class TestBuildContext:
 class TestCLIMainUsesContext:
     """Verify the main entrypoint still works after context introduction."""
 
-    def test_main_help_returns_one(self) -> None:
+    def test_main_help_returns_one(self, capsys) -> None:
         from axis.framework.cli import main
 
         assert main([]) == 1  # no entity → help → exit 1
+        captured = capsys.readouterr()
+        assert "Complex Mechanistic Systems" in captured.out
+        assert f"Version {__version__}" in captured.out
+
+    def test_main_root_help_shows_banner_and_returns_zero(self, capsys) -> None:
+        from axis.framework.cli import main
+
+        with pytest.raises(SystemExit) as exc:
+            main(["--help"])
+        captured = capsys.readouterr()
+        assert exc.value.code == 0
+        assert "Complex Mechanistic Systems" in captured.out
+        assert f"Version {__version__}" in captured.out
 
     def test_main_experiments_list(self, tmp_path: Path) -> None:
         from axis.framework.cli import main

@@ -3,6 +3,92 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
+
+from axis.version import __version__
+
+ASCII_BANNER = """\
+   █████╗ ██╗  ██╗██╗███████╗
+  ██╔══██╗╚██╗██╔╝██║██╔════╝
+  ███████║ ╚███╔╝ ██║███████╗
+  ██╔══██║ ██╔██╗ ██║╚════██║
+  ██║  ██║██╔╝ ██╗██║███████║
+  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚══════╝
+
+        C M S
+  Complex Mechanistic Systems
+"""
+
+
+def _build_cli_header() -> str:
+    """Render the top-level CLI header shown in root help output."""
+    return f"{ASCII_BANNER}\nVersion {__version__}\n"
+
+
+def _style_enabled() -> bool:
+    """Return whether ANSI emphasis should be applied to help output."""
+    if os.getenv("NO_COLOR"):
+        return False
+    isatty = getattr(sys.stdout, "isatty", None)
+    return bool(isatty and isatty())
+
+
+def _decorate(text: str, *, role: str) -> str:
+    """Decorate help text for terminal output when styling is enabled."""
+    if not _style_enabled():
+        return text
+    code = {
+        "title": "1",
+        "section": "1;36",
+        "secondary": "2",
+        "accent": "1;33",
+    }.get(role)
+    if not code:
+        return text
+    return f"\033[{code}m{text}\033[0m"
+
+
+def _replace_section_label(line: str, label: str) -> str:
+    """Convert argparse section labels into visually stronger headings."""
+    if line == f"{label}:":
+        return _decorate(label.title(), role="section")
+    return line
+
+
+class AxisArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser with branded top-level help output."""
+
+    def format_help(self) -> str:
+        separator = _decorate("=" * 78, role="secondary")
+        title = _decorate("AXIS Experimentation Framework CLI", role="title")
+
+        help_lines = super().format_help().splitlines()
+        filtered_lines: list[str] = []
+        for line in help_lines:
+            if line == "AXIS Experimentation Framework CLI":
+                continue
+            line = _replace_section_label(line, "options")
+            line = _replace_section_label(line, "commands")
+            line = _replace_section_label(line, "examples")
+            filtered_lines.append(line)
+
+        docs_lines = [
+            _decorate("Documentation", role="section"),
+            f"  Start local docs: {_decorate('make docs-serve', role='accent')}",
+            f"  Open in browser:  {_decorate('http://localhost:8000', role='accent')}",
+        ]
+
+        parts = [
+            _build_cli_header().rstrip(),
+            separator,
+            title,
+            separator,
+            "\n".join(filtered_lines).rstrip(),
+            separator,
+            "\n".join(docs_lines),
+        ]
+        return "\n".join(parts) + "\n"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -17,7 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format (default: text)",
     )
 
-    parser = argparse.ArgumentParser(
+    parser = AxisArgumentParser(
         prog="axis",
         description="AXIS Experimentation Framework CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -50,6 +136,12 @@ examples:
     parser.add_argument(
         "--output", choices=["text", "json"], default="text",
         help="Output format (default: text)",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"axis {__version__}",
+        help="Show the AXIS CLI version and exit",
     )
 
     entity_sub = parser.add_subparsers(dest="entity", title="commands")
