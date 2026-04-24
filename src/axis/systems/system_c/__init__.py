@@ -13,7 +13,7 @@ __all__ = [
 
 
 def register() -> None:
-    """Register system_c: system factory + visualization adapter + comparison extension."""
+    """Register system_c: system factory + visualization + comparison + metrics."""
     from axis.framework.registry import register_system, registered_system_types
 
     if "system_c" not in registered_system_types():
@@ -36,5 +36,13 @@ def register() -> None:
     if "system_c" not in registered_extensions():
         try:
             import axis.systems.system_c.comparison  # noqa: F401
+        except ImportError:
+            pass
+
+    from axis.framework.metrics.extensions import registered_metric_extensions
+
+    if "system_c" not in registered_metric_extensions():
+        try:
+            import axis.systems.system_c.metrics  # noqa: F401
         except ImportError:
             pass

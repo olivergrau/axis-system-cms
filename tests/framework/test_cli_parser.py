@@ -93,6 +93,33 @@ def test_parser_accepts_workspace_run_summary_arguments():
     assert args.run == "run-0001"
 
 
+def test_parser_accepts_runs_metrics_arguments():
+    parser = build_parser()
+    args = parser.parse_args([
+        "runs", "metrics", "run-0001", "--experiment", "exp-123",
+    ])
+    assert args.entity == "runs"
+    assert args.action == "metrics"
+    assert args.run_id == "run-0001"
+    assert args.experiment == "exp-123"
+
+
+def test_parser_accepts_workspace_run_metrics_arguments():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "run-metrics", "/tmp/ws",
+        "--role", "reference",
+        "--experiment", "exp-123",
+        "--run", "run-0001",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "run-metrics"
+    assert args.workspace_path == "/tmp/ws"
+    assert args.role == "reference"
+    assert args.experiment == "exp-123"
+    assert args.run == "run-0001"
+
+
 def test_parser_accepts_visualize_width_percent():
     parser = build_parser()
     args = parser.parse_args([

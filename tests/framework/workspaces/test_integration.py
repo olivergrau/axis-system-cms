@@ -1623,6 +1623,26 @@ class TestWorkspaceRunSummaryResolution:
         assert "Run run-0000" in captured.out
         assert "exp-001" in captured.out
 
+    def test_cli_run_metrics_uses_workspace_results(self, tmp_path, capsys):
+        import yaml
+
+        from axis.framework.cli import main as cli_main
+
+        ws = _scaffold_single_system(tmp_path)
+        _add_point_experiment_to_workspace(ws, "exp-001")
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        data["primary_results"] = [
+            {"path": "results/exp-001", "output_form": "point"},
+        ]
+        (ws / "workspace.yaml").write_text(yaml.dump(data))
+
+        code = cli_main(["workspaces", "run-metrics", str(ws)])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "Behavioral Metrics For run-0000" in captured.out
+        assert "exp-001" in captured.out
+
 
 class TestStrictCompareResolution:
     """Compare resolution enforces output metadata."""

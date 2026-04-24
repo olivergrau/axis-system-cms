@@ -50,6 +50,7 @@ nav:
       - "CLI basic Usage": tutorials/direct-cli-workflow.md
       - "Building a System": tutorials/building-a-system.md
       - "Building a World": tutorials/building-a-world.md
+      - "Building a System-Specific Metric": tutorials/building-system-metrics.md
       - "Understanding Prediction-Error-Driven Behavior": tutorials/prediction-error-tutorial.md
       - "Workspace: Investigating a Single System": tutorials/workspace-single-system.md
       - "Workspace: Comparing Two Systems": tutorials/workspace-system-comparison.md
@@ -68,6 +69,7 @@ nav:
       - "World Development": manuals/world-dev-manual.md
       - "Visualization Extensions": manuals/visualization-extension-manual.md
       - "Comparison Extensions": manuals/comparison-extension-manual.md
+      - "Metrics Extensions": manuals/metrics-extension-manual.md
       - "Experiment Workspaces": manuals/workspace-manual.md
 
   - "Construction Kit":

@@ -12,7 +12,11 @@ from axis.framework.cli.commands.experiments import (
     cmd_experiments_run,
     cmd_experiments_show,
 )
-from axis.framework.cli.commands.runs import cmd_runs_list, cmd_runs_show
+from axis.framework.cli.commands.runs import (
+    cmd_runs_list,
+    cmd_runs_metrics,
+    cmd_runs_show,
+)
 from axis.framework.cli.commands.visualize import cmd_visualize
 from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_check,
@@ -20,6 +24,7 @@ from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_compare,
     cmd_workspaces_comparison_result,
     cmd_workspaces_run,
+    cmd_workspaces_run_metrics,
     cmd_workspaces_run_summary,
     cmd_workspaces_scaffold,
     cmd_workspaces_set_candidate,
@@ -77,6 +82,8 @@ def dispatch(
         elif args.entity == "runs":
             if args.action == "list":
                 cmd_runs_list(repo, args.experiment, output)
+            elif args.action == "metrics":
+                cmd_runs_metrics(repo, args.experiment, args.run_id, output)
             elif args.action == "show":
                 cmd_runs_show(repo, args.experiment, args.run_id, output)
             else:
@@ -132,6 +139,14 @@ def dispatch(
                     run_service=ctx.run_service)
             elif args.action == "run-summary":
                 cmd_workspaces_run_summary(
+                    args.workspace_path, output,
+                    role=getattr(args, "role", None),
+                    experiment=getattr(args, "experiment", None),
+                    run=getattr(args, "run", None),
+                    inspection_service=ctx.inspection_service,
+                )
+            elif args.action == "run-metrics":
+                cmd_workspaces_run_metrics(
                     args.workspace_path, output,
                     role=getattr(args, "role", None),
                     experiment=getattr(args, "experiment", None),

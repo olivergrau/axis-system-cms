@@ -289,6 +289,8 @@ class TestPredictionTraceData:
         assert "observed_features" in pred
         assert "error_positive" in pred
         assert "error_negative" in pred
+        assert "confidence_value" in pred
+        assert "frustration_value" in pred
 
 
 # =========================================================================

@@ -26,7 +26,7 @@ axis <global-flags> <entity> <action> [arguments]
 | Entity        | Actions                         |
 |---------------|---------------------------------|
 | `experiments` | `list`, `run`, `resume`, `show` |
-| `runs`        | `list`, `show`                  |
+| `runs`        | `list`, `show`, `metrics`       |
 | `compare`     | *(no sub-action -- runs paired trace comparison)* |
 | `visualize`   | *(no sub-action -- launches viewer)* |
 
@@ -62,6 +62,7 @@ experiments/
                     run_metadata.json
                     run_status.json
                     run_summary.json
+                    behavior_metrics.json
                     run_result.json
                     episodes/
                         episode_0001.json
@@ -478,16 +479,17 @@ experiments/results/<experiment-id>/
     experiment_status.json      # {"status": "completed"}
     experiment_summary.json     # aggregated summary across all runs
     runs/
-        run-0000/
-            run_config.json     # resolved run configuration
-            run_metadata.json   # run id, variation, seed
-            run_status.json     # {"status": "completed"}
-            run_summary.json    # aggregate statistics over N episodes
-            run_result.json     # full result (all episode data combined)
-            episodes/
-                episode_0001.json   # complete trace of episode 1
-                episode_0002.json
-                ...
+            run-0000/
+                run_config.json     # resolved run configuration
+                run_metadata.json   # run id, variation, seed
+                run_status.json     # {"status": "completed"}
+                run_summary.json    # aggregate statistics over N episodes
+                behavior_metrics.json # behavioral metrics from replay-capable traces
+                run_result.json     # full result (all episode data combined)
+                episodes/
+                    episode_0001.json   # complete trace of episode 1
+                    episode_0002.json
+                    ...
 ```
 
 Every file is self-contained JSON. You can read any of them with `cat`,
@@ -521,6 +523,50 @@ run aggregates all its episodes into system-agnostic statistics:
 > **Note:** v0.2.0 uses `mean_final_vitality` (normalized, 0.0--1.0)
 > instead of the v0.1.0 `mean_final_energy` (raw value). For System A,
 > vitality = energy / max_energy.
+
+### 5.2a Run-level behavioral metrics
+
+AXIS also supports a dedicated behavioral metrics artifact for replay-capable
+runs.
+
+Supported trace modes:
+
+- `full`
+- `delta`
+
+Unsupported:
+
+- `light`
+
+The artifact is stored as:
+
+```text
+results/<experiment-id>/runs/<run-id>/behavior_metrics.json
+```
+
+Inspect it directly via CLI:
+
+```bash
+axis runs metrics run-0000 --experiment <experiment-id>
+```
+
+Or as JSON:
+
+```bash
+axis runs metrics run-0000 --experiment <experiment-id> --output json
+```
+
+The behavioral metrics layer includes:
+
+- framework-standard metrics such as:
+  - resource efficiency
+  - failed movement rate
+  - action entropy
+  - coverage and revisit behavior
+- optional system-specific metrics supplied via the metrics extension system
+
+If the artifact does not exist yet, AXIS computes it lazily from the persisted
+replay-capable episode traces and then saves it.
 
 ### 5.3 Experiment-level summary (OFAT comparison)
 

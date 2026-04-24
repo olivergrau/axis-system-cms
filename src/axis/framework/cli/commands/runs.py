@@ -7,6 +7,41 @@ import json
 from axis.framework.cli.output import fail, stdout_output
 
 
+def _render_behavior_metrics_text(behavior: dict) -> None:
+    """Render one behavioral metrics payload in text form."""
+    out = stdout_output()
+    metrics = behavior["standard_metrics"]
+    out.section("Behavioral Metrics")
+    out.list_row(
+        f"resource_gain_per_step={metrics['resource_gain_per_step']['mean']:.3f}",
+        f"net_energy_efficiency={metrics['net_energy_efficiency']['mean']:.3f}",
+        f"successful_consume_rate={metrics['successful_consume_rate']['mean']:.3f}",
+    )
+    out.list_row(
+        f"failed_movement_rate={metrics['failed_movement_rate']['mean']:.3f}",
+        f"action_entropy={metrics['action_entropy']['mean']:.3f}",
+        f"policy_sharpness={metrics['policy_sharpness']['mean']:.3f}",
+    )
+    out.list_row(
+        f"unique_cells_visited={metrics['unique_cells_visited']['mean']:.2f}",
+        f"coverage_efficiency={metrics['coverage_efficiency']['mean']:.3f}",
+        f"revisit_rate={metrics['revisit_rate']['mean']:.3f}",
+    )
+    if behavior.get("system_specific_metrics"):
+        out.section("System Metrics")
+        for key, values in behavior["system_specific_metrics"].items():
+            if not isinstance(values, dict):
+                out.list_row(f"{key}={values}")
+                continue
+            parts = []
+            for metric_key, metric_value in values.items():
+                if isinstance(metric_value, float):
+                    parts.append(f"{metric_key}={metric_value:.3f}")
+                else:
+                    parts.append(f"{metric_key}={metric_value}")
+            out.list_row(key, *parts)
+
+
 def cmd_runs_list(repo, experiment_id: str, output: str) -> None:
     from axis.framework.persistence import RunStatus
 
@@ -106,6 +141,15 @@ def cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
     except Exception:
         info["summary"] = None
 
+    try:
+        from axis.framework.metrics import load_or_compute_run_behavior_metrics
+        behavior_metrics = load_or_compute_run_behavior_metrics(
+            repo, experiment_id, run_id,
+        )
+        info["behavior_metrics"] = behavior_metrics.model_dump(mode="json")
+    except Exception:
+        info["behavior_metrics"] = None
+
     episodes = repo.list_episode_files(experiment_id, run_id)
     info["num_episodes"] = len(episodes)
 
@@ -141,3 +185,30 @@ def cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
                 f"death_rate={s['death_rate']:.2f}",
                 f"mean_final_vitality={s['mean_final_vitality']:.3f}",
             )
+        if info.get("behavior_metrics"):
+            _render_behavior_metrics_text(info["behavior_metrics"])
+
+
+def cmd_runs_metrics(repo, experiment_id: str, run_id: str, output: str) -> None:
+    """Show or compute run-level behavioral metrics."""
+    if not repo.run_dir(experiment_id, run_id).exists():
+        fail(
+            f"Run not found: {run_id} in experiment {experiment_id}",
+            hint="Run `axis runs list --experiment <experiment-id>` to inspect available runs.",
+        )
+
+    from axis.framework.metrics import load_or_compute_run_behavior_metrics
+
+    metrics = load_or_compute_run_behavior_metrics(repo, experiment_id, run_id)
+    payload = metrics.model_dump(mode="json")
+
+    if output == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        out = stdout_output()
+        out.title(f"Behavioral Metrics For {run_id}")
+        out.kv("Experiment", experiment_id)
+        out.kv("System", payload["system_type"])
+        out.kv("Trace mode", payload["trace_mode"])
+        out.kv("Episodes", payload["num_episodes"])
+        _render_behavior_metrics_text(payload)

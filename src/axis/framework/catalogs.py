@@ -74,6 +74,7 @@ WorldCatalog = Catalog[Any]         # WorldFactory values
 WorldVisCatalog = Catalog[Any]      # WorldVisFactory values
 SystemVisCatalog = Catalog[Any]     # SystemVisFactory values
 ComparisonExtensionCatalog = Catalog[Any]  # ComparisonExtensionProtocol
+MetricExtensionCatalog = Catalog[Any]      # MetricExtensionProtocol
 
 
 def build_catalogs_from_registries() -> dict[str, Catalog]:
@@ -89,6 +90,7 @@ def build_catalogs_from_registries() -> dict[str, Catalog]:
         _SYSTEM_VIS_REGISTRY,
     )
     from axis.framework.comparison.extensions import _EXTENSION_REGISTRY
+    from axis.framework.metrics.extensions import _METRIC_EXTENSION_REGISTRY
 
     systems = SystemCatalog("systems")
     for k, v in _SYSTEM_REGISTRY.items():
@@ -110,10 +112,15 @@ def build_catalogs_from_registries() -> dict[str, Catalog]:
     for k, v in _EXTENSION_REGISTRY.items():
         extensions.register(k, v)
 
+    metric_extensions = MetricExtensionCatalog("metric_extensions")
+    for k, v in _METRIC_EXTENSION_REGISTRY.items():
+        metric_extensions.register(k, v)
+
     return {
         "systems": systems,
         "worlds": worlds,
         "world_vis": world_vis,
         "system_vis": system_vis,
         "comparison_extensions": extensions,
+        "metric_extensions": metric_extensions,
     }

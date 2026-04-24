@@ -144,6 +144,7 @@ Closed workspaces remain fully inspectable:
 - `axis workspaces show`
 - `axis workspaces check`
 - `axis workspaces run-summary`
+- `axis workspaces run-metrics`
 - `axis workspaces sweep-result`
 - `axis visualize --workspace ...`
 
@@ -236,6 +237,46 @@ For sweep (OFAT) outputs, you must also specify the run:
 axis workspaces run-summary workspaces/my-workspace \
   --experiment <experiment-id> --run <run-id>
 ```
+
+### Inspect behavioral metrics for one run in a workspace
+
+```bash
+axis workspaces run-metrics workspaces/my-workspace
+```
+
+This command is the workspace-native equivalent of:
+
+```bash
+axis runs metrics <run-id> --experiment <experiment-id>
+```
+
+It resolves a run from the workspace-local `results/` directory using the same
+resolution rules as `run-summary`, then computes or loads:
+
+- framework-standard behavioral metrics
+- optional system-specific extension metrics
+
+Examples:
+
+```bash
+axis workspaces run-metrics workspaces/my-single-system
+axis workspaces run-metrics workspaces/my-comparison --role reference
+axis workspaces run-metrics workspaces/my-dev-workspace --role candidate
+```
+
+For sweep (OFAT) outputs, specify both experiment and run:
+
+```bash
+axis workspaces run-metrics workspaces/my-workspace \
+  --experiment <experiment-id> --run <run-id>
+```
+
+Behavioral metrics require replay-capable traces:
+
+- `full`
+- `delta`
+
+`light` runs are not supported.
 
 ### Visualize from a workspace
 
@@ -784,6 +825,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `axis workspaces compare <path>` | Run workspace comparison (sequential, self-contained) |
 | `axis workspaces comparison-summary <path>` | Display stored comparison result(s) |
 | `axis workspaces run-summary <path>` | Display one resolved run summary from workspace-local results |
+| `axis workspaces run-metrics <path>` | Display behavioral metrics for one resolved run from workspace-local results |
 | `axis workspaces sweep-result <path>` | Display sweep (OFAT) results (single_system only) |
 | `axis visualize --workspace <path> --episode N` | Visualize from workspace |
 

@@ -35,6 +35,17 @@ from axis.framework.experiment import (
     variation_description,
 )
 from axis.framework.logging import EpisodeLogger
+from axis.framework.metrics import (
+    EpisodeBehaviorMetrics,
+    MetricSummaryStats,
+    RunBehaviorMetrics,
+    StandardBehaviorMetrics,
+    build_system_behavior_metrics,
+    compute_run_behavior_metrics,
+    load_or_compute_run_behavior_metrics,
+    register_metric_extension,
+    registered_metric_extensions,
+)
 from axis.framework.persistence import (
     ExperimentMetadata,
     ExperimentRepository,
@@ -120,4 +131,14 @@ __all__ = [
     "RunMetadata",
     # Logging runtime
     "EpisodeLogger",
+    # Behavioral metrics
+    "MetricSummaryStats",
+    "EpisodeBehaviorMetrics",
+    "StandardBehaviorMetrics",
+    "RunBehaviorMetrics",
+    "compute_run_behavior_metrics",
+    "load_or_compute_run_behavior_metrics",
+    "register_metric_extension",
+    "registered_metric_extensions",
+    "build_system_behavior_metrics",
 ]

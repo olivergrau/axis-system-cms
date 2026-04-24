@@ -6,11 +6,13 @@
 > [Visualization Manual](visualization-manual.md) |
 > [World Developer Manual](world-dev-manual.md) |
 > [Visualization Extension Manual](visualization-extension-manual.md) |
-> [Comparison Extension Manual](comparison-extension-manual.md)
+> [Comparison Extension Manual](comparison-extension-manual.md) |
+> [Metrics Extension Manual](metrics-extension-manual.md)
 >
 > **Tutorials:**
 > [Building a System](../tutorials/building-a-system.md) |
-> [Building a World](../tutorials/building-a-world.md)
+> [Building a World](../tutorials/building-a-world.md) |
+> [Building a System-Specific Metric](../tutorials/building-system-metrics.md)
 
 ## Overview
 

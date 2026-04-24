@@ -157,6 +157,12 @@ To inspect a specific run:
 axis runs show run-0000 --experiment <experiment-id>
 ```
 
+To inspect or compute replay-backed behavioral metrics for that run:
+
+```bash
+axis runs metrics run-0000 --experiment <experiment-id>
+```
+
 This is useful for checking:
 
 - run status
@@ -164,6 +170,7 @@ This is useful for checking:
 - variation metadata for OFAT runs
 - number of episodes
 - run-level summary metrics
+- behavioral metrics from replay-capable traces
 
 For OFAT experiments, `axis runs list` and `axis runs show` are often
 the fastest way to understand which variation corresponds to which run.

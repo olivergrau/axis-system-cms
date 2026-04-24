@@ -16,6 +16,11 @@ from axis.framework.config import (
     LoggingConfig,
 )
 from axis.framework.experiment import ExperimentSummary, RunSummaryEntry
+from axis.framework.metrics.types import (
+    MetricSummaryStats,
+    RunBehaviorMetrics,
+    StandardBehaviorMetrics,
+)
 from axis.framework.persistence import (
     ExperimentMetadata,
     ExperimentRepository,
@@ -133,6 +138,7 @@ class TestPathResolution:
         assert repo.runs_dir(eid) == tmp_path / eid / "runs"
         assert repo.run_dir(eid, rid) == tmp_path / eid / "runs" / rid
         assert repo.run_config_path(eid, rid) == tmp_path / eid / "runs" / rid / "run_config.json"
+        assert repo.behavior_metrics_path(eid, rid) == tmp_path / eid / "runs" / rid / "behavior_metrics.json"
         assert repo.episodes_dir(eid, rid) == tmp_path / eid / "runs" / rid / "episodes"
         assert repo.episode_path(eid, rid, 1) == tmp_path / eid / "runs" / rid / "episodes" / "episode_0001.json"
 
@@ -203,6 +209,37 @@ class TestRoundtrip:
         repo.save_run_result("exp", "run", result)
         loaded = repo.load_run_result("exp", "run")
         assert loaded.num_episodes == result.num_episodes
+
+    def test_behavior_metrics(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        metrics = RunBehaviorMetrics(
+            experiment_id="exp",
+            run_id="run",
+            system_type="system_a",
+            trace_mode="full",
+            num_episodes=2,
+            standard_metrics=StandardBehaviorMetrics(
+                mean_steps=10.0,
+                death_rate=0.0,
+                mean_final_vitality=0.75,
+                resource_gain_per_step=MetricSummaryStats(mean=1.0, std=0.0, min=1.0, max=1.0, n=2),
+                net_energy_efficiency=MetricSummaryStats(mean=2.0, std=0.0, min=2.0, max=2.0, n=2),
+                successful_consume_rate=MetricSummaryStats(mean=0.5, std=0.0, min=0.5, max=0.5, n=2),
+                consume_on_empty_rate=MetricSummaryStats(mean=0.25, std=0.0, min=0.25, max=0.25, n=2),
+                failed_movement_rate=MetricSummaryStats(mean=0.1, std=0.0, min=0.1, max=0.1, n=2),
+                action_entropy=MetricSummaryStats(mean=0.7, std=0.0, min=0.7, max=0.7, n=2),
+                policy_sharpness=MetricSummaryStats(mean=0.6, std=0.0, min=0.6, max=0.6, n=2),
+                action_inertia=MetricSummaryStats(mean=0.2, std=0.0, min=0.2, max=0.2, n=2),
+                unique_cells_visited=MetricSummaryStats(mean=4.0, std=0.0, min=4.0, max=4.0, n=2),
+                coverage_efficiency=MetricSummaryStats(mean=1.0, std=0.0, min=1.0, max=1.0, n=2),
+                revisit_rate=MetricSummaryStats(mean=0.3, std=0.0, min=0.3, max=0.3, n=2),
+            ),
+            system_specific_metrics={},
+        )
+        repo.save_behavior_metrics("exp", "run", metrics)
+        loaded = repo.load_behavior_metrics("exp", "run")
+        assert loaded == metrics
 
     def test_light_run_result(self, tmp_path: Path) -> None:
         repo = ExperimentRepository(tmp_path)

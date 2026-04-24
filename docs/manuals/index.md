@@ -22,6 +22,7 @@ Reference documentation for using and extending the AXIS framework.
 | [World Development](world-dev-manual.md) | Building custom worlds -- implementing MutableWorldProtocol |
 | [Visualization Extensions](visualization-extension-manual.md) | Building system-specific visualization adapters |
 | [Comparison Extensions](comparison-extension-manual.md) | Building system-specific comparison extensions |
+| [Metrics Extensions](metrics-extension-manual.md) | Building system-specific behavioral metric extensions |
 
 ## See Also
 

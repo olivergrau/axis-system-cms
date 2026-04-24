@@ -254,6 +254,7 @@ class TestRunsShow:
         assert code == 0
         assert "run-0000" in out
         assert "completed" in out.lower()
+        assert "Behavioral Metrics" in out
 
     def test_show_run_json(self, tmp_path, capsys):
         root, eid = _run_experiment(tmp_path)
@@ -267,6 +268,8 @@ class TestRunsShow:
         assert data["run_id"] == "run-0000"
         assert data["status"] == "completed"
         assert "summary" in data
+        assert "behavior_metrics" in data
+        assert data["behavior_metrics"] is not None
         assert data["num_episodes"] == 2
 
     def test_show_nonexistent_run(self, tmp_path, capsys):
@@ -278,6 +281,32 @@ class TestRunsShow:
         ])
         assert code == 1
         assert "not found" in err.lower()
+
+
+class TestRunsMetrics:
+    def test_metrics_run_text(self, tmp_path, capsys):
+        root, eid = _run_experiment(tmp_path)
+        capsys.readouterr()
+        code, out, _ = _run_cli(capsys, [
+            "--root", root, "runs", "metrics", "run-0000",
+            "--experiment", eid,
+        ])
+        assert code == 0
+        assert "Behavioral Metrics For run-0000" in out
+        assert "Behavioral Metrics" in out
+
+    def test_metrics_run_json(self, tmp_path, capsys):
+        root, eid = _run_experiment(tmp_path)
+        capsys.readouterr()
+        code, out, _ = _run_cli(capsys, [
+            "--root", root, "--output", "json", "runs", "metrics", "run-0000",
+            "--experiment", eid,
+        ])
+        assert code == 0
+        data = json.loads(out)
+        assert data["run_id"] == "run-0000"
+        assert data["experiment_id"] == eid
+        assert "standard_metrics" in data
 
 
 # ---------------------------------------------------------------------------

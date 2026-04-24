@@ -116,6 +116,7 @@ examples:
 
   axis runs list --experiment <experiment_id>   List runs in an experiment
   axis runs show <run_id> --experiment <eid>    Inspect a specific run
+  axis runs metrics <run_id> --experiment <eid> Compute or inspect behavioral metrics
 
   axis visualize --experiment <eid> --run <rid> --episode 1
 
@@ -123,6 +124,7 @@ examples:
                --candidate-experiment <eid2> --candidate-run <rid2> --candidate-episode 0
 
   axis workspaces show <workspace-path>         Inspect workspace state
+  axis workspaces run-metrics <workspace-path>  Inspect metrics for one resolved run
   axis workspaces compare <workspace-path>      Run a workspace comparison
 
   Use --output json on any command for machine-readable output.
@@ -176,7 +178,7 @@ examples:
     # -- runs ----------------------------------------------------------------
     runs_parser = entity_sub.add_parser(
         "runs",
-        help="Inspect runs within an experiment (list, show)",
+        help="Inspect runs within an experiment (list, show, metrics)",
     )
     runs_action = runs_parser.add_subparsers(dest="action", title="actions")
 
@@ -191,6 +193,14 @@ examples:
     )
     show_run_p.add_argument("run_id", help="ID of the run to inspect")
     show_run_p.add_argument(
+        "--experiment", required=True, help="Experiment ID the run belongs to",
+    )
+
+    metrics_run_p = runs_action.add_parser(
+        "metrics", parents=[common], help="Compute or show run behavioral metrics",
+    )
+    metrics_run_p.add_argument("run_id", help="ID of the run to inspect")
+    metrics_run_p.add_argument(
         "--experiment", required=True, help="Experiment ID the run belongs to",
     )
 
@@ -377,6 +387,23 @@ examples:
         "--experiment", default=None,
         help="Explicit experiment ID in workspace results")
     ws_sr_p.add_argument(
+        "--run", default=None,
+        help="Explicit run ID (required for sweep outputs)")
+
+    ws_rm_p = ws_action.add_parser(
+        "run-metrics", parents=[common],
+        help="Inspect behavioral metrics for one resolved run in a workspace",
+    )
+    ws_rm_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_rm_p.add_argument(
+        "--role", default=None,
+        help="Role selector for comparison/development workspaces "
+             "(reference, candidate, baseline)")
+    ws_rm_p.add_argument(
+        "--experiment", default=None,
+        help="Explicit experiment ID in workspace results")
+    ws_rm_p.add_argument(
         "--run", default=None,
         help="Explicit run ID (required for sweep outputs)")
 

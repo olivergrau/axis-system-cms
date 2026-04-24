@@ -329,6 +329,30 @@ def cmd_workspaces_run_summary(
     cmd_runs_show(repo, target.experiment_id, target.run_id, output)
 
 
+def cmd_workspaces_run_metrics(
+    workspace_path: str,
+    output: str,
+    *,
+    role: str | None = None,
+    experiment: str | None = None,
+    run: str | None = None,
+    inspection_service: object = None,
+) -> None:
+    """Inspect behavioral metrics for one resolved run from a workspace."""
+    from axis.framework.cli.commands.runs import cmd_runs_metrics
+    from axis.framework.persistence import ExperimentRepository
+
+    ws = Path(workspace_path)
+    target = inspection_service.run_summary_target(
+        ws,
+        role=role,
+        experiment=experiment,
+        run=run,
+    )
+    repo = ExperimentRepository(ws / "results")
+    cmd_runs_metrics(repo, target.experiment_id, target.run_id, output)
+
+
 def cmd_workspaces_set_candidate(
     workspace_path: str, config_path: str, output: str,
     run_service: object = None,

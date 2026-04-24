@@ -16,6 +16,7 @@ from axis.framework.execution_results import (
     LightEpisodeResult,
     LightRunResult,
 )
+from axis.framework.metrics.types import RunBehaviorMetrics
 from axis.framework.run import RunConfig, RunResult, RunSummary
 from axis.sdk.trace import (
     BaseEpisodeTrace,
@@ -188,6 +189,9 @@ class ExperimentRepository:
     def run_result_path(self, experiment_id: str, run_id: str) -> Path:
         return self.run_dir(experiment_id, run_id) / "run_result.json"
 
+    def behavior_metrics_path(self, experiment_id: str, run_id: str) -> Path:
+        return self.run_dir(experiment_id, run_id) / "behavior_metrics.json"
+
     def episodes_dir(self, experiment_id: str, run_id: str) -> Path:
         return self.run_dir(experiment_id, run_id) / "episodes"
 
@@ -258,6 +262,18 @@ class ExperimentRepository:
     ) -> Path:
         p = self.run_result_path(experiment_id, run_id)
         _save_json(p, result.model_dump(mode="json"), overwrite=overwrite)
+        return p
+
+    def save_behavior_metrics(
+        self,
+        experiment_id: str,
+        run_id: str,
+        metrics: RunBehaviorMetrics,
+        *,
+        overwrite: bool = False,
+    ) -> Path:
+        p = self.behavior_metrics_path(experiment_id, run_id)
+        _save_json(p, metrics.model_dump(mode="json"), overwrite=overwrite)
         return p
 
     def save_episode_trace(
@@ -385,6 +401,15 @@ class ExperimentRepository:
         if data.get("result_type") == "delta_run":
             return DeltaRunResult.model_validate(data)
         return RunResult.model_validate(data)
+
+    def load_behavior_metrics(
+        self,
+        experiment_id: str,
+        run_id: str,
+    ) -> RunBehaviorMetrics:
+        return RunBehaviorMetrics.model_validate(
+            _load_json(self.behavior_metrics_path(experiment_id, run_id)),
+        )
 
     def load_episode_trace(
         self, experiment_id: str, run_id: str, episode_index: int,

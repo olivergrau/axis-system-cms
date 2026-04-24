@@ -15,6 +15,10 @@ from axis.systems.construction_kit.prediction.memory import (
     get_prediction,
     update_predictive_memory,
 )
+from axis.systems.construction_kit.traces.state import (
+    get_confidence,
+    get_frustration,
+)
 from axis.systems.construction_kit.traces.update import update_traces
 from axis.systems.system_c.config import SystemCConfig
 from axis.systems.system_c.types import AgentStateC
@@ -127,6 +131,12 @@ class SystemCTransition:
                 "observed_features": post_features,
                 "error_positive": error.scalar_positive,
                 "error_negative": error.scalar_negative,
+                "confidence_value": get_confidence(
+                    new_traces, context, action_outcome.action,
+                ),
+                "frustration_value": get_frustration(
+                    new_traces, context, action_outcome.action,
+                ),
             }
 
         # Phase 7: Build new state
