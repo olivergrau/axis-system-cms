@@ -63,6 +63,22 @@ def _sample_system_data() -> dict[str, Any]:
                 "observed_features": (0.5, 0.3, 0.0, 0.0, 0.8),
                 "error_positive": 0.075,
                 "error_negative": 0.0,
+                "confidence_by_action": {
+                    "up": 0.2,
+                    "down": 0.0,
+                    "left": 0.0,
+                    "right": 0.1,
+                    "consume": 0.0,
+                    "stay": 0.0,
+                },
+                "frustration_by_action": {
+                    "up": 0.0,
+                    "down": 0.05,
+                    "left": 0.0,
+                    "right": 0.0,
+                    "consume": 0.0,
+                    "stay": 0.02,
+                },
             },
         },
     }
@@ -217,6 +233,12 @@ class TestSystemWidgetData:
         assert "up" in mf
         # up: raw=0.15, mod=0.12, mu=0.8
         assert abs(mf["up"] - 0.8) < 0.01
+
+    def test_widget_data_uses_persisted_per_action_traces(self) -> None:
+        adapter = resolve_system_adapter("system_c")
+        data = adapter.build_system_widget_data(_make_step_trace())
+        assert data["confidences"]["up"] == 0.2
+        assert data["frustrations"]["down"] == 0.05
 
     def test_widget_data_empty_system_data(self) -> None:
         adapter = resolve_system_adapter("system_c")

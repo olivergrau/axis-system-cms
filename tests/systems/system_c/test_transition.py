@@ -291,6 +291,28 @@ class TestPredictionTraceData:
         assert "error_negative" in pred
         assert "confidence_value" in pred
         assert "frustration_value" in pred
+        assert "confidence_by_action" in pred
+        assert "frustration_by_action" in pred
+
+    def test_prediction_trace_data_contains_per_action_traces(self) -> None:
+        trans = _transition()
+        pre_obs = _obs(0.0)
+        post_obs = _obs(0.8, 0.5, 0.0, 0.0, 0.0)
+        state = _state(last_observation=pre_obs)
+
+        result = trans.transition(state, _move_outcome("up"), post_obs)
+        pred = result.trace_data["prediction"]
+        confidence_by_action = pred["confidence_by_action"]
+        frustration_by_action = pred["frustration_by_action"]
+
+        assert set(confidence_by_action.keys()) == {
+            "up", "down", "left", "right", "consume", "stay",
+        }
+        assert set(frustration_by_action.keys()) == {
+            "up", "down", "left", "right", "consume", "stay",
+        }
+        assert confidence_by_action["up"] > 0.0
+        assert frustration_by_action["up"] == pytest.approx(0.0)
 
 
 # =========================================================================

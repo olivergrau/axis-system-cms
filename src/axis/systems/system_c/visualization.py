@@ -553,25 +553,25 @@ class SystemCVisualizationAdapter:
         # Extract trace values from trace_data if available
         td = step_trace.system_data.get("trace_data", {})
         pred_update = td.get("prediction", {})
-
-        # Frustrations and confidences are not directly in trace_data,
-        # but we can derive them from the modulation factors and config.
-        # For now, expose error values as a proxy for trace activity.
         frustrations: dict[str, float] = {}
         confidences: dict[str, float] = {}
+        stored_frustrations = pred_update.get("frustration_by_action", {})
+        stored_confidences = pred_update.get("confidence_by_action", {})
         err_pos = pred_update.get("error_positive", 0.0)
         err_neg = pred_update.get("error_negative", 0.0)
 
-        # Use modulation factor to infer trace direction per action
         for action in ACTION_NAMES:
-            mu = mod_factors[action]
-            # Approximate: confidence grows when mu > 1, frustration when mu < 1
-            if mu >= 1.0:
-                confidences[action] = min(mu - 1.0, 1.0)
-                frustrations[action] = 0.0
+            if isinstance(stored_confidences, dict) and isinstance(stored_frustrations, dict):
+                confidences[action] = float(stored_confidences.get(action, 0.0))
+                frustrations[action] = float(stored_frustrations.get(action, 0.0))
             else:
-                frustrations[action] = min(1.0 - mu, 1.0)
-                confidences[action] = 0.0
+                mu = mod_factors[action]
+                if mu >= 1.0:
+                    confidences[action] = min(mu - 1.0, 1.0)
+                    frustrations[action] = 0.0
+                else:
+                    frustrations[action] = min(1.0 - mu, 1.0)
+                    confidences[action] = 0.0
 
         return {
             "context": context,

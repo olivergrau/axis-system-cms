@@ -23,6 +23,10 @@ from axis.systems.construction_kit.traces.update import update_traces
 from axis.systems.system_c.config import SystemCConfig
 from axis.systems.system_c.types import AgentStateC
 
+ACTION_NAMES: tuple[str, ...] = (
+    "up", "down", "left", "right", "consume", "stay",
+)
+
 
 class SystemCTransition:
     """Transition function for System C.
@@ -137,6 +141,14 @@ class SystemCTransition:
                 "frustration_value": get_frustration(
                     new_traces, context, action_outcome.action,
                 ),
+                "confidence_by_action": {
+                    action: get_confidence(new_traces, context, action)
+                    for action in ACTION_NAMES
+                },
+                "frustration_by_action": {
+                    action: get_frustration(new_traces, context, action)
+                    for action in ACTION_NAMES
+                },
             }
 
         # Phase 7: Build new state
