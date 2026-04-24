@@ -66,6 +66,19 @@ axis experiments run experiments/configs/system-a-baseline.yaml
 AXIS validates the config, executes the experiment, and writes a new
 experiment directory under `experiments/results/`.
 
+Before running larger workloads, it is worth choosing an execution policy in
+the config:
+
+- `trace_mode: full` for maximum replay richness
+- `trace_mode: delta` for replay-compatible compact traces
+- `trace_mode: light` for fastest summary-oriented execution
+
+And optionally:
+
+- `parallelism_mode: episodes`
+- `parallelism_mode: runs`
+- `max_workers: N`
+
 The result layout looks like this:
 
 ```text
@@ -223,6 +236,14 @@ axis visualize --experiment <experiment-id> --run run-0000 --episode 1 --step 50
 
 This is the direct-mode equivalent of workspace visualization. No
 workspace manifest is involved.
+
+Important trace-mode rule:
+
+- `full` and `delta` runs can be visualized
+- `light` runs cannot be visualized
+
+If you plan to use `axis visualize` later, do not run that experiment in
+`light` mode.
 
 ---
 

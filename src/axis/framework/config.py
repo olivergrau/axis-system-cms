@@ -31,6 +31,19 @@ class ExecutionConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     max_steps: int = Field(..., gt=0)
+    trace_mode: str = "full"
+    parallelism_mode: str = "sequential"
+    max_workers: int = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def _validate_speedup_fields(self) -> ExecutionConfig:
+        if self.trace_mode not in {"full", "light", "delta"}:
+            raise ValueError("trace_mode must be 'full', 'light', or 'delta'")
+        if self.parallelism_mode not in {"sequential", "episodes", "runs"}:
+            raise ValueError(
+                "parallelism_mode must be 'sequential', 'episodes', or 'runs'"
+            )
+        return self
 
 
 class LoggingConfig(BaseModel):

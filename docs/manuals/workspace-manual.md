@@ -251,6 +251,14 @@ axis visualize --workspace workspaces/my-workspace --experiment <experiment-id> 
 
 Visualization uses the workspace-local results — the experiment ID must exist under `<workspace>/results/`.
 
+Trace-mode rule:
+
+- `full` and `delta` workspace results are visualizable
+- `light` workspace results are not visualizable
+
+If a workspace run was executed in `light` mode, AXIS will reject visualization
+explicitly because no replay-compatible artifacts exist for that result.
+
 For sweep (OFAT) experiments, you must specify the run explicitly with `--run`:
 
 ```bash

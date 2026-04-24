@@ -91,3 +91,16 @@ def test_parser_accepts_workspace_run_summary_arguments():
     assert args.role == "reference"
     assert args.experiment == "exp-123"
     assert args.run == "run-0001"
+
+
+def test_parser_accepts_visualize_width_percent():
+    parser = build_parser()
+    args = parser.parse_args([
+        "visualize",
+        "--experiment", "exp-123",
+        "--run", "run-0001",
+        "--episode", "0",
+        "--width-percent", "80",
+    ])
+    assert args.entity == "visualize"
+    assert args.width_percent == 80.0

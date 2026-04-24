@@ -298,6 +298,7 @@ class TestMainWindow:
     def test_main_window_construction(self, qapp) -> None:
         window = _make_window(qapp)
         assert window.windowTitle() == "AXIS Replay Viewer"
+        assert window.width() == 1440
 
     def test_main_window_set_frame(self, qapp) -> None:
         window = _make_window(qapp)
@@ -313,6 +314,30 @@ class TestMainWindow:
         assert isinstance(window.canvas, CanvasWidget)
         assert isinstance(window.replay_controls, ReplayControlsPanel)
         assert isinstance(window.overlay_panel, OverlayPanel)
+
+    def test_main_window_opens_non_modal_config_viewer(self, qapp) -> None:
+        window = VisualizationMainWindow(
+            DefaultWorldVisualizationAdapter(),
+            ["BEFORE", "INTER", "AFTER"],
+            [OverlayTypeDeclaration(key="test", label="Test", description="Test")],
+            experiment_config_text='{"system_type":"system_a"}',
+            run_config_text='{"run_id":"run-0000"}',
+        )
+        window.show_config_viewer()
+        assert window.config_window is not None
+        assert window.config_window.isVisible()
+        tabs = window.config_window.centralWidget()
+        assert tabs is not None
+        assert tabs.tabText(0) == "Experiment Config"
+        assert tabs.tabText(1) == "Run Config"
+
+    def test_main_window_config_button_disabled_without_configs(self, qapp) -> None:
+        window = VisualizationMainWindow(
+            DefaultWorldVisualizationAdapter(),
+            ["BEFORE", "INTER", "AFTER"],
+            [OverlayTypeDeclaration(key="test", label="Test", description="Test")],
+        )
+        assert window.config_button.isEnabled() is False
 
 
 # ---------------------------------------------------------------------------

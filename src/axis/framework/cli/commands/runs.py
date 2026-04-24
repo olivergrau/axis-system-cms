@@ -75,6 +75,8 @@ def cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
         info["variation_description"] = meta.variation_description
         info["created_at"] = meta.created_at
         info["base_seed"] = meta.base_seed
+        if meta.trace_mode is not None:
+            info["trace_mode"] = meta.trace_mode
         if meta.variation_index is not None:
             info["variation_index"] = meta.variation_index
         if meta.variation_value is not None:
@@ -126,6 +128,8 @@ def cmd_runs_show(repo, experiment_id: str, run_id: str, output: str) -> None:
             out.kv("Variation value", info["variation_value"])
         if info.get("created_at"):
             out.kv("Created", info["created_at"])
+        if info.get("trace_mode"):
+            out.kv("Trace mode", info["trace_mode"])
         if info.get("base_seed") is not None:
             out.kv("Base seed", info["base_seed"])
         out.kv("Episodes", info["num_episodes"])

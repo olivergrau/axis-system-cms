@@ -61,6 +61,7 @@ class ResultEntry(BaseModel, frozen=True):
 
     path: str
     output_form: str | None = None      # "point" or "sweep"
+    trace_mode: str | None = None       # "full" or "light"
     system_type: str | None = None
     role: str | None = None
     created_at: str | None = None

@@ -102,20 +102,59 @@ For OFAT experiments, each run receives a base seed spaced by 1000:
 run 0 gets `seed`, run 1 gets `seed + 1000`, run 2 gets `seed + 2000`,
 and so on. This ensures statistical independence between runs.
 
-### 3.2 `execution` -- Step budget
+### 3.2 `execution` -- Runtime and trace policy
 
-| Field       | Type           | Required | Description |
-|-------------|----------------|----------|-------------|
-| `max_steps` | integer (> 0)  | yes      | Maximum steps per episode. Episodes terminate after this many steps if the system hasn't terminated them first. |
+| Field              | Type           | Required | Default        | Description |
+|--------------------|----------------|----------|----------------|-------------|
+| `max_steps`        | integer (> 0)  | yes      | --             | Maximum steps per episode. Episodes terminate after this many steps if the system hasn't terminated them first. |
+| `trace_mode`       | string         | no       | `"full"`       | Trace richness mode: `"full"`, `"delta"`, or `"light"`. |
+| `parallelism_mode` | string         | no       | `"sequential"` | Parallelization strategy: `"sequential"`, `"episodes"`, or `"runs"`. |
+| `max_workers`      | integer (>= 1) | no       | `1`            | Maximum worker count used by parallel execution modes. |
 
 ```yaml
 execution:
   max_steps: 200
+  trace_mode: "delta"
+  parallelism_mode: "episodes"
+  max_workers: 4
 ```
 
 An episode ends when either `max_steps` is reached (termination reason:
 `"max_steps_reached"`) or the system signals termination (e.g.,
 `"energy_depleted"` for System A).
+
+#### 3.2.1 Trace modes
+
+- **`"full"`** -- Persist the richest replay artifacts. Best when you want the
+  most detailed replay/debugging surface.
+
+- **`"delta"`** -- Persist replay-compatible compact traces. This mode remains
+  visualizable and replay-comparable, but typically uses less storage and
+  runtime overhead than `full`.
+
+- **`"light"`** -- Persist only summary-oriented outputs. This mode is the
+  fastest option, but it is not replay-compatible. `light` executions cannot be
+  visualized and cannot be used for replay-based comparison.
+
+#### 3.2.2 Parallelization modes
+
+- **`"sequential"`** -- Execute everything serially. Baseline behavior.
+
+- **`"episodes"`** -- Parallelize episodes within a run. Good when one run has
+  many episodes and the workload per episode is large enough to amortize worker
+  overhead.
+
+- **`"runs"`** -- Parallelize runs within an OFAT/sweep experiment. Intended
+  for experiments with multiple independent runs.
+
+#### 3.2.3 Practical guidance
+
+- Use `full` when replay fidelity matters most.
+- Use `delta` when you still want the visualizer or replay-based comparison,
+  but want lower artifact cost.
+- Use `light` when you only need summaries and throughput.
+- Start with `max_workers` near your available CPU cores, then benchmark on
+  your real workload.
 
 ### 3.3 `world` -- Grid structure
 
@@ -237,6 +276,9 @@ logging:
 
 - Setting `jsonl_enabled: true` without providing `jsonl_path` raises
   `ValueError`.
+- `trace_mode` must be one of `"full"`, `"delta"`, or `"light"`.
+- `parallelism_mode` must be one of `"sequential"`, `"episodes"`, or `"runs"`.
+- `max_workers` must be at least `1`.
 
 ---
 

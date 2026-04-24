@@ -23,6 +23,7 @@ from axis.framework.persistence import (
     RunMetadata,
     RunStatus,
 )
+from axis.framework.execution_results import DeltaRunResult, LightRunResult
 from axis.framework.run import (
     RunConfig,
     RunExecutor,
@@ -203,6 +204,48 @@ class TestRoundtrip:
         loaded = repo.load_run_result("exp", "run")
         assert loaded.num_episodes == result.num_episodes
 
+    def test_light_run_result(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = RunExecutor().execute(
+            RunConfig(
+                system_type="system_a",
+                system_config=SystemAConfigBuilder().build(),
+                framework_config=(
+                    FrameworkConfigBuilder()
+                    .with_max_steps(10)
+                    .with_trace_mode("light")
+                    .build()
+                ),
+                num_episodes=1,
+                base_seed=42,
+            )
+        )
+        repo.save_run_result("exp", "run", result)
+        loaded = repo.load_run_result("exp", "run")
+        assert isinstance(loaded, LightRunResult)
+
+    def test_delta_run_result(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = RunExecutor().execute(
+            RunConfig(
+                system_type="system_a",
+                system_config=SystemAConfigBuilder().build(),
+                framework_config=(
+                    FrameworkConfigBuilder()
+                    .with_max_steps(10)
+                    .with_trace_mode("delta")
+                    .build()
+                ),
+                num_episodes=1,
+                base_seed=42,
+            )
+        )
+        repo.save_run_result("exp", "run", result)
+        loaded = repo.load_run_result("exp", "run")
+        assert isinstance(loaded, DeltaRunResult)
+
     def test_episode_trace(self, tmp_path: Path) -> None:
         repo = ExperimentRepository(tmp_path)
         repo.create_run_dir("exp", "run")
@@ -211,6 +254,29 @@ class TestRoundtrip:
         repo.save_episode_trace("exp", "run", 1, trace)
         loaded = repo.load_episode_trace("exp", "run", 1)
         assert loaded.system_type == trace.system_type
+
+    def test_delta_episode_trace_loads_as_base_trace(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = RunExecutor().execute(
+            RunConfig(
+                system_type="system_a",
+                system_config=SystemAConfigBuilder().build(),
+                framework_config=(
+                    FrameworkConfigBuilder()
+                    .with_max_steps(10)
+                    .with_trace_mode("delta")
+                    .build()
+                ),
+                num_episodes=1,
+                base_seed=42,
+            )
+        )
+        assert isinstance(result, DeltaRunResult)
+        repo.save_delta_episode_trace("exp", "run", 1, result.episode_traces[0])
+        loaded = repo.load_episode_trace("exp", "run", 1)
+        assert loaded.system_type == result.episode_traces[0].system_type
+        assert loaded.total_steps == result.episode_traces[0].total_steps
 
     def test_experiment_summary(self, tmp_path: Path) -> None:
         repo = ExperimentRepository(tmp_path)

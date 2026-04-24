@@ -35,16 +35,51 @@ from tests.builders.system_config_builder import SystemAConfigBuilder
 
 def _single_run_config(
     *, num_episodes: int = 2, max_steps: int = 10,
+    trace_mode: str = "full",
+    parallelism_mode: str = "sequential",
+    max_workers: int = 1,
 ) -> ExperimentConfig:
     return ExperimentConfig(
         system_type="system_a",
         experiment_type=ExperimentType.SINGLE_RUN,
         general=GeneralConfig(seed=42),
-        execution=ExecutionConfig(max_steps=max_steps),
+        execution=ExecutionConfig(
+            max_steps=max_steps,
+            trace_mode=trace_mode,
+            parallelism_mode=parallelism_mode,
+            max_workers=max_workers,
+        ),
         world=BaseWorldConfig(grid_width=5, grid_height=5),
         logging=LoggingConfig(enabled=False),
         system=SystemAConfigBuilder().build(),
         num_episodes_per_run=num_episodes,
+    )
+
+
+def _ofat_config(
+    *,
+    num_episodes: int = 2,
+    max_steps: int = 10,
+    trace_mode: str = "full",
+    parallelism_mode: str = "sequential",
+    max_workers: int = 1,
+) -> ExperimentConfig:
+    return ExperimentConfig(
+        system_type="system_a",
+        experiment_type=ExperimentType.OFAT,
+        general=GeneralConfig(seed=42),
+        execution=ExecutionConfig(
+            max_steps=max_steps,
+            trace_mode=trace_mode,
+            parallelism_mode=parallelism_mode,
+            max_workers=max_workers,
+        ),
+        world=BaseWorldConfig(grid_width=5, grid_height=5),
+        logging=LoggingConfig(enabled=False),
+        system=SystemAConfigBuilder().build(),
+        num_episodes_per_run=num_episodes,
+        parameter_path="framework.execution.max_steps",
+        parameter_values=(5, 8),
     )
 
 
@@ -114,6 +149,22 @@ class TestExecuteWithPersistence:
         files = repo.list_episode_files(eid, rid)
         assert files[0].name == "episode_0001.json"
 
+    def test_execute_light_mode_persists_light_episode_results(self, tmp_path: Path) -> None:
+        cfg = _single_run_config(trace_mode="light")
+        result, repo = _execute(tmp_path, cfg)
+        eid = repo.list_experiments()[0]
+        rid = repo.list_runs(eid)[0]
+        files = repo.list_episode_files(eid, rid)
+        assert files[0].name.endswith(".light.json")
+
+    def test_execute_run_parallel_ofat(self, tmp_path: Path) -> None:
+        cfg = _ofat_config(parallelism_mode="runs", max_workers=2)
+        result, repo = _execute(tmp_path, cfg)
+        eid = repo.list_experiments()[0]
+        runs = repo.list_runs(eid)
+        assert result.summary.num_runs == 2
+        assert runs == ["run-0000", "run-0001"]
+
 
 # ---------------------------------------------------------------------------
 # Resume tests
@@ -166,6 +217,13 @@ class TestResume:
             resumed.summary.run_entries[0].summary.mean_steps
             == result.summary.run_entries[0].summary.mean_steps
         )
+
+    def test_resume_rejects_non_default_execution_modes(self, tmp_path: Path) -> None:
+        _result, repo = _execute(tmp_path, _single_run_config(trace_mode="light"))
+        eid = repo.list_experiments()[0]
+        executor = ExperimentExecutor(repository=repo)
+        with pytest.raises(RuntimeError, match="only supported"):
+            executor.resume(eid)
 
 
 # ---------------------------------------------------------------------------

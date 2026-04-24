@@ -24,6 +24,12 @@ and assembles these parts automatically.
 The viewer is launched from the CLI after an experiment has been
 completed and its episodes have been persisted to the repository.
 
+Replay compatibility depends on the experiment's `trace_mode`:
+
+- `full` -- directly visualizable
+- `delta` -- visualizable after AXIS reconstructs replay-rich episode traces at load time
+- `light` -- not visualizable
+
 ---
 
 ## 1. Launching the Viewer
@@ -42,6 +48,7 @@ axis visualize --experiment <eid> --run <rid> --episode <n> [options]
 | `--step`         | int    | no       | 0       | Initial step to display (0-based) |
 | `--phase`        | int    | no       | 0       | Initial phase index |
 | `--scale`        | float  | no       | 1.0     | UI scale factor (see below) |
+| `--width-percent`| float  | no       | `null`  | Initial viewer width as % of the primary screen width |
 
 ### 1.2 Example
 
@@ -59,6 +66,13 @@ axis visualize --experiment exp_20260410_143012 --run run_01 --episode 3 \
 Opens episode 3 at step 42, phase 2 (AFTER_ACTION), with all UI
 elements scaled to 150%.
 
+```
+axis visualize --experiment exp_20260410_143012 --run run_01 --episode 1 \
+    --width-percent 80
+```
+
+Opens the viewer at roughly 80% of the primary screen width.
+
 ### 1.3 UI Scaling
 
 The `--scale` flag sets the Qt environment variable `QT_SCALE_FACTOR`,
@@ -71,10 +85,21 @@ or `2.0` for larger displays.
 
 ---
 
+### 1.4 Trace Mode Notes
+
+If you intend to use the replay viewer later, prefer:
+
+- `trace_mode: full`
+- or `trace_mode: delta`
+
+Do not use `trace_mode: light` for runs you plan to visualize. `light` is a
+summary-only execution lane and AXIS will reject visualization for those runs.
+
 ## 2. Window Layout
 
-The viewer window has a default size of 1200 x 800 pixels (before
-scaling) and is organized into four horizontal zones.
+The viewer window has a larger desktop-oriented default size than in earlier
+releases and is organized into four horizontal zones. You can also override the
+initial width via `--width-percent`.
 
 ![Window layout overview](screenshots/viz-window-layout.png)
 *Screenshot: Full viewer window showing all panels.*

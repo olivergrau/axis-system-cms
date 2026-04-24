@@ -110,6 +110,7 @@ class WorkspaceRunService:
                 ws, er.experiment_result.experiment_id, run_ids, er.role,
                 config_path=er.config_path,
                 output_form=o_form,
+                trace_mode=config.execution.trace_mode,
                 system_type=config.system_type,
                 primary_run_id=p_run,
                 baseline_run_id=b_run,

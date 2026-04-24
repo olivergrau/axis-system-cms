@@ -125,6 +125,7 @@ class TestLoadPointOutput:
         assert output.experiment_id == "exp-001"
         assert output.experiment_type == "single_run"
         assert output.system_type == "system_a"
+        assert output.trace_mode is None
         assert output.primary_run_id == "run-0000"
         assert output.num_runs == 1
         assert output.status == "completed"
@@ -154,10 +155,44 @@ class TestLoadSweepOutput:
         assert isinstance(output, SweepExperimentOutput)
         assert output.output_form == ExperimentOutputForm.SWEEP
         assert output.experiment_id == "exp-002"
+        assert output.trace_mode is None
         assert output.baseline_run_id == "run-0000"
         assert output.num_runs == 3
         assert output.run_ids == ("run-0000", "run-0001", "run-0002")
         assert len(output.variation_descriptions) == 3
+
+    def test_loads_trace_mode_when_present(self, tmp_path):
+        repo = ExperimentRepository(tmp_path)
+        repo.create_experiment_dir("exp-trace")
+        repo.save_experiment_metadata(
+            "exp-trace",
+            ExperimentMetadata(
+                experiment_id="exp-trace",
+                created_at="2025-01-01T00:00:00",
+                experiment_type="single_run",
+                system_type="system_a",
+                output_form="point",
+                trace_mode="light",
+                primary_run_id="run-0000",
+            ),
+        )
+        repo.save_experiment_status("exp-trace", ExperimentStatus.COMPLETED)
+        repo.create_run_dir("exp-trace", "run-0000")
+        repo.save_run_metadata(
+            "exp-trace", "run-0000",
+            RunMetadata(
+                run_id="run-0000",
+                experiment_id="exp-trace",
+                variation_description="baseline",
+                created_at="2025-01-01T00:00:00",
+                base_seed=42,
+                trace_mode="light",
+            ),
+        )
+        repo.save_run_status("exp-trace", "run-0000", RunStatus.COMPLETED)
+
+        output = load_experiment_output(repo, "exp-trace")
+        assert output.trace_mode == "light"
 
     def test_sweep_output_paths(self, tmp_path):
         repo = ExperimentRepository(tmp_path)

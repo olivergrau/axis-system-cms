@@ -14,6 +14,8 @@ from axis.framework.config import (
     extract_framework_config,
     set_config_value,
 )
+from axis.framework.execution_policy import ParallelismMode, TraceMode
+from axis.framework.execution_results import DeltaRunResult, LightRunResult
 from axis.framework.run import RunConfig, RunExecutor, RunResult, RunSummary
 
 if TYPE_CHECKING:
@@ -54,7 +56,7 @@ class ExperimentResult(BaseModel):
 
     experiment_id: str
     experiment_config: ExperimentConfig
-    run_results: tuple[RunResult, ...]
+    run_results: tuple[RunResult | LightRunResult | DeltaRunResult, ...]
     summary: ExperimentSummary
 
 
@@ -128,7 +130,7 @@ def _resolve_ofat(config: ExperimentConfig) -> tuple[RunConfig, ...]:
 
 def compute_experiment_summary(
     config: ExperimentConfig,
-    run_results: tuple[RunResult, ...],
+    run_results: tuple[RunResult | LightRunResult | DeltaRunResult, ...],
 ) -> ExperimentSummary:
     """Build experiment summary with optional OFAT deltas."""
     baseline: RunSummary | None = None
@@ -235,10 +237,22 @@ class ExperimentExecutor:
     def _execute_in_memory(self, config: ExperimentConfig) -> ExperimentResult:
         run_configs = resolve_run_configs(config)
 
-        results: list[RunResult] = []
-        for rc in run_configs:
-            result = self._run_executor.execute(rc)
-            results.append(result)
+        results: list[RunResult | LightRunResult | DeltaRunResult]
+        if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
+            from axis.framework.parallel_execution import execute_runs_parallel
+
+            results = list(
+                execute_runs_parallel(
+                    run_configs,
+                    trace_mode=TraceMode(config.execution.trace_mode),
+                    max_workers=config.execution.max_workers,
+                )
+            )
+        else:
+            results = []
+            for rc in run_configs:
+                result = self._run_executor.execute(rc)
+                results.append(result)
 
         run_results = tuple(results)
         summary = compute_experiment_summary(config, run_results)
@@ -255,11 +269,7 @@ class ExperimentExecutor:
     def _execute_with_persistence(
         self, config: ExperimentConfig,
     ) -> ExperimentResult:
-        from axis.framework.persistence import (
-            ExperimentMetadata,
-            ExperimentStatus,
-            RunStatus,
-        )
+        from axis.framework.persistence import ExperimentMetadata, ExperimentStatus, RunStatus
 
         repo = self._repository
         assert repo is not None
@@ -290,6 +300,7 @@ class ExperimentExecutor:
                 experiment_type=config.experiment_type.value,
                 system_type=config.system_type,
                 output_form=output_form,
+                trace_mode=config.execution.trace_mode,
                 primary_run_id=primary_run_id,
                 baseline_run_id=baseline_run_id,
             ),
@@ -298,28 +309,59 @@ class ExperimentExecutor:
 
         # Resolve and execute runs
         run_configs = resolve_run_configs(config)
-        run_results: list[RunResult] = []
+        run_results: list[RunResult | LightRunResult | DeltaRunResult] = []
         completed_count = 0
 
-        for i, run_config in enumerate(run_configs):
-            run_id = run_config.run_id or f"run-{i:04d}"
-            try:
-                result = self._execute_and_persist_run(
-                    experiment_id, run_config, config, i,
+        if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
+            from axis.framework.parallel_execution import execute_runs_parallel
+
+            for i, run_config in enumerate(run_configs):
+                run_id = run_config.run_id or f"run-{i:04d}"
+                repo.create_run_dir(experiment_id, run_id)
+                repo.save_run_config(experiment_id, run_id, run_config, overwrite=True)
+                repo.save_run_metadata(
+                    experiment_id,
+                    run_id,
+                    _build_run_metadata(experiment_id, run_id, run_config, config, i),
                 )
-                run_results.append(result)
-                completed_count += 1
+                repo.save_run_status(experiment_id, run_id, RunStatus.RUNNING)
+            try:
+                results = execute_runs_parallel(
+                    run_configs,
+                    trace_mode=TraceMode(config.execution.trace_mode),
+                    max_workers=config.execution.max_workers,
+                )
+                for i, result in enumerate(results):
+                    run_config = run_configs[i]
+                    self._persist_completed_run(experiment_id, run_config, result, i)
+                    run_results.append(result)
+                    completed_count += 1
             except Exception:
-                repo.save_run_status(experiment_id, run_id, RunStatus.FAILED)
-                if completed_count > 0:
-                    repo.save_experiment_status(
-                        experiment_id, ExperimentStatus.PARTIAL,
-                    )
-                else:
-                    repo.save_experiment_status(
-                        experiment_id, ExperimentStatus.FAILED,
-                    )
+                repo.save_experiment_status(
+                    experiment_id,
+                    ExperimentStatus.PARTIAL if completed_count > 0 else ExperimentStatus.FAILED,
+                )
                 raise
+        else:
+            for i, run_config in enumerate(run_configs):
+                run_id = run_config.run_id or f"run-{i:04d}"
+                try:
+                    result = self._execute_and_persist_run(
+                        experiment_id, run_config, config, i,
+                    )
+                    run_results.append(result)
+                    completed_count += 1
+                except Exception:
+                    repo.save_run_status(experiment_id, run_id, RunStatus.FAILED)
+                    if completed_count > 0:
+                        repo.save_experiment_status(
+                            experiment_id, ExperimentStatus.PARTIAL,
+                        )
+                    else:
+                        repo.save_experiment_status(
+                            experiment_id, ExperimentStatus.FAILED,
+                        )
+                    raise
 
         return self._finalize_experiment(experiment_id, config, run_results)
 
@@ -337,10 +379,14 @@ class ExperimentExecutor:
         assert repo is not None
 
         config = repo.load_experiment_config(experiment_id)
+        if _parallelism_mode(config) is not ParallelismMode.SEQUENTIAL or config.execution.trace_mode != "full":
+            raise RuntimeError(
+                "resume() is only supported for sequential full-trace execution."
+            )
         repo.save_experiment_status(experiment_id, ExperimentStatus.RUNNING)
 
         run_configs = resolve_run_configs(config)
-        run_results: list[RunResult] = []
+        run_results: list[RunResult | LightRunResult] = []
         completed_count = 0
 
         for i, run_config in enumerate(run_configs):
@@ -382,7 +428,7 @@ class ExperimentExecutor:
         run_config: RunConfig,
         config: ExperimentConfig,
         run_index: int,
-    ) -> RunResult:
+    ) -> RunResult | LightRunResult:
         """Execute a single run and persist all its artifacts."""
         from axis.framework.persistence import RunMetadata, RunStatus
 
@@ -396,47 +442,57 @@ class ExperimentExecutor:
             experiment_id, run_id, run_config, overwrite=True,
         )
 
-        # Build run metadata with optional sweep fields
-        run_meta_kwargs: dict = dict(
-            run_id=run_id,
-            experiment_id=experiment_id,
-            variation_description=variation_description(config, run_index),
-            created_at=datetime.now(timezone.utc).isoformat(),
-            base_seed=run_config.base_seed,
-        )
-        if config.experiment_type == ExperimentType.OFAT:
-            assert config.parameter_values is not None
-            run_meta_kwargs["variation_index"] = run_index
-            run_meta_kwargs["variation_value"] = config.parameter_values[run_index]
-            run_meta_kwargs["is_baseline"] = (run_index == 0)
-
         repo.save_run_metadata(
             experiment_id, run_id,
-            RunMetadata(**run_meta_kwargs),
+            _build_run_metadata(experiment_id, run_id, run_config, config, run_index),
         )
         repo.save_run_status(experiment_id, run_id, RunStatus.RUNNING)
 
         result = self._run_executor.execute(run_config)
+        self._persist_completed_run(experiment_id, run_config, result, run_index)
+        return result
 
-        # Persist run results (overwrite=True for resume safety)
+    def _persist_completed_run(
+        self,
+        experiment_id: str,
+        run_config: RunConfig,
+        result: RunResult | LightRunResult | DeltaRunResult,
+        run_index: int,
+    ) -> None:
+        """Persist a completed run result in either full or light mode."""
+        from axis.framework.persistence import RunStatus
+
+        repo = self._repository
+        assert repo is not None
+        run_id = run_config.run_id or f"run-{run_index:04d}"
         repo.save_run_result(
             experiment_id, run_id, result, overwrite=True,
         )
         repo.save_run_summary(
             experiment_id, run_id, result.summary, overwrite=True,
         )
-        for ep_idx, ep_trace in enumerate(result.episode_traces, start=1):
-            repo.save_episode_trace(
-                experiment_id, run_id, ep_idx, ep_trace, overwrite=True,
-            )
+        if isinstance(result, RunResult):
+            for ep_idx, ep_trace in enumerate(result.episode_traces, start=1):
+                repo.save_episode_trace(
+                    experiment_id, run_id, ep_idx, ep_trace, overwrite=True,
+                )
+        elif isinstance(result, DeltaRunResult):
+            for ep_idx, ep_trace in enumerate(result.episode_traces, start=1):
+                repo.save_delta_episode_trace(
+                    experiment_id, run_id, ep_idx, ep_trace, overwrite=True,
+                )
+        else:
+            for ep_idx, ep_result in enumerate(result.episode_results, start=1):
+                repo.save_light_episode_result(
+                    experiment_id, run_id, ep_idx, ep_result, overwrite=True,
+                )
         repo.save_run_status(experiment_id, run_id, RunStatus.COMPLETED)
-        return result
 
     def _finalize_experiment(
         self,
         experiment_id: str,
         config: ExperimentConfig,
-        run_results: list[RunResult],
+        run_results: list[RunResult | LightRunResult | DeltaRunResult],
         *,
         overwrite_summary: bool = False,
     ) -> ExperimentResult:
@@ -492,3 +548,34 @@ def resume_experiment(
         system_catalog=system_catalog,
         world_catalog=world_catalog,
     ).resume(experiment_id)
+
+
+def _build_run_metadata(
+    experiment_id: str,
+    run_id: str,
+    run_config: RunConfig,
+    config: ExperimentConfig,
+    run_index: int,
+):
+    """Build run metadata with optional sweep fields."""
+    from axis.framework.persistence import RunMetadata
+
+    run_meta_kwargs: dict = dict(
+        run_id=run_id,
+        experiment_id=experiment_id,
+        variation_description=variation_description(config, run_index),
+        created_at=datetime.now(timezone.utc).isoformat(),
+        base_seed=run_config.base_seed,
+        trace_mode=config.execution.trace_mode,
+    )
+    if config.experiment_type == ExperimentType.OFAT:
+        assert config.parameter_values is not None
+        run_meta_kwargs["variation_index"] = run_index
+        run_meta_kwargs["variation_value"] = config.parameter_values[run_index]
+        run_meta_kwargs["is_baseline"] = (run_index == 0)
+    return RunMetadata(**run_meta_kwargs)
+
+
+def _parallelism_mode(config: ExperimentConfig) -> ParallelismMode:
+    """Return normalized experiment parallelism mode."""
+    return ParallelismMode(config.execution.parallelism_mode)

@@ -89,3 +89,52 @@ class TestLaunch:
 
         with pytest.raises(ReplayError):
             launch_visualization(repo, "nonexistent", "run", 0)
+
+    def test_resolve_initial_window_size_uses_width_percent(self, qapp) -> None:
+        from axis.visualization.launch import _resolve_initial_window_size
+
+        width, height = _resolve_initial_window_size(qapp, width_percent=50)
+        available = qapp.primaryScreen().availableGeometry()
+        assert width == int(available.width() * 0.5)
+        assert height <= int(available.height() * 0.9)
+
+    def test_launch_visualization_rejects_light_trace_mode(self, qapp, tmp_path) -> None:
+        from axis.framework.persistence import (
+            ExperimentMetadata,
+            ExperimentRepository,
+            ExperimentStatus,
+            RunMetadata,
+            RunStatus,
+        )
+        from axis.visualization.launch import launch_visualization
+
+        repo = ExperimentRepository(tmp_path)
+        repo.create_experiment_dir("exp")
+        repo.save_experiment_metadata(
+            "exp",
+            ExperimentMetadata(
+                experiment_id="exp",
+                created_at="2026-04-24T00:00:00Z",
+                experiment_type="single_run",
+                system_type="system_a",
+                output_form="point",
+                trace_mode="light",
+                primary_run_id="run",
+            ),
+        )
+        repo.save_experiment_status("exp", ExperimentStatus.COMPLETED)
+        repo.create_run_dir("exp", "run")
+        repo.save_run_metadata(
+            "exp",
+            "run",
+            RunMetadata(
+                run_id="run",
+                experiment_id="exp",
+                created_at="2026-04-24T00:00:00Z",
+                trace_mode="light",
+            ),
+        )
+        repo.save_run_status("exp", "run", RunStatus.COMPLETED)
+
+        with pytest.raises(ValueError, match="light trace mode"):
+            launch_visualization(repo, "exp", "run", 0)

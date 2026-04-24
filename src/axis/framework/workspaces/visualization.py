@@ -188,6 +188,12 @@ def _resolve_run_for_viz(
 
     exp_output = load_experiment_output(repo, experiment_id)
 
+    if getattr(exp_output, "trace_mode", None) == "light":
+        raise ValueError(
+            f"Experiment '{experiment_id}' was executed in light trace mode and "
+            "does not provide replay-compatible artifacts for visualization."
+        )
+
     if isinstance(exp_output, SweepExperimentOutput):
         if not explicit_run:
             raise ValueError(

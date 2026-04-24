@@ -11,8 +11,17 @@ from pydantic import BaseModel, ConfigDict
 
 from axis.framework.config import ExperimentConfig
 from axis.framework.experiment import ExperimentSummary
+from axis.framework.execution_results import (
+    DeltaRunResult,
+    LightEpisodeResult,
+    LightRunResult,
+)
 from axis.framework.run import RunConfig, RunResult, RunSummary
-from axis.sdk.trace import BaseEpisodeTrace
+from axis.sdk.trace import (
+    BaseEpisodeTrace,
+    DeltaEpisodeTrace,
+    reconstruct_episode_trace,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +67,7 @@ class ExperimentMetadata(BaseModel):
 
     # --- Experiment Output Abstraction fields ---
     output_form: str | None = None          # "point" or "sweep"
+    trace_mode: str | None = None           # "full", "light", or "delta"
     primary_run_id: str | None = None       # for point outputs
     baseline_run_id: str | None = None      # for sweep outputs
 
@@ -72,6 +82,7 @@ class RunMetadata(BaseModel):
     variation_description: str | None = None
     created_at: str
     base_seed: int | None = None
+    trace_mode: str | None = None
 
     # --- Experiment Output Abstraction fields (sweep runs) ---
     variation_index: int | None = None
@@ -239,7 +250,10 @@ class ExperimentRepository:
         return p
 
     def save_run_result(
-        self, experiment_id: str, run_id: str, result: RunResult,
+        self,
+        experiment_id: str,
+        run_id: str,
+        result: RunResult | LightRunResult | DeltaRunResult,
         *, overwrite: bool = False,
     ) -> Path:
         p = self.run_result_path(experiment_id, run_id)
@@ -249,6 +263,32 @@ class ExperimentRepository:
     def save_episode_trace(
         self, experiment_id: str, run_id: str, episode_index: int,
         trace: BaseEpisodeTrace, *, overwrite: bool = False,
+    ) -> Path:
+        p = self.episode_path(experiment_id, run_id, episode_index)
+        _save_json(p, trace.model_dump(mode="json"), overwrite=overwrite)
+        return p
+
+    def save_light_episode_result(
+        self,
+        experiment_id: str,
+        run_id: str,
+        episode_index: int,
+        result: LightEpisodeResult,
+        *,
+        overwrite: bool = False,
+    ) -> Path:
+        p = self.episodes_dir(experiment_id, run_id) / f"episode_{episode_index:04d}.light.json"
+        _save_json(p, result.model_dump(mode="json"), overwrite=overwrite)
+        return p
+
+    def save_delta_episode_trace(
+        self,
+        experiment_id: str,
+        run_id: str,
+        episode_index: int,
+        trace: DeltaEpisodeTrace,
+        *,
+        overwrite: bool = False,
     ) -> Path:
         p = self.episode_path(experiment_id, run_id, episode_index)
         _save_json(p, trace.model_dump(mode="json"), overwrite=overwrite)
@@ -334,18 +374,26 @@ class ExperimentRepository:
             _load_json(self.run_summary_path(experiment_id, run_id)),
         )
 
-    def load_run_result(self, experiment_id: str, run_id: str) -> RunResult:
-        return RunResult.model_validate(
-            _load_json(self.run_result_path(experiment_id, run_id)),
-        )
+    def load_run_result(
+        self,
+        experiment_id: str,
+        run_id: str,
+    ) -> RunResult | LightRunResult | DeltaRunResult:
+        data = _load_json(self.run_result_path(experiment_id, run_id))
+        if data.get("result_type") == "light_run":
+            return LightRunResult.model_validate(data)
+        if data.get("result_type") == "delta_run":
+            return DeltaRunResult.model_validate(data)
+        return RunResult.model_validate(data)
 
     def load_episode_trace(
         self, experiment_id: str, run_id: str, episode_index: int,
     ) -> BaseEpisodeTrace:
-        return BaseEpisodeTrace.model_validate(
-            _load_json(self.episode_path(
-                experiment_id, run_id, episode_index)),
-        )
+        data = _load_json(self.episode_path(experiment_id, run_id, episode_index))
+        if data.get("result_type") == "delta_episode":
+            delta_trace = DeltaEpisodeTrace.model_validate(data)
+            return reconstruct_episode_trace(delta_trace)
+        return BaseEpisodeTrace.model_validate(data)
 
     # -- Discovery ----------------------------------------------------------
 

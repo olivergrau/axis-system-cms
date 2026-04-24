@@ -17,7 +17,13 @@ from axis.framework.persistence import ExperimentRepository
 from axis.framework.run import RunConfig, RunSummary
 from axis.sdk.position import Position
 from axis.sdk.snapshot import WorldSnapshot
-from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
+from axis.sdk.trace import (
+    BaseEpisodeTrace,
+    BaseStepTrace,
+    DeltaEpisodeTrace,
+    DeltaStepTrace,
+    WorldDelta,
+)
 from axis.sdk.world_types import BaseWorldConfig, CellView
 
 from axis.visualization.errors import (
@@ -214,6 +220,40 @@ class TestLoading:
         trace = svc.load_episode_trace("exp_a", "run_1", 0)
         assert isinstance(trace, BaseEpisodeTrace)
         assert trace.total_steps == 3
+
+    def test_load_delta_episode_trace(self, tmp_path: Path) -> None:
+        repo = _setup_repo(
+            tmp_path,
+            experiments=["exp_a"],
+            runs={"exp_a": ["run_1"]},
+        )
+        initial = _make_snapshot()
+        delta_episode = DeltaEpisodeTrace(
+            system_type="test",
+            initial_world=initial,
+            steps=(
+                DeltaStepTrace(
+                    timestep=0,
+                    action="stay",
+                    regen_delta=WorldDelta(agent_position=Position(x=0, y=0)),
+                    action_delta=WorldDelta(agent_position=Position(x=0, y=0)),
+                    agent_position_before=Position(x=0, y=0),
+                    agent_position_after=Position(x=0, y=0),
+                    vitality_before=1.0,
+                    vitality_after=0.9,
+                    terminated=False,
+                ),
+            ),
+            total_steps=1,
+            termination_reason="max_steps",
+            final_vitality=0.9,
+            final_position=Position(x=0, y=0),
+        )
+        repo.save_delta_episode_trace("exp_a", "run_1", 0, delta_episode)
+        svc = ReplayAccessService(repo)
+        trace = svc.load_episode_trace("exp_a", "run_1", 0)
+        assert isinstance(trace, BaseEpisodeTrace)
+        assert trace.total_steps == 1
 
     def test_load_replay_episode_valid(self, tmp_path: Path) -> None:
         repo = _setup_repo(

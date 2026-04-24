@@ -8,6 +8,7 @@ from axis.framework.cli.output import CLITextOutput
 from axis.framework.cli.commands.workspaces import (
     _format_workspace_lifecycle,
     _format_workspace_status,
+    _print_artifact_section,
     _print_changed_config_summary,
     cmd_workspaces_close,
 )
@@ -121,3 +122,26 @@ def test_workspace_lifecycle_formatting_uses_emphasis_styling():
     assert rendered.startswith("\x1b[1m")
     assert "IMPLEMENTATION" in rendered
     assert rendered.endswith("\x1b[0m")
+
+
+def test_workspace_artifact_section_shows_trace_mode():
+    stream = io.StringIO()
+    out = CLITextOutput(stream=stream, style=False)
+    entry = MagicMock(
+        exists=True,
+        path="results/exp-001",
+        config="results/exp-001/experiment_config.json",
+        output_form="point",
+        trace_mode="light",
+        role="reference",
+        timestamp="2026-04-24T00:00:00",
+        reference_experiment_id=None,
+        candidate_experiment_id=None,
+        comparison_config_changes=None,
+        config_changes=None,
+    )
+
+    _print_artifact_section("Primary results", [entry], out=out)
+
+    rendered = stream.getvalue()
+    assert "trace=light" in rendered

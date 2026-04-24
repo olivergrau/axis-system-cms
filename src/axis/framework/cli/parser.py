@@ -252,6 +252,13 @@ examples:
         "--scale", type=float, default=1.0,
         help="UI scale factor (default: 1.0). E.g. 1.5 for a larger window.",
     )
+    viz_parser.add_argument(
+        "--width-percent", type=float, default=None,
+        help=(
+            "Initial viewer width as a percentage of the primary screen width. "
+            "Example: 80 for 80%% of the current resolution."
+        ),
+    )
 
     # -- workspaces ------------------------------------------------------------
     ws_parser = entity_sub.add_parser(

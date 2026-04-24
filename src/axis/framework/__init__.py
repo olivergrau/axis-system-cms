@@ -12,6 +12,16 @@ from axis.framework.config import (
     parse_parameter_path,
     set_config_value,
 )
+from axis.framework.execution_policy import (
+    ExecutionPolicy,
+    ParallelismMode,
+    TraceMode,
+)
+from axis.framework.execution_results import (
+    DeltaRunResult,
+    LightEpisodeResult,
+    LightRunResult,
+)
 from axis.framework.experiment import (
     ExperimentExecutor,
     ExperimentResult,
@@ -58,7 +68,10 @@ from axis.framework.runner import (
 __all__ = [
     "GeneralConfig",
     "ExecutionConfig",
+    "ExecutionPolicy",
     "LoggingConfig",
+    "ParallelismMode",
+    "TraceMode",
     "FrameworkConfig",
     "ExperimentType",
     "ExperimentConfig",
@@ -80,6 +93,9 @@ __all__ = [
     "RunConfig",
     "RunExecutor",
     "RunResult",
+    "DeltaRunResult",
+    "LightEpisodeResult",
+    "LightRunResult",
     "RunSummary",
     "compute_run_summary",
     "resolve_episode_seeds",

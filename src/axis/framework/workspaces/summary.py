@@ -30,6 +30,7 @@ class ArtifactEntry(BaseModel, frozen=True):
     role: str | None = None
     timestamp: str | None = None
     output_form: str | None = None
+    trace_mode: str | None = None
     system_type: str | None = None
     primary_run_id: str | None = None
     baseline_run_id: str | None = None
@@ -102,6 +103,7 @@ def _resolve_artifacts(
                 role=item.role,
                 timestamp=item.timestamp,
                 output_form=item.output_form,
+                trace_mode=item.trace_mode,
                 system_type=item.system_type,
                 primary_run_id=item.primary_run_id,
                 baseline_run_id=item.baseline_run_id,
@@ -120,6 +122,7 @@ def _resolve_artifacts(
                 role=item.get("role"),
                 timestamp=item.get("timestamp"),
                 output_form=item.get("output_form"),
+                trace_mode=item.get("trace_mode"),
                 system_type=item.get("system_type"),
                 primary_run_id=item.get("primary_run_id"),
                 baseline_run_id=item.get("baseline_run_id"),

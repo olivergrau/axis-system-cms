@@ -113,6 +113,36 @@ axis workspaces check <path>                   Validate workspace structure
 Use `--output json` on any command for machine-readable output.
 Use `--root <path>` to point to a non-default repository location.
 
+## Execution Modes
+
+AXIS supports three execution trace modes through `execution.trace_mode`:
+
+- `full` -- richest replay artifacts; best for detailed replay/debugging
+- `delta` -- replay-compatible compact traces; good default when you still want visualization and comparison with lower artifact cost
+- `light` -- fastest summary-oriented mode; not replay-compatible and therefore not visualizable
+
+AXIS also supports explicit parallelization controls through `execution.parallelism_mode`:
+
+- `sequential` -- baseline serial execution
+- `episodes` -- parallelize episodes within one run
+- `runs` -- parallelize runs within an OFAT/sweep experiment
+
+Example:
+
+```yaml
+execution:
+  max_steps: 200
+  trace_mode: delta
+  parallelism_mode: episodes
+  max_workers: 4
+```
+
+Rule of thumb:
+
+- use `full` when you want maximum replay richness
+- use `delta` when you want replay plus better throughput/storage behavior
+- use `light` when you only need summaries and do not need the visualizer
+
 ## Experiment Configs
 
 Ready-to-use configs ship at `experiments/configs/`:

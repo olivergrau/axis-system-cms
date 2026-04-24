@@ -584,6 +584,8 @@ def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
             annotations.append(e.config)
         if getattr(e, "output_form", None):
             annotations.append(e.output_form)
+        if getattr(e, "trace_mode", None):
+            annotations.append(f"trace={e.trace_mode}")
         if getattr(e, "role", None):
             annotations.append(f"role={e.role}")
         if getattr(e, "timestamp", None):

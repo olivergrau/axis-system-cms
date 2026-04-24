@@ -14,6 +14,13 @@ from unittest.mock import patch
 import pytest
 
 from axis.framework.cli import main
+from axis.framework.persistence import (
+    ExperimentMetadata,
+    ExperimentRepository,
+    ExperimentStatus,
+    RunMetadata,
+    RunStatus,
+)
 from tests.builders.system_config_builder import SystemAConfigBuilder
 from tests.visualization.e2e_helpers import run_and_persist_experiment
 
@@ -215,6 +222,22 @@ class TestStartCoordinatePassthrough:
         assert kwargs["start_step"] == 3
         assert kwargs["start_phase"] == 2
 
+    @patch(
+        "axis.visualization.launch.launch_visualization",
+        return_value=0,
+    )
+    def test_width_percent_passed_through(
+        self, mock_launch, populated_repo, capsys,
+    ) -> None:
+        root, eid, rid = populated_repo
+        _run_cli(capsys, [
+            "--root", root,
+            "visualize", "--experiment", eid,
+            "--run", rid, "--episode", "0",
+            "--width-percent", "80",
+        ])
+        assert mock_launch.call_args.kwargs["width_percent"] == 80.0
+
 
 # ---------------------------------------------------------------------------
 # Start coordinate errors (no mock — let real errors propagate)
@@ -241,6 +264,53 @@ class TestStartCoordinateErrors:
         ])
         assert code == 1
         assert "out of bounds" in err.lower() or "error" in err.lower()
+
+    def test_invalid_width_percent(self, populated_repo, capsys) -> None:
+        root, eid, rid = populated_repo
+        code, _, err = _run_cli(capsys, [
+            "--root", root,
+            "visualize", "--experiment", eid,
+            "--run", rid, "--episode", "0", "--width-percent", "0",
+        ])
+        assert code == 1
+        assert "width-percent" in err.lower()
+
+    def test_light_trace_mode_is_rejected(self, tmp_path, capsys) -> None:
+        repo = ExperimentRepository(tmp_path / "repo")
+        repo.create_experiment_dir("exp-light")
+        repo.save_experiment_metadata(
+            "exp-light",
+            ExperimentMetadata(
+                experiment_id="exp-light",
+                created_at="2026-04-24T00:00:00Z",
+                experiment_type="single_run",
+                system_type="system_a",
+                output_form="point",
+                trace_mode="light",
+                primary_run_id="run-0000",
+            ),
+        )
+        repo.save_experiment_status("exp-light", ExperimentStatus.COMPLETED)
+        repo.create_run_dir("exp-light", "run-0000")
+        repo.save_run_metadata(
+            "exp-light",
+            "run-0000",
+            RunMetadata(
+                run_id="run-0000",
+                experiment_id="exp-light",
+                created_at="2026-04-24T00:00:00Z",
+                trace_mode="light",
+            ),
+        )
+        repo.save_run_status("exp-light", "run-0000", RunStatus.COMPLETED)
+
+        code, _, err = _run_cli(capsys, [
+            "--root", str(repo.root),
+            "visualize", "--experiment", "exp-light",
+            "--run", "run-0000", "--episode", "0",
+        ])
+        assert code == 1
+        assert "light trace mode" in err.lower()
 
 
 # ---------------------------------------------------------------------------

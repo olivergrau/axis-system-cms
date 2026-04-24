@@ -38,6 +38,8 @@ def cmd_experiments_list(repo, output: str) -> None:
             entry["created_at"] = meta.created_at
             if meta.output_form:
                 entry["output_form"] = meta.output_form
+            if meta.trace_mode:
+                entry["trace_mode"] = meta.trace_mode
         except Exception:
             pass
         runs = repo.list_runs(eid)
@@ -71,6 +73,8 @@ def cmd_experiments_list(repo, output: str) -> None:
                 parts.append(f"form={e['output_form']}")
             if e.get("system_type"):
                 parts.append(f"system={e['system_type']}")
+            if e.get("trace_mode"):
+                parts.append(f"trace={e['trace_mode']}")
             if e.get("created_at"):
                 parts.append(f"created={e['created_at']}")
             out.list_row(*parts)
@@ -169,6 +173,7 @@ def cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
         info["experiment_type"] = meta.experiment_type
         info["system_type"] = meta.system_type
         info["created_at"] = meta.created_at
+        info["trace_mode"] = meta.trace_mode
     except Exception:
         pass
 
@@ -214,6 +219,8 @@ def cmd_experiments_show(repo, experiment_id: str, output: str) -> None:
             out.kv("Output form", info["output_form"])
         if info.get("system_type"):
             out.kv("System", info["system_type"])
+        if info.get("trace_mode"):
+            out.kv("Trace mode", info["trace_mode"])
         if info.get("created_at"):
             out.kv("Created", info["created_at"])
         out.kv("Runs", runs)

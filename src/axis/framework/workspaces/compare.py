@@ -78,6 +78,24 @@ def compare_workspace(
     # Use the workspace-local repository for loading traces.
     repo = ExperimentRepository(ws / "results")
 
+    ref_output = None
+    cand_output = None
+    try:
+        from axis.framework.experiment_output import load_experiment_output
+
+        ref_output = load_experiment_output(repo, plan.reference.experiment_id)
+        cand_output = load_experiment_output(repo, plan.candidate.experiment_id)
+    except Exception:
+        ref_output = None
+        cand_output = None
+
+    for label, output in (("reference", ref_output), ("candidate", cand_output)):
+        if output is not None and getattr(output, "trace_mode", None) == "light":
+            raise ValueError(
+                f"The {label} experiment '{output.experiment_id}' was executed in "
+                "light trace mode and cannot be used for replay-based comparison."
+            )
+
     result = compare_runs(
         repo,
         plan.reference.experiment_id,

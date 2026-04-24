@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import IO
 
 from axis.framework.config import LoggingConfig
-from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
+from axis.framework.execution_policy import TraceMode
+from axis.framework.execution_results import LightEpisodeResult
+from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace, DeltaEpisodeTrace
 
 
 class EpisodeLogger:
@@ -25,8 +27,9 @@ class EpisodeLogger:
                 logger.log_episode(trace, ep_idx)
     """
 
-    def __init__(self, config: LoggingConfig) -> None:
+    def __init__(self, config: LoggingConfig, *, trace_mode: TraceMode = TraceMode.FULL) -> None:
         self._config = config
+        self._trace_mode = trace_mode
         self._noop = not config.enabled
         self._jsonl_file: IO[str] | None = None
 
@@ -53,14 +56,19 @@ class EpisodeLogger:
 
     # -- Public API ----------------------------------------------------------
 
-    def log_episode(self, trace: BaseEpisodeTrace, episode_index: int) -> None:
+    def log_episode(
+        self,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        episode_index: int,
+    ) -> None:
         """Log every step in *trace* followed by an episode summary."""
         if self._noop:
             return
         if self._config.console_enabled:
             self._print_episode_start(trace, episode_index)
-        for step in trace.steps:
-            self.log_step(step, episode_index)
+        if isinstance(trace, BaseEpisodeTrace):
+            for step in trace.steps:
+                self.log_step(step, episode_index)
         self.log_episode_summary(trace, episode_index)
 
     def log_step(self, step: BaseStepTrace, episode_index: int) -> None:
@@ -76,7 +84,9 @@ class EpisodeLogger:
             self._write_step_jsonl(step, episode_index)
 
     def log_episode_summary(
-        self, trace: BaseEpisodeTrace, episode_index: int,
+        self,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        episode_index: int,
     ) -> None:
         if self._noop:
             return
@@ -92,11 +102,12 @@ class EpisodeLogger:
     # -- Console formatting --------------------------------------------------
 
     def _print_episode_start(
-        self, trace: BaseEpisodeTrace, ep: int,
+        self,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        ep: int,
     ) -> None:
         print(
             f"[E{ep} START] "
-            f"system={trace.system_type}  "
             f"steps={trace.total_steps}"
         )
 
@@ -129,7 +140,9 @@ class EpisodeLogger:
             print(f"    {line}")
 
     def _print_episode_summary(
-        self, trace: BaseEpisodeTrace, ep: int,
+        self,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        ep: int,
     ) -> None:
         fp = trace.final_position
         print(
@@ -174,17 +187,22 @@ class EpisodeLogger:
         self._jsonl_file.flush()
 
     def _write_episode_summary_jsonl(
-        self, trace: BaseEpisodeTrace, ep: int,
+        self,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        ep: int,
     ) -> None:
         record = {
             "type": "episode_summary",
             "episode": ep,
-            "system_type": trace.system_type,
             "total_steps": trace.total_steps,
             "termination_reason": trace.termination_reason,
             "final_vitality": trace.final_vitality,
             "final_position": [trace.final_position.x, trace.final_position.y],
         }
+        if isinstance(trace, BaseEpisodeTrace):
+            record["system_type"] = trace.system_type
+        else:
+            record["result_type"] = trace.result_type
         assert self._jsonl_file is not None
         self._jsonl_file.write(json.dumps(record, default=str) + "\n")
         self._jsonl_file.flush()

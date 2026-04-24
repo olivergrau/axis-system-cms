@@ -201,6 +201,12 @@ def _resolve_run_for_summary(
 
     exp_output = load_experiment_output(repo, experiment_id)
 
+    if getattr(exp_output, "trace_mode", None) == "light":
+        raise ValueError(
+            f"Experiment '{experiment_id}' was executed in light trace mode. "
+            "run-summary currently supports replay-backed run outputs only."
+        )
+
     if isinstance(exp_output, SweepExperimentOutput):
         if not explicit_run:
             raise ValueError(

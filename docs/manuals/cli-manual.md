@@ -798,6 +798,7 @@ axis visualize --experiment <eid> --run <rid> --episode <n>
 | `--episode`    | yes      | --      | Episode index (1-based) |
 | `--step`       | no       | `0`     | Initial step to display (0-based) |
 | `--phase`      | no       | `null`  | Initial phase index |
+| `--width-percent` | no    | `null`  | Initial viewer width as a percentage of the primary screen width |
 
 Example:
 
@@ -813,6 +814,15 @@ The viewer loads the persisted episode trace from the repository and
 renders the world grid, agent position, and system-specific overlays.
 The visualization adapters are resolved automatically based on the
 experiment's `system_type` and `world_type`.
+
+Visualization compatibility depends on the experiment's `trace_mode`:
+
+- `full` -- visualizable
+- `delta` -- visualizable
+- `light` -- not visualizable
+
+If an experiment was executed in `light` mode, AXIS rejects the command
+explicitly rather than opening the viewer with incomplete replay data.
 
 > **Note:** The viewer requires a graphical display (Qt). It is not
 > available in headless or remote-only environments.

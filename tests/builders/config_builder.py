@@ -32,6 +32,9 @@ class FrameworkConfigBuilder:
         self._grid_height = DEFAULT_GRID_HEIGHT
         self._obstacle_density = DEFAULT_OBSTACLE_DENSITY
         self._logging_enabled = False
+        self._trace_mode = "full"
+        self._parallelism_mode = "sequential"
+        self._max_workers = 1
 
     def with_seed(self, seed: int) -> FrameworkConfigBuilder:
         self._seed = seed
@@ -50,10 +53,27 @@ class FrameworkConfigBuilder:
         self._obstacle_density = density
         return self
 
+    def with_trace_mode(self, trace_mode: str) -> FrameworkConfigBuilder:
+        self._trace_mode = trace_mode
+        return self
+
+    def with_parallelism_mode(self, parallelism_mode: str) -> FrameworkConfigBuilder:
+        self._parallelism_mode = parallelism_mode
+        return self
+
+    def with_max_workers(self, max_workers: int) -> FrameworkConfigBuilder:
+        self._max_workers = max_workers
+        return self
+
     def build(self) -> FrameworkConfig:
         return FrameworkConfig(
             general=GeneralConfig(seed=self._seed),
-            execution=ExecutionConfig(max_steps=self._max_steps),
+            execution=ExecutionConfig(
+                max_steps=self._max_steps,
+                trace_mode=self._trace_mode,
+                parallelism_mode=self._parallelism_mode,
+                max_workers=self._max_workers,
+            ),
             world=BaseWorldConfig(
                 grid_width=self._grid_width,
                 grid_height=self._grid_height,

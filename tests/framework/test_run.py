@@ -7,12 +7,14 @@ import pytest
 from axis.framework.run import (
     RunConfig,
     RunExecutor,
-    RunResult,
     RunSummary,
+    RunResult,
     compute_run_summary,
     resolve_episode_seeds,
 )
-from axis.sdk.trace import BaseEpisodeTrace
+from axis.framework.execution_results import LightRunResult
+from axis.framework.execution_results import DeltaRunResult
+from axis.sdk.trace import BaseEpisodeTrace, DeltaEpisodeTrace
 from tests.builders.config_builder import FrameworkConfigBuilder
 from tests.builders.system_config_builder import SystemAConfigBuilder
 
@@ -27,11 +29,21 @@ def _default_run_config(
     num_episodes: int = 3,
     base_seed: int = 42,
     max_steps: int = 50,
+    trace_mode: str = "full",
+    parallelism_mode: str = "sequential",
+    max_workers: int = 1,
 ) -> RunConfig:
     return RunConfig(
         system_type="system_a",
         system_config=SystemAConfigBuilder().build(),
-        framework_config=FrameworkConfigBuilder().with_max_steps(max_steps).build(),
+        framework_config=(
+            FrameworkConfigBuilder()
+            .with_max_steps(max_steps)
+            .with_trace_mode(trace_mode)
+            .with_parallelism_mode(parallelism_mode)
+            .with_max_workers(max_workers)
+            .build()
+        ),
         num_episodes=num_episodes,
         base_seed=base_seed,
     )
@@ -135,6 +147,38 @@ class TestRunExecutor:
         executor = RunExecutor()
         result = executor.execute(_default_run_config())
         assert result.episode_traces[0].system_type == "system_a"
+
+    def test_light_mode_returns_light_run_result(self) -> None:
+        executor = RunExecutor()
+        result = executor.execute(_default_run_config(trace_mode="light"))
+        assert isinstance(result, LightRunResult)
+        assert len(result.episode_results) == 3
+
+    def test_delta_mode_returns_delta_run_result(self) -> None:
+        executor = RunExecutor()
+        result = executor.execute(_default_run_config(trace_mode="delta"))
+        assert isinstance(result, DeltaRunResult)
+        assert len(result.episode_traces) == 3
+        assert isinstance(result.episode_traces[0], DeltaEpisodeTrace)
+
+    def test_parallel_episode_mode_matches_sequential_summary(self) -> None:
+        executor = RunExecutor()
+        sequential = executor.execute(
+            _default_run_config(num_episodes=2, trace_mode="light"),
+        )
+        parallel = executor.execute(
+            _default_run_config(
+                num_episodes=2,
+                trace_mode="light",
+                parallelism_mode="episodes",
+                max_workers=2,
+            ),
+        )
+        assert sequential.summary.mean_steps == parallel.summary.mean_steps
+        assert (
+            sequential.summary.mean_final_vitality
+            == parallel.summary.mean_final_vitality
+        )
 
 
 # ---------------------------------------------------------------------------

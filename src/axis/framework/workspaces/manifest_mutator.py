@@ -39,6 +39,7 @@ def append_primary_result(
     role: str | None = None,
     config_path: str | None = None,
     output_form: str | None = None,
+    trace_mode: str | None = None,
     system_type: str | None = None,
     primary_run_id: str | None = None,
     baseline_run_id: str | None = None,
@@ -65,6 +66,8 @@ def append_primary_result(
         entry["role"] = role
     if output_form:
         entry["output_form"] = output_form
+    if trace_mode:
+        entry["trace_mode"] = trace_mode
     if system_type:
         entry["system_type"] = system_type
     if primary_run_id:

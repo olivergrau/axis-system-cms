@@ -39,6 +39,7 @@ def sync_manifest_after_run(
     role: str | None = None,
     config_path: str | None = None,
     output_form: str | None = None,
+    trace_mode: str | None = None,
     system_type: str | None = None,
     primary_run_id: str | None = None,
     baseline_run_id: str | None = None,
@@ -64,6 +65,8 @@ def sync_manifest_after_run(
         Output form of the experiment ("point" or "sweep").
     system_type:
         System type of the experiment.
+    trace_mode:
+        Trace mode of the experiment ("full" or "light").
     primary_run_id:
         Primary run ID for point outputs.
     baseline_run_id:
@@ -87,6 +90,7 @@ def sync_manifest_after_run(
         role=role,
         config_path=config_path,
         output_form=output_form,
+        trace_mode=trace_mode,
         system_type=system_type,
         primary_run_id=primary_run_id,
         baseline_run_id=baseline_run_id,

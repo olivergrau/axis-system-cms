@@ -59,6 +59,7 @@ class ExperimentOutput(BaseModel):
     system_type: str
     created_at: str
     num_runs: int
+    trace_mode: str | None = None
     experiment_root_path: str
     summary_path: str | None = None
 
@@ -153,6 +154,7 @@ def load_experiment_output(
         system_type=meta.system_type,
         created_at=meta.created_at,
         num_runs=len(run_ids),
+        trace_mode=meta.trace_mode,
         experiment_root_path=exp_root,
         summary_path=summary_path,
         name=meta.name,
