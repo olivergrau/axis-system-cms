@@ -163,17 +163,26 @@ Prediction acts on the hunger scores action-wise.
 For each action:
 
 $$
-\tilde\mu_t(a) = \exp\!\left(\lambda_+\,c_t(s_t,a) - \lambda_-\,f_t(s_t,a)\right)
+\sigma_t(a) = \lambda_+\,c_t(s_t,a) - \lambda_-\,f_t(s_t,a)
+$$
+
+$$
+\tilde\mu_t(a) = \exp\!\left(\sigma_t(a)\right)
 $$
 
 $$
 \mu_t(a) = \mathrm{clip}\!\left(\tilde\mu_t(a), \mu_{\min}, \mu_{\max}\right)
 $$
 
-The final action score is:
+The final action score in pure multiplicative mode is piecewise, matching the
+implementation:
 
 $$
-\psi_t^{mult}(a) = h_t(a)\,\mu_t(a)
+\psi_t^{mult}(a) =
+\begin{cases}
+h_t(a)\,\mu_t(a), & h_t(a) \ge 0 \\
+h_t(a)\,/\,\mu_t(a), & h_t(a) < 0
+\end{cases}
 $$
 
 So:
@@ -187,17 +196,27 @@ So:
 System C also supports two richer action-level correction modes:
 
 $$
-\psi_t^{add}(a) = h_t(a) + \lambda_{\mathrm{pred}} \cdot \delta_t(a)
+\delta_t(a) = \mathrm{clip}\!\left(\tanh(\sigma_t(a)), -\beta_{\mathrm{clip}}, \beta_{\mathrm{clip}}\right)
 $$
 
 $$
-\psi_t^{hyb}(a) = h_t(a)\,\mu_t(a) + \lambda_{\mathrm{pred}} \cdot \delta_t(a)
+b_t(a) = \lambda_{\mathrm{pred}} \cdot \delta_t(a)
+$$
+
+$$
+\psi_t^{add}(a) = h_t(a) + b_t(a)
+$$
+
+$$
+\psi_t^{hyb}(a) = \psi_t^{mult}(a) + b_t(a)
 $$
 
 where:
 
+- $\sigma_t(a)$ is the signed evidence from confidence and frustration
 - $\delta_t(a)$ is a bounded prediction bias derived from the same
   confidence/frustration trace state
+- $b_t(a)$ is the scaled additive correction actually used by the code
 - $\lambda_{\mathrm{pred}}$ is a small scaling factor
 
 Interpretation:
@@ -449,8 +468,8 @@ adds a `prediction` section.
 | `modulation_min` | lower clip bound $\mu_{\min}$ | Prevents predictive suppression from driving an action below this multiplier. |
 | `modulation_max` | upper clip bound $\mu_{\max}$ | Prevents predictive amplification from exceeding this multiplier. |
 | `modulation_mode` | selects `multiplicative`, `additive`, or `hybrid` composition | Chooses whether prediction only rescales drive scores or also adds a bounded correction term. |
-| `prediction_bias_scale` | $\lambda_{\mathrm{pred}}$ | Sets the weight of the additive prediction correction. |
-| `prediction_bias_clip` | bound on $\delta_t(a)$ | Prevents the additive correction from dominating the drive layer. |
+| `prediction_bias_scale` | $\lambda_{\mathrm{pred}}$ | Scales the bounded additive correction $b_t(a)=\lambda_{\mathrm{pred}}\delta_t(a)$. |
+| `prediction_bias_clip` | bound on $\delta_t(a)$ before scaling | Clips the raw tanh-based bias signal before `prediction_bias_scale` is applied. |
 | `positive_weights` | weights $w_j^+$ in $\varepsilon_t^+=\sum_j w_j^+\delta_{t,j}^+$ | Redistributes which predicted feature improvements count most as positive surprise. |
 | `negative_weights` | weights $w_j^-$ in $\varepsilon_t^-=\sum_j w_j^-\delta_{t,j}^-$ | Redistributes which predicted disappointments count most as negative surprise. |
 
@@ -463,6 +482,10 @@ If you set:
 
 then $\mu_t(a)=1$ for all actions after clipping, so System C collapses back to
 pure hunger expression at the action-score level.
+
+If you also set `prediction_bias_scale = 0`, then the additive correction is
+zero as well, so `additive` and `hybrid` both reduce exactly to System A’s
+scores.
 
 ## 12. Mental Shortcut
 

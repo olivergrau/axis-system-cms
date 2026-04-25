@@ -92,6 +92,30 @@ class TestSummarize:
             "system": {"policy": {"temperature": 2.0}},
         }
 
+    def test_primary_results_include_run_notes(self, tmp_path):
+        ws = tmp_path / "test-ws"
+        manifest = WorkspaceManifest.model_validate({
+            "workspace_id": "test-ws",
+            "title": "Run notes test",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-01-01",
+            "question": "Do run notes show up?",
+            "system_under_test": "system_a",
+            "primary_results": [
+                {
+                    "path": "results/exp-001",
+                    "run_notes": "My notes for this run",
+                },
+            ],
+        })
+        scaffold_workspace(ws, manifest)
+
+        summary = summarize_workspace(ws)
+        assert summary.primary_results[0].run_notes == "My notes for this run"
+
     def test_empty_primary_fields(self, tmp_path):
         ws = tmp_path / "test-ws"
         manifest = WorkspaceManifest.model_validate({

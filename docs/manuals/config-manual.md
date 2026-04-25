@@ -183,6 +183,7 @@ settings.
 | `topology`         | string             | no       | `"bounded"` | `"bounded"` or `"toroidal"` |
 | `regeneration_mode` | string            | no       | `"all_traversable"` | see Section 3.3.1 |
 | `regen_eligible_ratio` | float or null  | no       | `null`  | > 0 and <= 1.0 |
+| `num_clusters`     | integer or null    | no       | `null`  | > 0 |
 | `world_type`       | string             | no       | `"grid_2d"` | Registered world type: `"grid_2d"`, `"toroidal"`, or `"signal_landscape"` |
 
 ```yaml
@@ -225,6 +226,12 @@ geometry and cell semantics.
   (determined by `regen_eligible_ratio`) can regenerate. The eligible
   cells are chosen randomly at world initialization using the experiment
   seed. This creates spatially uneven resource availability.
+
+- **`"clustered"`** -- Only a fixed fraction of traversable cells
+  (determined by `regen_eligible_ratio`) can regenerate, but the eligible
+  cells are sampled around `num_clusters` cluster centers chosen from the
+  traversable grid using the experiment seed. This creates sparse but
+  spatially structured resource opportunity.
 
 #### 3.3.2 World type-specific fields
 

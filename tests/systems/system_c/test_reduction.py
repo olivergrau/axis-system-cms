@@ -1,7 +1,7 @@
 """Reduction tests -- System C degenerates to System A.
 
-When prediction is disabled (lambda_+ = lambda_- = 0), System C
-should produce identical actions and energy trajectories to System A.
+When prediction is neutralized, System C should produce identical
+actions and scores to System A.
 """
 
 from __future__ import annotations
@@ -36,6 +36,63 @@ def _make_observation(resource: float = 0.0) -> Observation:
     return Observation(
         current=cell, up=cell, down=cell, left=cell, right=cell,
     )
+
+
+def _make_world(
+    *,
+    current: tuple[bool, float],
+    up: tuple[bool, float],
+    down: tuple[bool, float],
+    left: tuple[bool, float],
+    right: tuple[bool, float],
+) -> World:
+    def _cell(traversable: bool, resource: float) -> Cell:
+        if not traversable:
+            return Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
+        if resource > 0.0:
+            return Cell(cell_type=CellType.RESOURCE, resource_value=resource)
+        return Cell(cell_type=CellType.EMPTY, resource_value=0.0)
+
+    grid = [
+        [
+            Cell(cell_type=CellType.EMPTY, resource_value=0.0),
+            _cell(*up),
+            Cell(cell_type=CellType.EMPTY, resource_value=0.0),
+        ],
+        [
+            _cell(*left),
+            _cell(*current),
+            _cell(*right),
+        ],
+        [
+            Cell(cell_type=CellType.EMPTY, resource_value=0.0),
+            _cell(*down),
+            Cell(cell_type=CellType.EMPTY, resource_value=0.0),
+        ],
+    ]
+    return World(grid, Position(x=1, y=1))
+
+
+def _make_neutral_systems() -> tuple[SystemA, SystemC]:
+    a_cfg = (
+        SystemAConfigBuilder()
+        .with_selection_mode("argmax")
+        .with_initial_energy(50.0)
+        .build()
+    )
+    c_cfg = (
+        SystemCConfigBuilder()
+        .with_selection_mode("argmax")
+        .with_initial_energy(50.0)
+        .with_positive_sensitivity(0.0)
+        .with_negative_sensitivity(0.0)
+        .with_modulation_min(1.0)
+        .with_modulation_max(1.0)
+        .with_modulation_mode("multiplicative")
+        .with_prediction_bias_scale(0.0)
+        .build()
+    )
+    return SystemA(SystemAConfig(**a_cfg)), SystemC(SystemCConfig(**c_cfg))
 
 
 class TestSingleStepReduction:
@@ -163,3 +220,87 @@ class TestMultiStepReduction:
             a_state = a_trans.new_state
 
         assert c_state.energy == pytest.approx(a_state.energy, abs=0.001)
+
+
+class TestScoreReduction:
+    """System C must reduce to System A when prediction is neutral."""
+
+    def test_scores_and_actions_match_for_fixed_observations(self) -> None:
+        a_system, c_system = _make_neutral_systems()
+        assert a_system.action_space() == c_system.action_space()
+
+        cases = [
+            (
+                "balanced-open",
+                _make_world(
+                    current=(True, 0.0),
+                    up=(True, 0.2),
+                    down=(True, 0.3),
+                    left=(True, 0.1),
+                    right=(True, 0.4),
+                ),
+                11,
+            ),
+            (
+                "direction-tie",
+                _make_world(
+                    current=(True, 0.0),
+                    up=(True, 0.5),
+                    down=(True, 0.5),
+                    left=(True, 0.2),
+                    right=(True, 0.2),
+                ),
+                23,
+            ),
+            (
+                "consume-favored",
+                _make_world(
+                    current=(True, 0.9),
+                    up=(True, 0.1),
+                    down=(True, 0.0),
+                    left=(True, 0.1),
+                    right=(True, 0.0),
+                ),
+                37,
+            ),
+            (
+                "masked-mix",
+                _make_world(
+                    current=(True, 0.0),
+                    up=(False, 0.0),
+                    down=(True, 0.4),
+                    left=(False, 0.0),
+                    right=(True, 0.4),
+                ),
+                41,
+            ),
+        ]
+
+        for label, world, seed in cases:
+            a_state = a_system.initialize_state()
+            c_state = c_system.initialize_state()
+            rng_a = np.random.default_rng(seed)
+            rng_c = np.random.default_rng(seed)
+
+            a_result = a_system.decide(world, a_state, rng_a)
+            c_result = c_system.decide(world, c_state, rng_c)
+
+            assert a_result.action == c_result.action, label
+            assert a_result.decision_data["observation"] == \
+                c_result.decision_data["observation"], label
+            assert a_result.decision_data["drive"]["activation"] == \
+                pytest.approx(c_result.decision_data["drive"]["activation"]), label
+            assert a_result.decision_data["drive"]["action_contributions"] == \
+                pytest.approx(c_result.decision_data["drive"]["action_contributions"], abs=1e-12), label
+            assert a_result.decision_data["policy"]["raw_contributions"] == \
+                pytest.approx(c_result.decision_data["policy"]["raw_contributions"], abs=1e-12), label
+            assert a_result.decision_data["policy"]["admissibility_mask"] == \
+                c_result.decision_data["policy"]["admissibility_mask"], label
+            assert a_result.decision_data["policy"]["selected_action"] == \
+                c_result.decision_data["policy"]["selected_action"], label
+            assert c_result.decision_data["prediction"]["reliability_factors"] == \
+                pytest.approx((1.0, 1.0, 1.0, 1.0, 1.0, 1.0), abs=1e-12), label
+            assert c_result.decision_data["prediction"]["prediction_biases"] == \
+                pytest.approx((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), abs=1e-12), label
+            assert c_result.decision_data["prediction"]["final_scores"] == \
+                pytest.approx(a_result.decision_data["drive"]["action_contributions"], abs=1e-12), label

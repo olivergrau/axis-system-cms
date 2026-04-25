@@ -20,6 +20,14 @@ def register() -> None:
 
         register_system("system_aw", _factory)
 
+    from axis.framework.metrics.extensions import registered_metric_extensions
+
+    if "system_aw" not in registered_metric_extensions():
+        try:
+            import axis.systems.system_aw.metrics  # noqa: F401
+        except ImportError:
+            pass
+
     from axis.visualization.registry import registered_system_visualizations
 
     if "system_aw" not in registered_system_visualizations():

@@ -117,6 +117,7 @@ def dispatch(
                     allow_world_changes=getattr(
                         args, "allow_world_changes", False),
                     override_guard=getattr(args, "override_guard", False),
+                    run_notes=getattr(args, "notes", None),
                     run_service=ctx.run_service)
             elif args.action == "compare":
                 cmd_workspaces_compare(

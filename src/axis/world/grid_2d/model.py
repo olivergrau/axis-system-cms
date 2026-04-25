@@ -24,6 +24,7 @@ class RegenerationMode(str, enum.Enum):
 
     ALL_TRAVERSABLE = "all_traversable"
     SPARSE_FIXED_RATIO = "sparse_fixed_ratio"
+    CLUSTERED = "clustered"
 
 
 class TopologyMode(str, enum.Enum):

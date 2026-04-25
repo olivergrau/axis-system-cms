@@ -23,3 +23,4 @@ class Grid2DWorldConfig(BaseModel):
     topology: str = "bounded"
     regeneration_mode: str = "all_traversable"
     regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)
+    num_clusters: int | None = Field(default=None, gt=0)

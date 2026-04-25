@@ -45,6 +45,7 @@ class WorkspaceRunService:
         *,
         allow_world_changes: bool = False,
         override_guard: bool = False,
+        run_notes: str | None = None,
     ) -> list[RunServiceResult]:
         """Execute all run targets and sync the manifest.
 
@@ -81,7 +82,7 @@ class WorkspaceRunService:
                 ):
                     unchanged_targets.append(target.config_path)
 
-        if unchanged_targets:
+        if unchanged_targets and len(unchanged_targets) == len(plan.targets):
             if len(unchanged_targets) == 1:
                 raise ValueError(
                     "Workspace run aborted: no config changes detected for "
@@ -116,6 +117,7 @@ class WorkspaceRunService:
                 system_type=config.system_type,
                 primary_run_id=p_run,
                 baseline_run_id=b_run,
+                run_notes=run_notes,
             )
             summaries.append(RunServiceResult(
                 experiment_id=er.experiment_result.experiment_id,

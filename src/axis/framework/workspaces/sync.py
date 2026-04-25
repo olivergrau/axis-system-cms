@@ -43,6 +43,7 @@ def sync_manifest_after_run(
     system_type: str | None = None,
     primary_run_id: str | None = None,
     baseline_run_id: str | None = None,
+    run_notes: str | None = None,
 ) -> None:
     """Update workspace.yaml after an execution run.
 
@@ -94,6 +95,7 @@ def sync_manifest_after_run(
         system_type=system_type,
         primary_run_id=primary_run_id,
         baseline_run_id=baseline_run_id,
+        run_notes=run_notes,
         config_changes=config_changes,
     )
     update_development_results(data, experiment_id, role=role)

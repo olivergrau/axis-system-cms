@@ -53,6 +53,9 @@ class TestRegenerationMode:
     def test_sparse(self) -> None:
         assert RegenerationMode.SPARSE_FIXED_RATIO.value == "sparse_fixed_ratio"
 
+    def test_clustered(self) -> None:
+        assert RegenerationMode.CLUSTERED.value == "clustered"
+
 
 class TestTopologyMode:
     """TopologyMode enum values."""
@@ -491,6 +494,65 @@ class TestCreateWorld:
                 config,
                 Position(x=0, y=0),
             )
+
+    def test_clustered_regeneration(self) -> None:
+        config = BaseWorldConfig(
+            grid_width=9, grid_height=9,
+            regeneration_mode="clustered",
+            regen_eligible_ratio=0.25,
+            num_clusters=3,
+        )
+        world = create_world(
+            config,
+            Position(x=0, y=0),
+            seed=42,
+        )
+        eligible_count = sum(
+            1
+            for y in range(9)
+            for x in range(9)
+            if world.is_regen_eligible(Position(x=x, y=y))
+        )
+        assert eligible_count == round(0.25 * 81)
+
+    def test_clustered_without_ratio_raises(self) -> None:
+        config = BaseWorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="clustered",
+            num_clusters=2,
+        )
+        with pytest.raises(ValueError, match="regen_eligible_ratio"):
+            create_world(
+                config,
+                Position(x=0, y=0),
+            )
+
+    def test_clustered_without_num_clusters_raises(self) -> None:
+        config = BaseWorldConfig(
+            grid_width=5, grid_height=5,
+            regeneration_mode="clustered",
+            regen_eligible_ratio=0.4,
+        )
+        with pytest.raises(ValueError, match="num_clusters"):
+            create_world(
+                config,
+                Position(x=0, y=0),
+            )
+
+    def test_clustered_deterministic(self) -> None:
+        config = BaseWorldConfig(
+            grid_width=9, grid_height=9,
+            regeneration_mode="clustered",
+            regen_eligible_ratio=0.25,
+            num_clusters=3,
+        )
+        w1 = create_world(config, Position(x=0, y=0), seed=42)
+        w2 = create_world(config, Position(x=0, y=0), seed=42)
+
+        for y in range(9):
+            for x in range(9):
+                p = Position(x=x, y=y)
+                assert w1.is_regen_eligible(p) == w2.is_regen_eligible(p)
 
     def test_deterministic_obstacles(self) -> None:
         config = BaseWorldConfig(

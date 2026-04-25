@@ -15,8 +15,9 @@ build/
 Agents.md
 resume.txt
 
+workspaces/
 
-/workspaces/
 !src/axis/framework/workspaces/
 !src/axis/framework/workspaces/**
 __pycache__/
+scripts/

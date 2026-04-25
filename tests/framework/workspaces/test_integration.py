@@ -484,6 +484,56 @@ class TestCLIIntegration:
         code = cli_main(["workspaces", "run", str(ws), "--override-guard"])
         assert code == 0
 
+    def test_run_allows_comparison_when_only_candidate_changes(
+        self, tmp_path, capsys,
+    ):
+        import yaml
+
+        ws = _scaffold_comparison(tmp_path)
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 0
+        capsys.readouterr()
+
+        candidate_config = ws / "configs" / "candidate-system_a.yaml"
+        data = yaml.safe_load(candidate_config.read_text())
+        data["num_episodes_per_run"] = 6
+        candidate_config.write_text(
+            yaml.dump(data, default_flow_style=False, sort_keys=False)
+        )
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 0
+
+    def test_run_notes_are_stored_and_shown(self, tmp_path, capsys):
+        import yaml
+
+        ws = _scaffold_single_system(tmp_path)
+        notes = "My notes for this run"
+
+        code = cli_main([
+            "workspaces", "run", str(ws), "--notes", notes,
+        ])
+        assert code == 0
+        capsys.readouterr()
+
+        manifest = yaml.safe_load((ws / "workspace.yaml").read_text())
+        results = manifest.get("primary_results", [])
+        assert results, "Expected primary_results entries after workspace run"
+        assert results[-1].get("run_notes") == notes
+
+        code = cli_main(["workspaces", "show", str(ws)])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Run notes" in out
+        assert notes in out
+
+        code = cli_main(["workspaces", "run-summary", str(ws)])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Run notes" in out
+        assert notes in out
+
     def test_run_allows_world_only_change_with_allow_world_changes(
         self, tmp_path, capsys,
     ):

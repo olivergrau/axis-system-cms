@@ -34,6 +34,7 @@ class ArtifactEntry(BaseModel, frozen=True):
     system_type: str | None = None
     primary_run_id: str | None = None
     baseline_run_id: str | None = None
+    run_notes: str | None = None
     config_changes: dict[str, object] | None = None
     reference_experiment_id: str | None = None
     candidate_experiment_id: str | None = None
@@ -113,6 +114,7 @@ def _resolve_artifacts(
                 system_type=item.system_type,
                 primary_run_id=item.primary_run_id,
                 baseline_run_id=item.baseline_run_id,
+                run_notes=item.run_notes,
                 config_changes=item.config_changes,
                 reference_experiment_id=comparison_meta.get("reference_experiment_id"),
                 candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),
@@ -132,6 +134,7 @@ def _resolve_artifacts(
                 system_type=item.get("system_type"),
                 primary_run_id=item.get("primary_run_id"),
                 baseline_run_id=item.get("baseline_run_id"),
+                run_notes=item.get("run_notes"),
                 config_changes=item.get("config_changes"),
                 reference_experiment_id=comparison_meta.get("reference_experiment_id"),
                 candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),

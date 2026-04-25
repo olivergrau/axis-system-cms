@@ -169,8 +169,9 @@ framework-owned and identical regardless of system type.
 | `grid_height`       | required  | Height of the world grid (> 0) |
 | `obstacle_density`  | `0.0`     | Fraction of cells that are obstacles (0.0--1.0) |
 | `resource_regen_rate`  | `0.0`  | Per-step regeneration amount added to each eligible cell (0.0--1.0) |
-| `regeneration_mode`    | `"all_traversable"` | `"all_traversable"` or `"sparse_fixed_ratio"` |
-| `regen_eligible_ratio` | not set | Fraction of traversable cells that can regenerate (0.0--1.0). Required when mode is `"sparse_fixed_ratio"`. |
+| `regeneration_mode`    | `"all_traversable"` | `"all_traversable"`, `"sparse_fixed_ratio"`, or `"clustered"` |
+| `regen_eligible_ratio` | not set | Fraction of traversable cells that can regenerate (0.0--1.0). Required when mode is `"sparse_fixed_ratio"` or `"clustered"`. |
+| `num_clusters`         | not set | Number of regeneration clusters. Required when mode is `"clustered"`. |
 | `world_type`           | `"grid_2d"` | World implementation type: `"grid_2d"`, `"toroidal"`, or `"signal_landscape"`. See the World Developer Manual for details on each type. |
 
 Regeneration is a property of the world, not the system. All world

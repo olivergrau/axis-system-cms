@@ -20,3 +20,4 @@ class ToroidalWorldConfig(BaseModel):
     resource_regen_rate: float = Field(default=0.0, ge=0, le=1)
     regeneration_mode: str = "all_traversable"
     regen_eligible_ratio: float | None = Field(default=None, gt=0, le=1)
+    num_clusters: int | None = Field(default=None, gt=0)

@@ -87,6 +87,16 @@ def test_parser_accepts_workspace_run_override_guard():
     assert args.override_guard is True
 
 
+def test_parser_accepts_workspace_run_notes():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "run", "/tmp/ws", "--notes", "My notes for this run",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "run"
+    assert args.notes == "My notes for this run"
+
+
 def test_parser_accepts_workspace_compare_configs():
     parser = build_parser()
     args = parser.parse_args([

@@ -325,6 +325,9 @@ def cmd_workspaces_run_summary(
         experiment=experiment,
         run=run,
     )
+    if output != "json" and getattr(target, "run_notes", None):
+        out = stdout_output()
+        out.kv("Run notes", target.run_notes)
     repo = ExperimentRepository(ws / "results")
     cmd_runs_show(repo, target.experiment_id, target.run_id, output)
 
@@ -367,6 +370,7 @@ def cmd_workspaces_run(
     run_filter: str | None = None,
     allow_world_changes: bool = False,
     override_guard: bool = False,
+    run_notes: str | None = None,
     run_service: object = None,
 ) -> None:
     """Execute workspace configs."""
@@ -376,6 +380,7 @@ def cmd_workspaces_run(
         run_filter=run_filter,
         allow_world_changes=allow_world_changes,
         override_guard=override_guard,
+        run_notes=run_notes,
     )
 
     if output == "json":
@@ -649,6 +654,8 @@ def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
         if annotations:
             extra = f"  ({', '.join(annotations)})"
         out.list_row(f"[{marker}]", f"{e.path}{extra}", indent=4)
+        if getattr(e, "run_notes", None):
+            out.kv("Run notes", e.run_notes, indent=6)
         if getattr(e, "reference_experiment_id", None) or getattr(e, "candidate_experiment_id", None):
             compared = " vs ".join(
                 part for part in [

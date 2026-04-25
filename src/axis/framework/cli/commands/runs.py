@@ -9,23 +9,26 @@ from axis.framework.cli.output import fail, stdout_output
 
 def _render_behavior_metrics_text(behavior: dict) -> None:
     """Render one behavioral metrics payload in text form."""
+    def _fmt(value: float) -> str:
+        return f"{value:.6f}"
+
     out = stdout_output()
     metrics = behavior["standard_metrics"]
     out.section("Behavioral Metrics")
     out.list_row(
-        f"resource_gain_per_step={metrics['resource_gain_per_step']['mean']:.3f}",
-        f"net_energy_efficiency={metrics['net_energy_efficiency']['mean']:.3f}",
-        f"successful_consume_rate={metrics['successful_consume_rate']['mean']:.3f}",
+        f"resource_gain_per_step={_fmt(metrics['resource_gain_per_step']['mean'])}",
+        f"net_energy_efficiency={_fmt(metrics['net_energy_efficiency']['mean'])}",
+        f"successful_consume_rate={_fmt(metrics['successful_consume_rate']['mean'])}",
     )
     out.list_row(
-        f"failed_movement_rate={metrics['failed_movement_rate']['mean']:.3f}",
-        f"action_entropy={metrics['action_entropy']['mean']:.3f}",
-        f"policy_sharpness={metrics['policy_sharpness']['mean']:.3f}",
+        f"failed_movement_rate={_fmt(metrics['failed_movement_rate']['mean'])}",
+        f"action_entropy={_fmt(metrics['action_entropy']['mean'])}",
+        f"policy_sharpness={_fmt(metrics['policy_sharpness']['mean'])}",
     )
     out.list_row(
-        f"unique_cells_visited={metrics['unique_cells_visited']['mean']:.2f}",
-        f"coverage_efficiency={metrics['coverage_efficiency']['mean']:.3f}",
-        f"revisit_rate={metrics['revisit_rate']['mean']:.3f}",
+        f"unique_cells_visited={_fmt(metrics['unique_cells_visited']['mean'])}",
+        f"coverage_efficiency={_fmt(metrics['coverage_efficiency']['mean'])}",
+        f"revisit_rate={_fmt(metrics['revisit_rate']['mean'])}",
     )
     if behavior.get("system_specific_metrics"):
         out.section("System Metrics")
@@ -36,7 +39,7 @@ def _render_behavior_metrics_text(behavior: dict) -> None:
             parts = []
             for metric_key, metric_value in values.items():
                 if isinstance(metric_value, float):
-                    parts.append(f"{metric_key}={metric_value:.3f}")
+                    parts.append(f"{metric_key}={_fmt(metric_value)}")
                 else:
                     parts.append(f"{metric_key}={metric_value}")
             out.list_row(key, *parts)

@@ -58,11 +58,13 @@ Resolves and executes all workspace configs. Results are written into the worksp
 
 For `investigation / single_system` workspaces, configs may use either `experiment_type: single_run` or `experiment_type: ofat`. All other workspace types require `single_run`. The command will fail before execution if any config uses a disallowed experiment type.
 
-The command also fails before execution if a target config is unchanged relative
-to the previous comparable result already recorded in the workspace. This helps
-prevent accidental duplicate runs. In single-system workspaces the comparison is
-against the previous run. In workspaces with roles, it is against the previous
-result with the same role.
+The command also fails before execution if the resolved workspace run would not
+change anything relevant compared to the previous comparable result already
+recorded in the workspace. This helps prevent accidental duplicate runs. In
+single-system workspaces the comparison is against the previous run. In
+workspaces with roles, each target is compared against the previous result with
+the same role, and the run is blocked only when all resolved targets are still
+effectively unchanged.
 
 If the workspace has `status: closed`, the run command aborts before execution.
 
@@ -89,6 +91,15 @@ axis workspaces run workspaces/my-workspace --override-guard
 
 This only bypasses the duplicate-run guard. Workspace closure, config
 validation, and execution errors still apply.
+
+You can also attach an optional note to each result entry produced by the run:
+
+```bash
+axis workspaces run workspaces/my-workspace --notes "My notes for this run"
+```
+
+The note is stored in each new `primary_results` entry as `run_notes` and is
+shown in `axis workspaces show` and `axis workspaces run-summary`.
 
 ### Run a workspace comparison
 
@@ -776,7 +787,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 The manifest tracks workspace-produced artifacts via four list fields:
 
 - **`primary_configs`** — workspace-relative config entries populated at scaffold time. New workspaces use structured entries with a `path` and role metadata such as `reference`, `candidate`, or `baseline`; legacy plain string entries are still accepted for compatibility.
-- **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`. When possible, each entry also stores the changed config elements relative to the previous comparable result so `axis workspaces show` can surface iteration history directly from the manifest.
+- **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`. Optional `run_notes` can be attached at run time via `axis workspaces run --notes "..."`. When possible, each entry also stores the changed config elements relative to the previous comparable result so `axis workspaces show` can surface iteration history directly from the manifest.
 - **`primary_comparisons`** — workspace-relative paths to comparison output files (accumulated after each `axis workspaces compare`), e.g. `comparisons/comparison-001.json`.
 These fields are updated automatically by the workspace commands. The manifest uses comment-preserving YAML round-trip writes, so manual comments and ordering in `workspace.yaml` are retained.
 
@@ -880,6 +891,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--number <N>` | `comparison-summary` | Select a specific comparison by number |
 | `--allow-world-changes` | `run`, `compare`, `comparison-summary` | Allow world-only changes as the intentional variable |
 | `--override-guard` | `run` | Bypass the duplicate-run guard for an intentional rerun |
+| `--notes "<text>"` | `run` | Store a free-text note in each created `primary_results` entry |
 | `--role <name>` | `run-summary`, `visualize --workspace` | Select role-specific workspace output |
 | `--experiment <id>` | `run-summary` | Select a specific experiment in workspace results |
 | `--run <id>` | `run-summary` | Select a specific run (required for sweep outputs) |

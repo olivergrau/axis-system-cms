@@ -7,6 +7,10 @@ import numpy as np
 from axis.sdk.position import Position
 from axis.sdk.world_types import BaseWorldConfig
 from axis.world.grid_2d.config import Grid2DWorldConfig
+from axis.world.grid_2d.eligibility import (
+    apply_clustered_eligibility,
+    apply_sparse_eligibility,
+)
 from axis.world.grid_2d.model import Cell, CellType, RegenerationMode, World
 
 
@@ -62,7 +66,11 @@ def create_world(
 
     regeneration_mode = RegenerationMode(gc.regeneration_mode)
     if regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO:
-        _apply_sparse_eligibility(grid, gc.regen_eligible_ratio, seed)
+        apply_sparse_eligibility(grid, gc.regen_eligible_ratio, seed)
+    elif regeneration_mode == RegenerationMode.CLUSTERED:
+        apply_clustered_eligibility(
+            grid, gc.regen_eligible_ratio, gc.num_clusters, seed,
+        )
 
     return World(
         grid=grid,
@@ -104,40 +112,3 @@ def _apply_obstacles(
     for idx in indices[:n_obstacles]:
         x, y = candidates[idx]
         grid[y][x] = obstacle_cell
-
-
-def _apply_sparse_eligibility(
-    grid: list[list[Cell]],
-    regen_eligible_ratio: float | None,
-    seed: int | None,
-) -> None:
-    """Mark a deterministic subset of traversable cells as regen-eligible.
-
-    All other traversable cells are marked ineligible.
-    Obstacle cells are always ineligible (enforced by Cell invariant).
-    """
-    if regen_eligible_ratio is None:
-        raise ValueError(
-            "regen_eligible_ratio is required when "
-            "regeneration_mode is 'sparse_fixed_ratio'"
-        )
-
-    traversable: list[tuple[int, int]] = []
-    for y, row in enumerate(grid):
-        for x, cell in enumerate(row):
-            if cell.is_traversable:
-                traversable.append((x, y))
-
-    n_eligible = round(regen_eligible_ratio * len(traversable))
-
-    rng = np.random.default_rng(seed)
-    indices = rng.permutation(len(traversable))
-    eligible_set = set(traversable[i] for i in indices[:n_eligible])
-
-    for x, y in traversable:
-        cell = grid[y][x]
-        is_eligible = (x, y) in eligible_set
-        if cell.regen_eligible != is_eligible:
-            grid[y][x] = cell.model_copy(
-                update={"regen_eligible": is_eligible}
-            )

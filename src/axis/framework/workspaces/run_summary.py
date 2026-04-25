@@ -13,6 +13,7 @@ class WorkspaceRunSummaryTarget(BaseModel, frozen=True):
     experiment_id: str
     run_id: str
     role: str | None = None
+    run_notes: str | None = None
 
 
 def resolve_run_summary_target(
@@ -57,8 +58,12 @@ def resolve_run_summary_target(
         run_id = _resolve_run_for_summary(
             repo, experiment, explicit_run=run,
         )
+        notes = _resolve_run_notes(manifest, experiment, role=role)
         return WorkspaceRunSummaryTarget(
-            experiment_id=experiment, run_id=run_id, role=role,
+            experiment_id=experiment,
+            run_id=run_id,
+            role=role,
+            run_notes=notes,
         )
 
     workspace_type = manifest.workspace_type.value
@@ -69,7 +74,10 @@ def resolve_run_summary_target(
             )
         target = _resolve_latest_single_system(repo, manifest, experiments)
         return WorkspaceRunSummaryTarget(
-            experiment_id=target[0], run_id=target[1], role="system_under_test",
+            experiment_id=target[0],
+            run_id=target[1],
+            role="system_under_test",
+            run_notes=target[2],
         )
 
     if workspace_type == "system_comparison":
@@ -82,7 +90,10 @@ def resolve_run_summary_target(
             repo, manifest, experiments, role,
         )
         return WorkspaceRunSummaryTarget(
-            experiment_id=target[0], run_id=target[1], role=role,
+            experiment_id=target[0],
+            run_id=target[1],
+            role=role,
+            run_notes=target[2],
         )
 
     if workspace_type == "system_development":
@@ -93,7 +104,10 @@ def resolve_run_summary_target(
             )
         target = _resolve_development_role(repo, manifest, role)
         return WorkspaceRunSummaryTarget(
-            experiment_id=target[0], run_id=target[1], role=role,
+            experiment_id=target[0],
+            run_id=target[1],
+            role=role,
+            run_notes=target[2],
         )
 
     raise ValueError(
@@ -105,8 +119,8 @@ def _resolve_latest_single_system(
     repo,
     manifest,
     experiments: list[str],
-) -> tuple[str, str]:
-    from axis.framework.workspaces.types import result_entry_path
+) -> tuple[str, str, str | None]:
+    from axis.framework.workspaces.types import result_entry_notes, result_entry_path
 
     if not manifest.primary_results:
         raise ValueError(
@@ -119,7 +133,7 @@ def _resolve_latest_single_system(
         eid = _extract_eid(path_str)
         if not eid or eid not in experiments:
             continue
-        return eid, _resolve_run_for_summary(repo, eid)
+        return eid, _resolve_run_for_summary(repo, eid), result_entry_notes(entry)
 
     raise ValueError(
         "No manifest-declared results found in workspace results. "
@@ -132,7 +146,7 @@ def _resolve_latest_for_role(
     manifest,
     experiments: list[str],
     role: str,
-) -> tuple[str, str]:
+) -> tuple[str, str, str | None]:
     from axis.framework.workspaces.compare_resolution import (
         _resolve_by_system,
         _resolve_latest_by_role,
@@ -140,7 +154,9 @@ def _resolve_latest_for_role(
 
     resolved = _resolve_latest_by_role(repo, manifest, experiments, role)
     if resolved is not None:
-        return resolved
+        return resolved[0], resolved[1], _resolve_run_notes(
+            manifest, resolved[0], role=role,
+        )
 
     target_system = (
         manifest.reference_system if role == "reference"
@@ -150,14 +166,17 @@ def _resolve_latest_for_role(
         raise ValueError(
             f"Workspace manifest does not declare the system for role '{role}'."
         )
-    return _resolve_by_system(repo, experiments, target_system, role)
+    fallback = _resolve_by_system(repo, experiments, target_system, role)
+    return fallback[0], fallback[1], _resolve_run_notes(
+        manifest, fallback[0], role=role,
+    )
 
 
 def _resolve_development_role(
     repo,
     manifest,
     role: str,
-) -> tuple[str, str]:
+) -> tuple[str, str, str | None]:
     result_path: str | None = None
     if role == "baseline":
         if manifest.baseline_results:
@@ -177,13 +196,40 @@ def _resolve_development_role(
     eid = _extract_eid(result_path)
     if not eid:
         raise ValueError(f"Cannot parse result path: {result_path}")
-    return eid, _resolve_run_for_summary(repo, eid)
+    return eid, _resolve_run_for_summary(repo, eid), _resolve_run_notes(
+        manifest, eid, role=role,
+    )
 
 
 def _extract_eid(path_str: str) -> str | None:
     parts = path_str.split("/")
     if len(parts) >= 2:
         return parts[1]
+    return None
+
+
+def _resolve_run_notes(
+    manifest,
+    experiment_id: str,
+    *,
+    role: str | None = None,
+) -> str | None:
+    from axis.framework.workspaces.types import result_entry_notes, result_entry_path
+
+    result_path = f"results/{experiment_id}"
+    entries = manifest.primary_results or []
+
+    if role is not None:
+        for entry in reversed(entries):
+            if result_entry_path(entry) != result_path:
+                continue
+            entry_role = getattr(entry, "role", None)
+            if entry_role == role:
+                return result_entry_notes(entry)
+
+    for entry in reversed(entries):
+        if result_entry_path(entry) == result_path:
+            return result_entry_notes(entry)
     return None
 
 

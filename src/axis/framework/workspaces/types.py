@@ -69,6 +69,7 @@ class ResultEntry(BaseModel, frozen=True):
     baseline_run_id: str | None = None  # for sweep outputs
     config: str | None = None
     timestamp: str | None = None
+    run_notes: str | None = None
     config_changes: dict[str, Any] | None = None
 
 
@@ -220,6 +221,14 @@ def load_manifest(workspace_path: Any) -> WorkspaceManifest:
 def result_entry_path(entry: ResultEntry) -> str:
     """Extract the path string from a primary_results entry."""
     return entry.path
+
+
+def result_entry_notes(entry: ResultEntry | dict) -> str | None:
+    """Extract optional run notes from a primary_results entry."""
+    if isinstance(entry, ResultEntry):
+        return entry.run_notes
+    notes = entry.get("run_notes")
+    return str(notes) if notes is not None else None
 
 
 def config_entry_path(entry: ConfigEntry | str | dict) -> str:

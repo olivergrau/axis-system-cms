@@ -308,6 +308,36 @@ class TestRunsMetrics:
         assert data["experiment_id"] == eid
         assert "standard_metrics" in data
 
+    def test_metrics_run_text_shows_six_decimals(self, tmp_path, capsys):
+        from axis.framework.cli.commands.runs import _render_behavior_metrics_text
+
+        payload = {
+            "standard_metrics": {
+                "resource_gain_per_step": {"mean": 0.588},
+                "net_energy_efficiency": {"mean": 0.635},
+                "successful_consume_rate": {"mean": 0.8},
+                "failed_movement_rate": {"mean": 0.0},
+                "action_entropy": {"mean": 1.518},
+                "policy_sharpness": {"mean": 0.325},
+                "unique_cells_visited": {"mean": 49.62},
+                "coverage_efficiency": {"mean": 0.321},
+                "revisit_rate": {"mean": 0.666},
+            },
+            "system_specific_metrics": {
+                "system_c_prediction": {
+                    "mean_prediction_error": 0.036,
+                    "prediction_modulation_strength": 0.0004,
+                    "prediction_step_count": 8236,
+                }
+            },
+        }
+
+        _render_behavior_metrics_text(payload)
+        out = capsys.readouterr().out
+        assert "resource_gain_per_step=0.588000" in out
+        assert "unique_cells_visited=49.620000" in out
+        assert "prediction_modulation_strength=0.000400" in out
+
 
 # ---------------------------------------------------------------------------
 # compare

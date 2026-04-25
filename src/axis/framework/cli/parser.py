@@ -332,6 +332,14 @@ examples:
             "config changes are detected."
         ),
     )
+    ws_run_p.add_argument(
+        "--notes",
+        default=None,
+        help=(
+            "Optional run note to store with each resulting primary_results "
+            "entry in the workspace manifest."
+        ),
+    )
 
     ws_cmp_p = ws_action.add_parser(
         "compare", parents=[common], help="Run workspace comparison",

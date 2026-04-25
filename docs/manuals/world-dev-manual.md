@@ -142,7 +142,7 @@ arbitrary keys are accepted and passed through.
 
 - For the built-in `grid_2d` world, extras include `grid_width`,
   `grid_height`, `obstacle_density`, `resource_regen_rate`,
-  `regeneration_mode`, `regen_eligible_ratio`.
+  `regeneration_mode`, `regen_eligible_ratio`, `num_clusters`.
 - Your custom world type can accept different extras (e.g. `hex_radius`,
   `hex_layers`).
 - The factory is responsible for parsing and validating these extras
@@ -456,10 +456,14 @@ def create_toroidal_world(
     if tc.obstacle_density > 0:
         _apply_obstacles(grid, tc, agent_position, seed)
 
-    # Handle sparse regeneration eligibility
+    # Handle regeneration eligibility modes
     regeneration_mode = RegenerationMode(tc.regeneration_mode)
     if regeneration_mode == RegenerationMode.SPARSE_FIXED_RATIO:
         _apply_sparse_eligibility(grid, tc.regen_eligible_ratio, seed)
+    elif regeneration_mode == RegenerationMode.CLUSTERED:
+        _apply_clustered_eligibility(
+            grid, tc.regen_eligible_ratio, tc.num_clusters, seed,
+        )
 
     return ToroidalWorld(
         grid=grid, agent_position=agent_position,

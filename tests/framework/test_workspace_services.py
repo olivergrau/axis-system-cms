@@ -234,6 +234,120 @@ class TestRunServiceInjection:
 
         execute_fn.assert_not_called()
 
+    def test_execute_allows_comparison_when_only_one_side_changes(
+        self, tmp_path: Path,
+    ) -> None:
+        import yaml
+
+        from axis.framework.cli import _load_config_file
+
+        ws = tmp_path / "ws"
+        ws.mkdir()
+        (ws / "configs").mkdir()
+        (ws / "results" / "exp-ref").mkdir(parents=True)
+        (ws / "results" / "exp-cand").mkdir(parents=True)
+
+        reference_config = {
+            "system_type": "system_a",
+            "experiment_type": "single_run",
+            "general": {"seed": 7},
+            "execution": {"max_steps": 100},
+            "world": {
+                "world_type": "grid_2d",
+                "grid_width": 5,
+                "grid_height": 5,
+            },
+            "system": {
+                "agent": {
+                    "initial_energy": 50,
+                    "max_energy": 100,
+                    "buffer_capacity": 5,
+                },
+                "policy": {
+                    "selection_mode": "sample",
+                    "temperature": 1.0,
+                    "stay_suppression": 0.1,
+                    "consume_weight": 2.5,
+                },
+                "transition": {
+                    "move_cost": 0.5,
+                    "consume_cost": 0.5,
+                    "stay_cost": 0.3,
+                    "max_consume": 1.0,
+                    "energy_gain_factor": 15.0,
+                },
+            },
+            "num_episodes_per_run": 5,
+        }
+        candidate_config = dict(reference_config)
+        candidate_config["num_episodes_per_run"] = 6
+
+        (ws / "configs" / "reference.yaml").write_text(
+            yaml.dump(reference_config)
+        )
+        (ws / "configs" / "candidate.yaml").write_text(
+            yaml.dump(candidate_config)
+        )
+
+        ref_normalized = _load_config_file(
+            ws / "configs" / "reference.yaml"
+        ).model_dump(mode="json")
+        cand_normalized = _load_config_file(
+            ws / "configs" / "candidate.yaml"
+        ).model_dump(mode="json")
+        (ws / "results" / "exp-ref" / "experiment_config.json").write_text(
+            json.dumps(ref_normalized)
+        )
+        (ws / "results" / "exp-cand" / "experiment_config.json").write_text(
+            json.dumps({
+                **cand_normalized,
+                "num_episodes_per_run": 5,
+            })
+        )
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "system_comparison",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "reference_system": "system_a",
+            "candidate_system": "system_a",
+            "primary_configs": [
+                {"path": "configs/reference.yaml", "role": "reference"},
+                {"path": "configs/candidate.yaml", "role": "candidate"},
+            ],
+            "primary_results": [
+                {
+                    "path": "results/exp-ref",
+                    "role": "reference",
+                    "config": "results/exp-ref/experiment_config.json",
+                },
+                {
+                    "path": "results/exp-cand",
+                    "role": "candidate",
+                    "config": "results/exp-cand/experiment_config.json",
+                },
+            ],
+        }))
+
+        execute_fn = MagicMock(return_value=[])
+        svc = _make_run_service(execute_fn=execute_fn)
+
+        fake_targets = [
+            MagicMock(config_path="configs/reference.yaml", role="reference"),
+            MagicMock(config_path="configs/candidate.yaml", role="candidate"),
+        ]
+        with patch(
+            "axis.framework.workspaces.resolution.resolve_run_targets",
+            return_value=MagicMock(targets=fake_targets),
+        ):
+            svc.execute(ws)
+
+        execute_fn.assert_called_once()
+
     def test_execute_override_guard_allows_matching_previous_result(
         self, tmp_path: Path,
     ) -> None:

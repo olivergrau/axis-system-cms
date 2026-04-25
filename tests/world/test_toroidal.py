@@ -71,6 +71,7 @@ class TestToroidalWorldConfig:
         c = ToroidalWorldConfig(grid_width=5, grid_height=5)
         assert c.obstacle_density == 0.0
         assert c.resource_regen_rate == 0.0
+        assert c.num_clusters is None
 
     def test_frozen(self) -> None:
         c = ToroidalWorldConfig(grid_width=5, grid_height=5)
@@ -105,6 +106,30 @@ class TestWorldConstruction:
         grid[1][1] = Cell(cell_type=CellType.OBSTACLE, resource_value=0.0)
         with pytest.raises(ValueError, match="non-traversable"):
             ToroidalWorld(grid=grid, agent_position=Position(x=1, y=1))
+
+    def test_clustered_regeneration_eligibility(self) -> None:
+        world = _make_world(
+            width=9,
+            height=9,
+            regeneration_mode="clustered",
+            regen_eligible_ratio=0.25,
+            num_clusters=3,
+            seed=42,
+        )
+        eligible_count = sum(
+            1
+            for y in range(9)
+            for x in range(9)
+            if world.get_internal_cell(Position(x=x, y=y)).regen_eligible
+        )
+        assert eligible_count == round(0.25 * 81)
+
+    def test_clustered_without_num_clusters_raises(self) -> None:
+        with pytest.raises(ValueError, match="num_clusters"):
+            _make_world(
+                regeneration_mode="clustered",
+                regen_eligible_ratio=0.4,
+            )
 
 
 # ---------------------------------------------------------------------------

@@ -66,6 +66,15 @@ class TestAppendPrimaryResult:
             "system": {"policy": {"temperature": 2.0}},
         }
 
+    def test_appends_run_notes_when_provided(self) -> None:
+        data: dict = {}
+        append_primary_result(
+            data, "exp-001",
+            run_notes="My notes for this run",
+        )
+        entry = data["primary_results"][0]
+        assert entry["run_notes"] == "My notes for this run"
+
 
 class TestUpdateDevelopmentResults:
 
