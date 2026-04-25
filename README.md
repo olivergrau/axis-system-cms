@@ -1,3 +1,4 @@
+```text
    █████╗ ██╗  ██╗██╗███████╗
   ██╔══██╗╚██╗██╔╝██║██╔════╝
   ███████║ ╚███╔╝ ██║███████╗
@@ -7,8 +8,7 @@
 
         C M S
   Complex Mechanistic Systems
-
-Version 0.2.x
+```
 
 # AXIS Experimentation Framework
 
