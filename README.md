@@ -1,4 +1,16 @@
-# AXIS Experimentation Framework (v0.2.x)
+   █████╗ ██╗  ██╗██╗███████╗
+  ██╔══██╗╚██╗██╔╝██║██╔════╝
+  ███████║ ╚███╔╝ ██║███████╗
+  ██╔══██║ ██╔██╗ ██║╚════██║
+  ██║  ██║██╔╝ ██╗██║███████║
+  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚══════╝
+
+        C M S
+  Complex Mechanistic Systems
+
+Version 0.2.x
+
+# AXIS Experimentation Framework
 
 AXIS is a modular agent-environment experimentation framework. It provides
 a protocol-based architecture where **systems** (agent logic) and **worlds**
