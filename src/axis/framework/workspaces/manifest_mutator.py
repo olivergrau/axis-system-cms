@@ -28,6 +28,13 @@ def _result_paths(entries: list) -> set[str]:
     return paths
 
 
+def _config_path(entry: object) -> str:
+    """Extract a config path from either a plain or structured entry."""
+    if isinstance(entry, dict):
+        return str(entry["path"])
+    return str(entry)
+
+
 # -----------------------------------------------------------------------
 # Primary result mutations
 # -----------------------------------------------------------------------
@@ -163,8 +170,8 @@ def set_candidate_config(
     data["candidate_config"] = config_path
 
     primary_configs = _ensure_list(data, "primary_configs")
-    if config_path not in primary_configs:
-        primary_configs.append(config_path)
+    if config_path not in {_config_path(entry) for entry in primary_configs}:
+        primary_configs.append({"path": config_path, "role": "candidate"})
 
 
 def close_workspace(data: dict) -> None:
@@ -181,8 +188,8 @@ def close_workspace(data: dict) -> None:
 # -----------------------------------------------------------------------
 
 
-def set_primary_configs(data: dict, config_paths: list[str]) -> None:
-    """Set ``primary_configs`` to the given list of paths."""
+def set_primary_configs(data: dict, config_paths: list[object]) -> None:
+    """Set ``primary_configs`` to the given path or structured entries."""
     data["primary_configs"] = list(config_paths)
 
 

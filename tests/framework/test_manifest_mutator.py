@@ -136,16 +136,21 @@ class TestSetCandidateConfig:
             "primary_configs": ["configs/baseline.yaml"],
         }
         set_candidate_config(data, "configs/candidate.yaml")
-        assert "configs/candidate.yaml" in data["primary_configs"]
+        assert {
+            "path": "configs/candidate.yaml",
+            "role": "candidate",
+        } in data["primary_configs"]
         assert "configs/baseline.yaml" in data["primary_configs"]
 
     def test_idempotent_primary_configs(self) -> None:
         data: dict = {
             "workspace_type": "system_development",
-            "primary_configs": ["configs/candidate.yaml"],
+            "primary_configs": [
+                {"path": "configs/candidate.yaml", "role": "candidate"},
+            ],
         }
         set_candidate_config(data, "configs/candidate.yaml")
-        assert data["primary_configs"].count("configs/candidate.yaml") == 1
+        assert len(data["primary_configs"]) == 1
 
     def test_rejects_non_dev(self) -> None:
         data: dict = {"workspace_type": "single_system"}
@@ -155,7 +160,9 @@ class TestSetCandidateConfig:
     def test_creates_primary_configs_if_missing(self) -> None:
         data: dict = {"workspace_type": "system_development"}
         set_candidate_config(data, "configs/c.yaml")
-        assert data["primary_configs"] == ["configs/c.yaml"]
+        assert data["primary_configs"] == [
+            {"path": "configs/c.yaml", "role": "candidate"},
+        ]
 
 
 class TestCloseWorkspace:

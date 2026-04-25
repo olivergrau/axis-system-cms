@@ -90,11 +90,17 @@ def _resolve_artifacts(
     if not paths:
         return []
 
-    from axis.framework.workspaces.types import ResultEntry
+    from axis.framework.workspaces.types import ConfigEntry, ResultEntry
 
     entries: list[ArtifactEntry] = []
     for item in paths:
-        if isinstance(item, ResultEntry):
+        if isinstance(item, ConfigEntry):
+            entries.append(ArtifactEntry(
+                path=item.path,
+                exists=(ws / item.path).exists(),
+                role=item.role,
+            ))
+        elif isinstance(item, ResultEntry):
             comparison_meta = _load_comparison_metadata(ws, item.path)
             entries.append(ArtifactEntry(
                 path=item.path,

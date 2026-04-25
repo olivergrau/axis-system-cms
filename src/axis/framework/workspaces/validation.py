@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from axis.framework.workspaces.types import (
     WorkspaceClass,
     WorkspaceManifest,
+    config_entry_path,
     load_manifest,
 )
 
@@ -152,7 +153,12 @@ def _check_declared_paths(
         return
     from axis.framework.workspaces.types import result_entry_path
     for entry in paths:
-        p = result_entry_path(entry) if field_name == "primary_results" else entry
+        if field_name == "primary_results":
+            p = result_entry_path(entry)
+        elif field_name == "primary_configs":
+            p = config_entry_path(entry)
+        else:
+            p = entry
         full = ws / p
         if not full.exists():
             issues.append(WorkspaceCheckIssue(
@@ -164,7 +170,7 @@ def _check_declared_paths(
 
 def check_config_experiment_types(
     ws: Path,
-    config_paths: list[str] | None,
+    config_paths: list | None,
     workspace_type: str | None = None,
 ) -> list[WorkspaceCheckIssue]:
     """Validate experiment types in workspace configs.
@@ -184,7 +190,8 @@ def check_config_experiment_types(
         allowed.add("ofat")
 
     issues: list[WorkspaceCheckIssue] = []
-    for rel_path in config_paths:
+    for entry in config_paths:
+        rel_path = config_entry_path(entry)
         config_file = ws / rel_path
         if not config_file.exists():
             continue  # missing file is reported elsewhere

@@ -273,7 +273,10 @@ examples:
     # -- workspaces ------------------------------------------------------------
     ws_parser = entity_sub.add_parser(
         "workspaces",
-        help="Manage experiment workspaces (scaffold, close, check, show, run, compare)",
+        help=(
+            "Manage experiment workspaces "
+            "(scaffold, close, check, show, run, compare, compare-configs)"
+        ),
     )
     ws_action = ws_parser.add_subparsers(dest="action", title="actions")
 
@@ -320,6 +323,15 @@ examples:
             "Without this flag, world-only edits do not bypass duplicate-run protection."
         ),
     )
+    ws_run_p.add_argument(
+        "--override-guard",
+        action="store_true",
+        default=False,
+        help=(
+            "Bypass the duplicate-run guard and execute even when no relevant "
+            "config changes are detected."
+        ),
+    )
 
     ws_cmp_p = ws_action.add_parser(
         "compare", parents=[common], help="Run workspace comparison",
@@ -341,6 +353,14 @@ examples:
             "Useful for comparing world-state manipulations explicitly."
         ),
     )
+
+    ws_cmp_cfg_p = ws_action.add_parser(
+        "compare-configs",
+        parents=[common],
+        help="Show reference/candidate config deltas for a system_comparison workspace",
+    )
+    ws_cmp_cfg_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
 
     ws_cr_p = ws_action.add_parser(
         "comparison-summary", parents=[common],

@@ -79,6 +79,17 @@ This is especially useful for controlled world-manipulation studies
 where the systems remain unchanged but the environment is the variable
 under investigation.
 
+If you intentionally need to rerun unchanged configs, for example after fixing
+an earlier mismatched run setup outside the config delta that the guard treats
+as relevant, bypass the duplicate-run guard explicitly:
+
+```bash
+axis workspaces run workspaces/my-workspace --override-guard
+```
+
+This only bypasses the duplicate-run guard. Workspace closure, config
+validation, and execution errors still apply.
+
 ### Run a workspace comparison
 
 ```bash
@@ -127,6 +138,35 @@ If no execution results exist in the workspace, the compare command aborts with 
 
 If the workspace has `status: closed`, the compare command aborts before
 comparison.
+
+### Compare workspace configs
+
+```bash
+axis workspaces compare-configs workspaces/my-workspace
+```
+
+For `system_comparison` workspaces, displays the config delta between the
+manifest-declared reference config and candidate config before running any
+experiments. This is useful when you want to review exactly what changed between
+the two sides of a comparison.
+
+This command requires `primary_configs` entries with explicit roles:
+
+```yaml
+primary_configs:
+- path: configs/reference-system_a.yaml
+  role: reference
+- path: configs/candidate-system_c.yaml
+  role: candidate
+```
+
+The scaffolder writes these roles automatically for new workspaces. Older or
+manually edited workspaces that still use plain string entries must be updated
+before `compare-configs` can resolve the two sides.
+
+`compare-configs` is currently supported only for `system_comparison`
+workspaces. For `single_system` workspaces, compare concrete run outputs with
+`axis workspaces compare` after at least two point runs exist.
 
 ### Close a workspace
 
@@ -735,7 +775,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 
 The manifest tracks workspace-produced artifacts via four list fields:
 
-- **`primary_configs`** — workspace-relative paths to config files (populated at scaffold time).
+- **`primary_configs`** — workspace-relative config entries populated at scaffold time. New workspaces use structured entries with a `path` and role metadata such as `reference`, `candidate`, or `baseline`; legacy plain string entries are still accepted for compatibility.
 - **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`. When possible, each entry also stores the changed config elements relative to the previous comparable result so `axis workspaces show` can surface iteration history directly from the manifest.
 - **`primary_comparisons`** — workspace-relative paths to comparison output files (accumulated after each `axis workspaces compare`), e.g. `comparisons/comparison-001.json`.
 These fields are updated automatically by the workspace commands. The manifest uses comment-preserving YAML round-trip writes, so manual comments and ordering in `workspace.yaml` are retained.
@@ -823,6 +863,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `axis workspaces run <path> --candidate-only` | Run only candidate config (system_development) |
 | `axis workspaces set-candidate <path> <config>` | Set candidate config for a development workspace |
 | `axis workspaces compare <path>` | Run workspace comparison (sequential, self-contained) |
+| `axis workspaces compare-configs <path>` | Display reference/candidate config deltas (system_comparison only) |
 | `axis workspaces comparison-summary <path>` | Display stored comparison result(s) |
 | `axis workspaces run-summary <path>` | Display one resolved run summary from workspace-local results |
 | `axis workspaces run-metrics <path>` | Display behavioral metrics for one resolved run from workspace-local results |
@@ -838,6 +879,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
 | `--number <N>` | `comparison-summary` | Select a specific comparison by number |
 | `--allow-world-changes` | `run`, `compare`, `comparison-summary` | Allow world-only changes as the intentional variable |
+| `--override-guard` | `run` | Bypass the duplicate-run guard for an intentional rerun |
 | `--role <name>` | `run-summary`, `visualize --workspace` | Select role-specific workspace output |
 | `--experiment <id>` | `run-summary` | Select a specific experiment in workspace results |
 | `--run <id>` | `run-summary` | Select a specific run (required for sweep outputs) |

@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from axis.framework.workspaces.types import (
+    config_entry_path,
     load_manifest,
 )
 
@@ -45,7 +46,7 @@ def resolve_run_targets(
     manifest = load_manifest(ws)
 
     if manifest.primary_configs:
-        configs = manifest.primary_configs
+        configs = [config_entry_path(entry) for entry in manifest.primary_configs]
     else:
         configs_dir = ws / "configs"
         configs = sorted(

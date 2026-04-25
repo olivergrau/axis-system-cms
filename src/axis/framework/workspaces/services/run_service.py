@@ -44,6 +44,7 @@ class WorkspaceRunService:
         run_filter: str | None = None,
         *,
         allow_world_changes: bool = False,
+        override_guard: bool = False,
     ) -> list[RunServiceResult]:
         """Execute all run targets and sync the manifest.
 
@@ -66,18 +67,19 @@ class WorkspaceRunService:
         plan = resolve_run_targets(ws, run_filter=run_filter)
 
         unchanged_targets: list[str] = []
-        for target in plan.targets:
-            config_path = ws / target.config_path
-            config = _load_config_file(config_path)
-            current_config = config.model_dump(mode="json")
-            if has_same_config_as_previous_result(
-                ws,
-                current_config,
-                manifest_results,
-                target.role,
-                ignore_world=not allow_world_changes,
-            ):
-                unchanged_targets.append(target.config_path)
+        if not override_guard:
+            for target in plan.targets:
+                config_path = ws / target.config_path
+                config = _load_config_file(config_path)
+                current_config = config.model_dump(mode="json")
+                if has_same_config_as_previous_result(
+                    ws,
+                    current_config,
+                    manifest_results,
+                    target.role,
+                    ignore_world=not allow_world_changes,
+                ):
+                    unchanged_targets.append(target.config_path)
 
         if unchanged_targets:
             if len(unchanged_targets) == 1:

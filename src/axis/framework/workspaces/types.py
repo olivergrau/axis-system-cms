@@ -72,6 +72,13 @@ class ResultEntry(BaseModel, frozen=True):
     config_changes: dict[str, Any] | None = None
 
 
+class ConfigEntry(BaseModel, frozen=True):
+    """Structured primary_configs entry with workspace role semantics."""
+
+    path: str
+    role: str | None = None
+
+
 class WorkspaceManifest(BaseModel, frozen=True):
     """Authoritative workspace manifest model.
 
@@ -104,7 +111,7 @@ class WorkspaceManifest(BaseModel, frozen=True):
     tags: list[str] | None = None
     baseline_artifacts: list[str] | None = None
     validation_scenarios: list[str] | None = None
-    primary_configs: list[str] | None = None
+    primary_configs: list[ConfigEntry | str] | None = None
     primary_results: list[ResultEntry] | None = None
     primary_comparisons: list[str] | None = None
     # --- Development workflow fields (system_development only) ---
@@ -213,3 +220,22 @@ def load_manifest(workspace_path: Any) -> WorkspaceManifest:
 def result_entry_path(entry: ResultEntry) -> str:
     """Extract the path string from a primary_results entry."""
     return entry.path
+
+
+def config_entry_path(entry: ConfigEntry | str | dict) -> str:
+    """Extract the path string from a primary_configs entry."""
+    if isinstance(entry, ConfigEntry):
+        return entry.path
+    if isinstance(entry, dict):
+        return str(entry["path"])
+    return str(entry)
+
+
+def config_entry_role(entry: ConfigEntry | str | dict) -> str | None:
+    """Extract the role string from a primary_configs entry if present."""
+    if isinstance(entry, ConfigEntry):
+        return entry.role
+    if isinstance(entry, dict):
+        role = entry.get("role")
+        return str(role) if role is not None else None
+    return None

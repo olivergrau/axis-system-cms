@@ -366,6 +366,7 @@ def cmd_workspaces_run(
     workspace_path: str, output: str,
     run_filter: str | None = None,
     allow_world_changes: bool = False,
+    override_guard: bool = False,
     run_service: object = None,
 ) -> None:
     """Execute workspace configs."""
@@ -374,6 +375,7 @@ def cmd_workspaces_run(
         ws,
         run_filter=run_filter,
         allow_world_changes=allow_world_changes,
+        override_guard=override_guard,
     )
 
     if output == "json":
@@ -413,6 +415,36 @@ def cmd_workspaces_compare(
         out = stdout_output()
         out.success(f"workspace comparison #{svc_result.comparison_number}")
         out.kv("Output", ws / svc_result.output_path)
+
+
+def cmd_workspaces_compare_configs(
+    workspace_path: str,
+    output: str,
+) -> None:
+    """Display config deltas between reference and candidate configs."""
+    from axis.framework.workspaces.config_compare import (
+        compare_workspace_configs,
+    )
+
+    result = compare_workspace_configs(Path(workspace_path))
+
+    if output == "json":
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
+    else:
+        out = stdout_output()
+        out.title("Workspace Config Delta")
+        out.kv("Reference config", result.reference_config)
+        out.kv("Candidate config", result.candidate_config)
+        if result.candidate_delta:
+            out.kv("Candidate delta", "")
+            _print_changed_config_summary_with_reference(
+                result.candidate_delta,
+                result.reference_values,
+                indent=4,
+                out=out,
+            )
+        else:
+            out.hint("No config differences found.")
 
 
 def cmd_workspaces_comparison_result(
@@ -710,3 +742,42 @@ def _print_changed_config_summary(config: dict, indent: int = 8, *, out=None) ->
                 out.line(out.styled(f"{prefix}{full_key}: {value}", role="diff"))
 
     _flatten(config)
+
+
+def _print_changed_config_summary_with_reference(
+    config: dict,
+    reference_values: dict,
+    indent: int = 8,
+    *,
+    out=None,
+) -> None:
+    """Print changed config values with matching reference values when known."""
+    out = out or stdout_output()
+    prefix = " " * indent
+    missing = object()
+
+    def _flatten(
+        obj: dict,
+        reference_obj: dict,
+        path: str = "",
+    ) -> None:
+        for key, value in obj.items():
+            full_key = f"{path}.{key}" if path else key
+            reference_value = reference_obj.get(key, missing)
+            if isinstance(value, dict):
+                next_reference = (
+                    reference_value if isinstance(reference_value, dict) else {}
+                )
+                _flatten(value, next_reference, full_key)
+            else:
+                suffix = (
+                    f" (reference: {reference_value})"
+                    if reference_value is not missing
+                    else ""
+                )
+                out.line(out.styled(
+                    f"{prefix}{full_key}: {value}{suffix}",
+                    role="diff",
+                ))
+
+    _flatten(config, reference_values)

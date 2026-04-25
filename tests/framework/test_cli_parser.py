@@ -77,6 +77,26 @@ def test_parser_accepts_workspace_run_allow_world_changes():
     assert args.allow_world_changes is True
 
 
+def test_parser_accepts_workspace_run_override_guard():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "run", "/tmp/ws", "--override-guard",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "run"
+    assert args.override_guard is True
+
+
+def test_parser_accepts_workspace_compare_configs():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "compare-configs", "/tmp/ws",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "compare-configs"
+    assert args.workspace_path == "/tmp/ws"
+
+
 def test_parser_accepts_workspace_run_summary_arguments():
     parser = build_parser()
     args = parser.parse_args([

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import yaml
 from pathlib import Path
 
 from axis.framework.workspaces.scaffold import scaffold_workspace
@@ -35,11 +36,21 @@ class TestScaffold:
         assert (ws / "workspace.yaml").exists()
         assert (ws / "README.md").exists()
         assert (ws / "notes.md").exists()
+        readme = (ws / "README.md").read_text()
+        notes = (ws / "notes.md").read_text()
+        assert "Primary purpose:" in readme
+        assert "system_a" in readme
+        assert "single system" in notes
+        assert "axis workspaces compare" in notes
         for d in ("configs", "results", "comparisons", "exports"):
             assert (ws / d).is_dir()
         # Should have 1 baseline config
         configs = list((ws / "configs").glob("*.yaml"))
         assert len(configs) == 1
+        manifest_data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        assert manifest_data["primary_configs"] == [
+            {"path": "configs/system_a-baseline.yaml", "role": "reference"},
+        ]
         # Checker should validate it
         check = check_workspace(ws)
         assert check.is_valid
@@ -59,6 +70,16 @@ class TestScaffold:
             "candidate_system": "system_c",
         })
         scaffold_workspace(ws, manifest)
+        readme = (ws / "README.md").read_text()
+        notes = (ws / "notes.md").read_text()
+        assert "compare `system_a` as reference against `system_c`" in readme
+        assert "Reference: `system_a`" in notes
+        assert "Candidate: `system_c`" in notes
+        manifest_data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        assert manifest_data["primary_configs"] == [
+            {"path": "configs/reference-system_a.yaml", "role": "reference"},
+            {"path": "configs/candidate-system_c.yaml", "role": "candidate"},
+        ]
         configs = list((ws / "configs").glob("*.yaml"))
         assert len(configs) >= 2
         assert check_workspace(ws).is_valid
@@ -78,6 +99,11 @@ class TestScaffold:
             "artifact_under_development": "system_d",
         })
         scaffold_workspace(ws, manifest)
+        readme = (ws / "README.md").read_text()
+        notes = (ws / "notes.md").read_text()
+        assert "develop `system_d` as a system artifact" in readme
+        assert "pre-candidate" in readme
+        assert "Development goal: Build it" in notes
         assert (ws / "concept").is_dir()
         assert (ws / "engineering").is_dir()
         assert check_workspace(ws).is_valid

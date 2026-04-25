@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from axis.framework.workspaces.types import WorkspaceType, load_manifest, result_entry_path
+from axis.framework.workspaces.types import (
+    WorkspaceType,
+    config_entry_path,
+    load_manifest,
+    result_entry_path,
+)
 from axis.framework.workspaces.validation import (
     WorkspaceCheckIssue,
     WorkspaceCheckSeverity,
@@ -46,7 +51,12 @@ def detect_drift(workspace_path: Path) -> list[WorkspaceCheckIssue]:
         if not paths:
             continue
         for entry in paths:
-            p = result_entry_path(entry) if field_name == "primary_results" else entry
+            if field_name == "primary_results":
+                p = result_entry_path(entry)
+            elif field_name == "primary_configs":
+                p = config_entry_path(entry)
+            else:
+                p = entry
             if not (ws / p).exists():
                 issues.append(WorkspaceCheckIssue(
                     severity=WorkspaceCheckSeverity.ERROR,

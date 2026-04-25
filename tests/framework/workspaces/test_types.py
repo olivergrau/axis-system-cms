@@ -7,12 +7,15 @@ from pathlib import Path
 
 from axis.framework.workspaces.types import (
     ArtifactKind,
+    ConfigEntry,
     LinkedArtifactRef,
     WorkspaceClass,
     WorkspaceLifecycleStage,
     WorkspaceManifest,
     WorkspaceStatus,
     WorkspaceType,
+    config_entry_path,
+    config_entry_role,
     load_manifest,
 )
 
@@ -89,6 +92,20 @@ class TestValidManifests:
         m = WorkspaceManifest.model_validate(data)
         assert m.tags == ["test", "probe"]
         assert m.primary_configs == ["configs/a.yaml"]
+
+    def test_structured_primary_configs(self):
+        data = _minimal_investigation_comparison()
+        data["primary_configs"] = [
+            {"path": "configs/reference.yaml", "role": "reference"},
+            {"path": "configs/candidate.yaml", "role": "candidate"},
+        ]
+        m = WorkspaceManifest.model_validate(data)
+        assert isinstance(m.primary_configs[0], ConfigEntry)
+        assert (
+            config_entry_path(m.primary_configs[0])
+            == "configs/reference.yaml"
+        )
+        assert config_entry_role(m.primary_configs[1]) == "candidate"
 
     def test_linked_artifact_ref(self):
         ref = LinkedArtifactRef(id="exp-001", role="reference")

@@ -474,6 +474,16 @@ class TestCLIIntegration:
         err = capsys.readouterr().err
         assert "no config changes detected" in err
 
+    def test_run_override_guard_allows_unchanged_config(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+
+        code = cli_main(["workspaces", "run", str(ws)])
+        assert code == 0
+        capsys.readouterr()
+
+        code = cli_main(["workspaces", "run", str(ws), "--override-guard"])
+        assert code == 0
+
     def test_run_allows_world_only_change_with_allow_world_changes(
         self, tmp_path, capsys,
     ):
@@ -1320,6 +1330,8 @@ class TestExperimentTypeGuardrail:
         """Overwrite the primary config of a workspace with an OFAT config."""
         manifest_data = yaml.safe_load((ws / "workspace.yaml").read_text())
         config_rel = manifest_data["primary_configs"][0]
+        if isinstance(config_rel, dict):
+            config_rel = config_rel["path"]
         (ws / config_rel).write_text(yaml.dump(self._OFAT_CONFIG))
 
     # --- single_system: OFAT is allowed ---
