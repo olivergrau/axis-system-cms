@@ -1,0 +1,142 @@
+Comparison #7
+  Timestamp: 2026-04-23T08:15:47.876581+00:00
+  Hint: Showing latest comparison by default. Use --number to select another.
+  World changes: STRICT
+Run Comparison
+  Reference: system_a  experiment=d25b034084a741b6b23fceb1a7efbb5a  run=run-0000
+  Candidate: system_aw  experiment=5c1bfd753a034749b5942179f74b4ce8  run=run-0000
+  Episodes: 50 compared, 50 valid, 0 invalid
+
+Per-episode Results
+  Episode 1  mismatch=75.4%  pos_div=9.94  steps=114/154  survivor=candidate
+  Episode 2  mismatch=85.5%  pos_div=9.77  steps=124/200  survivor=candidate
+  Episode 3  mismatch=82.8%  pos_div=8.85  steps=134/200  survivor=candidate
+  Episode 4  mismatch=84.4%  pos_div=12.50  steps=147/200  survivor=candidate
+  Episode 5  mismatch=76.0%  pos_div=5.74  steps=115/100  survivor=reference
+  Episode 6  mismatch=84.3%  pos_div=11.85  steps=142/134  survivor=reference
+  Episode 7  mismatch=84.2%  pos_div=9.80  steps=146/200  survivor=candidate
+  Episode 8  mismatch=76.4%  pos_div=12.20  steps=199/200  survivor=candidate
+  Episode 9  mismatch=83.6%  pos_div=9.43  steps=122/200  survivor=candidate
+  Episode 10  mismatch=86.7%  pos_div=9.46  steps=135/200  survivor=candidate
+  Episode 11  mismatch=85.5%  pos_div=10.78  steps=124/200  survivor=candidate
+  Episode 12  mismatch=81.0%  pos_div=13.18  steps=156/116  survivor=reference
+  Episode 13  mismatch=73.0%  pos_div=7.38  steps=151/100  survivor=reference
+  Episode 14  mismatch=81.2%  pos_div=10.52  steps=128/160  survivor=candidate
+  Episode 15  mismatch=75.4%  pos_div=11.30  steps=114/142  survivor=candidate
+  Episode 16  mismatch=80.1%  pos_div=8.48  steps=166/191  survivor=candidate
+  Episode 17  mismatch=81.6%  pos_div=9.90  steps=197/125  survivor=reference
+  Episode 18  mismatch=76.7%  pos_div=9.26  steps=129/200  survivor=candidate
+  Episode 19  mismatch=82.7%  pos_div=17.99  steps=162/162  survivor=equal
+  Episode 20  mismatch=84.6%  pos_div=7.28  steps=149/123  survivor=reference
+  Episode 21  mismatch=85.8%  pos_div=9.79  steps=127/150  survivor=candidate
+  Episode 22  mismatch=77.6%  pos_div=12.95  steps=152/200  survivor=candidate
+  Episode 23  mismatch=82.4%  pos_div=8.86  steps=153/200  survivor=candidate
+  Episode 24  mismatch=82.0%  pos_div=6.51  steps=111/135  survivor=candidate
+  Episode 25  mismatch=86.1%  pos_div=14.77  steps=173/185  survivor=candidate
+  Episode 26  mismatch=81.5%  pos_div=12.12  steps=200/200  survivor=equal
+  Episode 27  mismatch=77.0%  pos_div=9.75  steps=113/200  survivor=candidate
+  Episode 28  mismatch=78.2%  pos_div=8.91  steps=119/187  survivor=candidate
+  Episode 29  mismatch=80.0%  pos_div=8.40  steps=145/100  survivor=reference
+  Episode 30  mismatch=83.5%  pos_div=10.86  steps=133/200  survivor=candidate
+  Episode 31  mismatch=82.2%  pos_div=11.49  steps=146/148  survivor=candidate
+  Episode 32  mismatch=78.0%  pos_div=9.37  steps=200/200  survivor=equal
+  Episode 33  mismatch=85.6%  pos_div=12.27  steps=118/200  survivor=candidate
+  Episode 34  mismatch=84.8%  pos_div=16.06  steps=200/112  survivor=reference
+  Episode 35  mismatch=79.4%  pos_div=11.46  steps=126/147  survivor=candidate
+  Episode 36  mismatch=83.2%  pos_div=10.08  steps=147/113  survivor=reference
+  Episode 37  mismatch=88.3%  pos_div=13.39  steps=142/137  survivor=reference
+  Episode 38  mismatch=70.2%  pos_div=12.40  steps=131/200  survivor=candidate
+  Episode 39  mismatch=84.2%  pos_div=8.38  steps=120/148  survivor=candidate
+  Episode 40  mismatch=77.6%  pos_div=10.22  steps=134/200  survivor=candidate
+  Episode 41  mismatch=81.8%  pos_div=9.37  steps=121/140  survivor=candidate
+  Episode 42  mismatch=78.5%  pos_div=11.00  steps=149/200  survivor=candidate
+  Episode 43  mismatch=81.9%  pos_div=9.31  steps=188/200  survivor=candidate
+  Episode 44  mismatch=80.5%  pos_div=10.54  steps=200/200  survivor=equal
+  Episode 45  mismatch=84.3%  pos_div=12.89  steps=159/200  survivor=candidate
+  Episode 46  mismatch=81.4%  pos_div=11.60  steps=118/127  survivor=candidate
+  Episode 47  mismatch=79.6%  pos_div=10.89  steps=181/200  survivor=candidate
+  Episode 48  mismatch=84.4%  pos_div=12.28  steps=200/141  survivor=reference
+  Episode 49  mismatch=84.8%  pos_div=11.68  steps=145/112  survivor=reference
+  Episode 50  mismatch=80.0%  pos_div=7.25  steps=170/190  survivor=candidate
+
+Statistical Summary
+  Action mismatch rate: mean=0.8132, std=0.0379, min=0.7023, max=0.8832 (n=50)
+  Hint: How often the two agents chose different actions at the same timestep.
+  Mean trajectory distance: mean=10.6089, std=2.3029, min=5.7400, max=17.9877 (n=50)
+  Hint: Average Manhattan distance between the two agents per episode.
+  Mean vitality difference: mean=0.1239, std=0.0455, min=0.0471, max=0.2969 (n=50)
+  Hint: Average absolute difference in vitality between the two agents.
+  Final vitality delta: mean=+0.1215, std=0.2114, min=-0.3840, max=+0.5715 (n=50)
+  Hint: Candidate final vitality minus reference final vitality.
+  Total steps delta: mean=+20.0800, std=43.3000, min=-88.0000, max=+87.0000 (n=50)
+  Hint: Candidate episode length minus reference episode length.
+  Survival rates: reference=10%  candidate=46%
+  Longer survivor: candidate=34  reference=12  equal=4
+
+Configurations
+  Hint: Differing config values are highlighted when terminal styling is enabled.
+  Reference config: system_type=system_a
+    system_type: system_a
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 200
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: sparse_fixed_ratio
+    world.regen_eligible_ratio: 0.05
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 30
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 10.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.5
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    num_episodes_per_run: 50
+    agent_start_position.x: 10
+    agent_start_position.y: 10
+  Candidate config: system_type=system_aw
+    system_type: system_aw
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 200
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: sparse_fixed_ratio
+    world.regen_eligible_ratio: 0.05
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 30
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 10.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.5
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    system.curiosity.base_curiosity: 1.0
+    system.curiosity.spatial_sensory_balance: 0.7
+    system.curiosity.explore_suppression: 0.5
+    system.curiosity.novelty_sharpness: 2.0
+    system.arbitration.hunger_weight_base: 0.2
+    system.arbitration.curiosity_weight_base: 1.5
+    system.arbitration.gating_sharpness: 3.0
+    num_episodes_per_run: 50
+    agent_start_position.x: 10
+    agent_start_position.y: 10

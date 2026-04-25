@@ -1,0 +1,97 @@
+workspace_id: system_a_vs_system_aw
+title: System A vs. System AW
+workspace_class: investigation
+workspace_type: system_comparison
+status: closed
+lifecycle_stage: final
+created_at: '2026-04-22'
+question: How both Systems differ from behavior? Does System A+W has an 
+  advantage over System A?
+reference_system: system_a
+candidate_system: system_aw
+primary_configs:
+- path: configs/reference-system_a.yaml
+  role: reference
+- path: configs/candidate-system_aw.yaml
+  role: candidate
+primary_results:
+- path: results/72d9d034727f40e38af5837f12e17ca7
+  timestamp: '2026-04-25T14:14:48'
+  config: results/72d9d034727f40e38af5837f12e17ca7/experiment_config.json
+  role: reference
+  output_form: point
+  trace_mode: delta
+  system_type: system_a
+  primary_run_id: run-0000
+  run_notes: Baseline Run with baseline configs
+- path: results/01b09ac68635495b93346fe54607a858
+  timestamp: '2026-04-25T14:14:48'
+  config: results/01b09ac68635495b93346fe54607a858/experiment_config.json
+  role: candidate
+  output_form: point
+  trace_mode: delta
+  system_type: system_aw
+  primary_run_id: run-0000
+  run_notes: Baseline Run with baseline configs
+- path: results/62f7c66b9a3d44a0bc5477a5d764a9b0
+  timestamp: '2026-04-25T14:34:41'
+  config: results/62f7c66b9a3d44a0bc5477a5d764a9b0/experiment_config.json
+  role: reference
+  output_form: point
+  trace_mode: delta
+  system_type: system_a
+  primary_run_id: run-0000
+  run_notes: 'Config 1: Conservative Foraging Explorer'
+- path: results/df51fa523025482b9c01d27e9ead627a
+  timestamp: '2026-04-25T14:34:41'
+  config: results/df51fa523025482b9c01d27e9ead627a/experiment_config.json
+  role: candidate
+  output_form: point
+  trace_mode: delta
+  system_type: system_aw
+  primary_run_id: run-0000
+  run_notes: 'Config 1: Conservative Foraging Explorer'
+  config_changes:
+    system:
+      curiosity:
+        base_curiosity: 0.45
+        spatial_sensory_balance: 0.55
+        explore_suppression: 0.25
+        novelty_sharpness: 1.5
+      arbitration:
+        hunger_weight_base: 0.45
+        curiosity_weight_base: 0.75
+        gating_sharpness: 2.0
+- path: results/4d8bd19b10514f3bb609851726ff6716
+  timestamp: '2026-04-25T14:43:38'
+  config: results/4d8bd19b10514f3bb609851726ff6716/experiment_config.json
+  role: reference
+  output_form: point
+  trace_mode: delta
+  system_type: system_a
+  primary_run_id: run-0000
+  run_notes: Conservative Foraging Explorer v2
+- path: results/3c9e8e8e87ec42f1ac7dabac2952bbd9
+  timestamp: '2026-04-25T14:43:38'
+  config: results/3c9e8e8e87ec42f1ac7dabac2952bbd9/experiment_config.json
+  role: candidate
+  output_form: point
+  trace_mode: delta
+  system_type: system_aw
+  primary_run_id: run-0000
+  run_notes: Conservative Foraging Explorer v2
+  config_changes:
+    system:
+      curiosity:
+        base_curiosity: 0.38
+        spatial_sensory_balance: 0.45
+        explore_suppression: 0.18
+        novelty_sharpness: 1.4
+      arbitration:
+        hunger_weight_base: 0.52
+        curiosity_weight_base: 0.65
+        gating_sharpness: 2.2
+primary_comparisons:
+- comparisons/comparison-001.json
+- comparisons/comparison-002.json
+- comparisons/comparison-003.json

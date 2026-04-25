@@ -1,0 +1,102 @@
+Comparison #6
+  Timestamp: 2026-04-22T16:27:27.059793+00:00
+  Hint: Showing latest comparison by default. Use --number to select another.
+  World changes: STRICT
+Run Comparison
+  Reference: system_a  experiment=d02927e31ce04df0a7a78f8223a4740b  run=run-0000
+  Candidate: system_aw  experiment=89f9c9a732b6416abe82a7585bf83df2  run=run-0000
+  Episodes: 10 compared, 10 valid, 0 invalid
+
+Per-episode Results
+  Episode 1  mismatch=75.4%  pos_div=9.94  steps=114/154  survivor=candidate
+  Episode 2  mismatch=85.5%  pos_div=9.77  steps=124/200  survivor=candidate
+  Episode 3  mismatch=82.8%  pos_div=8.85  steps=134/200  survivor=candidate
+  Episode 4  mismatch=84.4%  pos_div=12.50  steps=147/200  survivor=candidate
+  Episode 5  mismatch=76.0%  pos_div=5.74  steps=115/100  survivor=reference
+  Episode 6  mismatch=84.3%  pos_div=11.85  steps=142/134  survivor=reference
+  Episode 7  mismatch=84.2%  pos_div=9.80  steps=146/200  survivor=candidate
+  Episode 8  mismatch=76.4%  pos_div=12.20  steps=199/200  survivor=candidate
+  Episode 9  mismatch=83.6%  pos_div=9.43  steps=122/200  survivor=candidate
+  Episode 10  mismatch=86.7%  pos_div=9.46  steps=135/200  survivor=candidate
+
+Statistical Summary
+  Action mismatch rate: mean=0.8193, std=0.0427, min=0.7544, max=0.8667 (n=10)
+  Hint: How often the two agents chose different actions at the same timestep.
+  Mean trajectory distance: mean=9.9537, std=1.9636, min=5.7400, max=12.5034 (n=10)
+  Hint: Average Manhattan distance between the two agents per episode.
+  Mean vitality difference: mean=0.1249, std=0.0460, min=0.0471, max=0.1810 (n=10)
+  Hint: Average absolute difference in vitality between the two agents.
+  Final vitality delta: mean=+0.2498, std=0.2273, min=+0.0000, max=+0.5715 (n=10)
+  Hint: Candidate final vitality minus reference final vitality.
+  Total steps delta: mean=+41.0000, std=35.3491, min=-15.0000, max=+78.0000 (n=10)
+  Hint: Candidate episode length minus reference episode length.
+  Survival rates: reference=0%  candidate=70%
+  Longer survivor: candidate=8  reference=2  equal=0
+
+Configurations
+  Hint: Differing config values are highlighted when terminal styling is enabled.
+  Reference config: system_type=system_a
+    system_type: system_a
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 200
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: sparse_fixed_ratio
+    world.regen_eligible_ratio: 0.05
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 30
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 1.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.5
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    num_episodes_per_run: 10
+    agent_start_position.x: 10
+    agent_start_position.y: 10
+  Candidate config: system_type=system_aw
+    system_type: system_aw
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 200
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: sparse_fixed_ratio
+    world.regen_eligible_ratio: 0.05
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 30
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 1.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.5
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    system.curiosity.base_curiosity: 1.0
+    system.curiosity.spatial_sensory_balance: 0.7
+    system.curiosity.explore_suppression: 0.5
+    system.curiosity.novelty_sharpness: 2.0
+    system.arbitration.hunger_weight_base: 0.2
+    system.arbitration.curiosity_weight_base: 1.5
+    system.arbitration.gating_sharpness: 3.0
+    num_episodes_per_run: 10
+    agent_start_position.x: 10
+    agent_start_position.y: 10

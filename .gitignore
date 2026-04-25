@@ -15,7 +15,14 @@ build/
 Agents.md
 resume.txt
 
-workspaces/
+workspaces/*
+!workspaces/system_a_vs_system_aw/
+!workspaces/system_a_vs_system_aw/**
+workspaces/system_a_vs_system_aw/results/
+
+!workspaces/system_a_vs_system_c/
+!workspaces/system_a_vs_system_c/**
+workspaces/system_a_vs_system_c/results/
 
 !src/axis/framework/workspaces/
 !src/axis/framework/workspaces/**
