@@ -22,6 +22,7 @@ from axis.framework.comparison.types import (
 )
 from axis.framework.comparison.validation import validate_trace_pair
 from axis.framework.persistence import ExperimentRepository, RunMetadata
+from axis.framework.progress import NullProgressReporter
 from axis.framework.run import RunConfig
 from axis.sdk.trace import BaseEpisodeTrace
 
@@ -117,6 +118,7 @@ def compare_runs(
     *,
     allow_world_changes: bool = False,
     extension_catalog: object | None = None,
+    progress: object | None = None,
 ) -> RunComparisonResult:
     """Compare all matched episodes across two runs.
 
@@ -147,6 +149,8 @@ def compare_runs(
     ref_episodes = repo.list_episode_files(reference_experiment_id, reference_run_id)
     cand_episodes = repo.list_episode_files(candidate_experiment_id, candidate_run_id)
     n_pairs = min(len(ref_episodes), len(cand_episodes))
+    reporter = progress or NullProgressReporter()
+    task_id = reporter.add_task("Episode comparisons", total=n_pairs)
 
     results: list[PairedTraceComparisonResult] = []
     ref_system_type = ""
@@ -177,6 +181,7 @@ def compare_runs(
             extension_catalog=extension_catalog,
         )
         results.append(result)
+        reporter.advance(task_id)
 
     summary = compute_run_summary(results)
 

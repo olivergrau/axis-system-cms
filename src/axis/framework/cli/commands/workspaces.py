@@ -34,6 +34,7 @@ def cmd_workspaces_scaffold(output: str) -> None:
     import questionary
     from rich.console import Console
 
+    from axis.framework.registry import registered_system_types
     from axis.framework.workspaces.scaffold import scaffold_workspace
     from axis.framework.workspaces.types import (
         ArtifactKind,
@@ -46,6 +47,20 @@ def cmd_workspaces_scaffold(output: str) -> None:
 
     console = Console()
     console.print("[bold]AXIS Workspace Scaffolder[/bold]\n")
+
+    def ask_system_name(prompt: str) -> str:
+        available = list(registered_system_types())
+        if not available:
+            return questionary.text(prompt).ask() or "system_a"
+
+        choice = questionary.select(
+            prompt,
+            choices=[*available, "<custom>"],
+            default=available[0],
+        ).ask()
+        if choice == "<custom>":
+            return questionary.text(f"{prompt} (custom):").ask() or "system_a"
+        return choice or "system_a"
 
     workspace_id = questionary.text("Workspace ID:").ask()
     if not workspace_id:
@@ -99,17 +114,17 @@ def cmd_workspaces_scaffold(output: str) -> None:
         ).ask() or ""
 
     if ws_type == "single_system":
-        manifest_data["system_under_test"] = questionary.text(
+        manifest_data["system_under_test"] = ask_system_name(
             "System under test:",
-        ).ask() or "system_a"
+        )
 
     elif ws_type == "system_comparison":
-        manifest_data["reference_system"] = questionary.text(
+        manifest_data["reference_system"] = ask_system_name(
             "Reference system:",
-        ).ask() or "system_a"
-        manifest_data["candidate_system"] = questionary.text(
+        )
+        manifest_data["candidate_system"] = ask_system_name(
             "Candidate system:",
-        ).ask() or "system_a"
+        )
 
     elif ws_type in ("system_development",):
         kind = "system" if ws_type == "system_development" else "world"
@@ -375,13 +390,17 @@ def cmd_workspaces_run(
 ) -> None:
     """Execute workspace configs."""
     ws = Path(workspace_path)
-    summaries = run_service.execute(
-        ws,
-        run_filter=run_filter,
-        allow_world_changes=allow_world_changes,
-        override_guard=override_guard,
-        run_notes=run_notes,
-    )
+    from axis.framework.progress import create_progress_reporter
+
+    with create_progress_reporter(output != "json") as progress:
+        summaries = run_service.execute(
+            ws,
+            run_filter=run_filter,
+            allow_world_changes=allow_world_changes,
+            override_guard=override_guard,
+            run_notes=run_notes,
+            progress=progress,
+        )
 
     if output == "json":
         print(json.dumps([{
@@ -404,13 +423,17 @@ def cmd_workspaces_compare(
     compare_service: object = None,
 ) -> None:
     """Run workspace comparison."""
+    from axis.framework.progress import create_progress_reporter
+
     ws = Path(workspace_path)
-    svc_result = compare_service.compare(
-        ws,
-        reference_experiment,
-        candidate_experiment,
-        allow_world_changes=allow_world_changes,
-    )
+    with create_progress_reporter(output != "json") as progress:
+        svc_result = compare_service.compare(
+            ws,
+            reference_experiment,
+            candidate_experiment,
+            allow_world_changes=allow_world_changes,
+            progress=progress,
+        )
 
     if output == "json":
         # Re-read the envelope for full JSON output.

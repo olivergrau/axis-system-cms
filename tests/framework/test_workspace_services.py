@@ -45,13 +45,18 @@ def _make_compare_service(compare_fn=None, sync_fn=None):
 
 
 def _make_inspection_service(
-    summarize_fn=None, check_fn=None, drift_fn=None, sweep_result_fn=None,
+    summarize_fn=None,
+    check_fn=None,
+    drift_fn=None,
+    sweep_result_fn=None,
+    run_summary_target_fn=None,
 ):
     return WorkspaceInspectionService(
         summarize_fn=summarize_fn or MagicMock(),
         check_fn=check_fn or MagicMock(),
         drift_fn=drift_fn or MagicMock(return_value=[]),
         sweep_result_fn=sweep_result_fn or MagicMock(),
+        run_summary_target_fn=run_summary_target_fn or MagicMock(),
     )
 
 

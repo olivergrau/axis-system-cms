@@ -21,6 +21,7 @@ from axis.framework.execution_results import (
     LightEpisodeResult,
     LightRunResult,
 )
+from axis.framework.progress import NullProgressReporter
 from axis.framework.registry import create_system
 from axis.framework.runner import run_episode, setup_episode
 from axis.sdk.position import Position
@@ -147,6 +148,8 @@ class RunExecutor:
         config: RunConfig,
         *,
         trace_mode_override: TraceMode | None = None,
+        progress: object | None = None,
+        progress_description: str | None = None,
     ) -> RunResult | LightRunResult | DeltaRunResult:
         """Execute a complete run: N episodes, aggregate results."""
         from axis.framework.logging import EpisodeLogger
@@ -165,10 +168,20 @@ class RunExecutor:
             # Catalog objects may not be process-safe; keep these paths deterministic.
             policy = policy.model_copy(update={"parallelism_mode": ParallelismMode.SEQUENTIAL})
 
+        reporter = progress or NullProgressReporter()
+        episode_task_id = reporter.add_task(
+            progress_description or f"Run {run_id}: episodes",
+            total=config.num_episodes,
+        )
+
         if policy.parallelism_mode is ParallelismMode.EPISODES and policy.max_workers > 1:
-            episode_results = self._execute_parallel_episodes(config, policy)
+            episode_results = self._execute_parallel_episodes(
+                config, policy, reporter=reporter, task_id=episode_task_id,
+            )
         else:
-            episode_results = self._execute_sequential(config, seeds, policy)
+            episode_results = self._execute_sequential(
+                config, seeds, policy, reporter=reporter, task_id=episode_task_id,
+            )
 
         summary = compute_run_summary(episode_results)
         with EpisodeLogger(config.framework_config.logging, trace_mode=policy.trace_mode) as logger:
@@ -212,6 +225,9 @@ class RunExecutor:
         config: RunConfig,
         seeds: tuple[int, ...],
         policy: ExecutionPolicy,
+        *,
+        reporter: object,
+        task_id: int,
     ) -> tuple[BaseEpisodeTrace | LightEpisodeResult, ...]:
         """Execute episodes sequentially under the given policy."""
         results: list[BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace] = []
@@ -226,12 +242,16 @@ class RunExecutor:
                     world_catalog=self._world_catalog,
                 )
             )
+            reporter.advance(task_id)
         return tuple(results)
 
     def _execute_parallel_episodes(
         self,
         config: RunConfig,
         policy: ExecutionPolicy,
+        *,
+        reporter: object,
+        task_id: int,
     ) -> tuple[BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace, ...]:
         """Execute episodes in parallel worker processes."""
         from axis.framework.parallel_execution import execute_episodes_parallel
@@ -240,6 +260,7 @@ class RunExecutor:
             config,
             trace_mode=policy.trace_mode,
             max_workers=policy.max_workers,
+            progress_callback=lambda _index: reporter.advance(task_id),
         )
 
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import as_completed
 from typing import Any
 
 from axis.framework.execution_policy import TraceMode
@@ -13,6 +15,7 @@ def execute_episodes_parallel(
     *,
     trace_mode: TraceMode,
     max_workers: int,
+    progress_callback: Callable[[int], None] | None = None,
 ) -> tuple[Any, ...]:
     """Execute episodes for *config* in worker processes."""
     from axis.framework.run import resolve_episode_seeds
@@ -22,8 +25,14 @@ def execute_episodes_parallel(
         (config.model_dump(mode="json"), seed, index, trace_mode.value)
         for index, seed in enumerate(seeds)
     ]
+    results: list[tuple[int, Any]] = []
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        results = list(pool.map(_run_episode_worker, payloads))
+        futures = [pool.submit(_run_episode_worker, payload) for payload in payloads]
+        for future in as_completed(futures):
+            result = future.result()
+            results.append(result)
+            if progress_callback is not None:
+                progress_callback(result[0])
     results.sort(key=lambda item: item[0])
     return tuple(result for _, result in results)
 
@@ -33,14 +42,21 @@ def execute_runs_parallel(
     *,
     trace_mode: TraceMode,
     max_workers: int,
+    progress_callback: Callable[[int], None] | None = None,
 ) -> tuple[Any, ...]:
     """Execute runs in worker processes with deterministic ordering."""
     payloads = [
         (index, run_config.model_dump(mode="json"), trace_mode.value)
         for index, run_config in enumerate(run_configs)
     ]
+    results: list[tuple[int, Any]] = []
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        results = list(pool.map(_run_config_worker, payloads))
+        futures = [pool.submit(_run_config_worker, payload) for payload in payloads]
+        for future in as_completed(futures):
+            result = future.result()
+            results.append(result)
+            if progress_callback is not None:
+                progress_callback(result[0])
     results.sort(key=lambda item: item[0])
     return tuple(result for _, result in results)
 

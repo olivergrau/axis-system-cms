@@ -17,6 +17,24 @@ from axis.framework.workspaces.types import (
 
 # Shared required top-level items.
 _REQUIRED_DIRS = ("configs", "results", "comparisons", "exports")
+_SCAFFOLD_EXECUTION = {
+    "max_steps": 200,
+    "trace_mode": "delta",
+    "parallelism_mode": "episodes",
+    "max_workers": 4,
+}
+_SCAFFOLD_LOGGING = {
+    "enabled": False,
+    "console_enabled": False,
+    "jsonl_enabled": False,
+    "verbosity": "compact",
+}
+_KNOWN_SYSTEM_TEMPLATE_FILES = {
+    "system_a": "experiments/configs/system-a-baseline.yaml",
+    "system_aw": "experiments/configs/system-aw-baseline.yaml",
+    "system_b": "experiments/configs/system-b-sdk-demo.yaml",
+    "system_c": "experiments/configs/system-c-baseline.yaml",
+}
 
 
 def scaffold_workspace(path: Path, manifest: WorkspaceManifest) -> Path:
@@ -294,6 +312,37 @@ def _write_placeholder_config(path: Path, *, system_type: str) -> None:
         "num_episodes_per_run": 3,
     }
     path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
+
+def _write_investigation_config(path: Path, *, system_type: str) -> None:
+    """Write a directly runnable investigation config for *system_type*."""
+    template = _load_known_system_template(system_type)
+    if template is None:
+        _write_placeholder_config(path, system_type=system_type)
+        return
+
+    template["system_type"] = system_type
+    template["experiment_type"] = "single_run"
+    template["execution"] = dict(_SCAFFOLD_EXECUTION)
+    template["logging"] = dict(_SCAFFOLD_LOGGING)
+    path.write_text(yaml.dump(template, default_flow_style=False, sort_keys=False))
+
+
+def _load_known_system_template(system_type: str) -> dict | None:
+    """Load a repo-native scaffold template for a built-in system."""
+    rel_path = _KNOWN_SYSTEM_TEMPLATE_FILES.get(system_type)
+    if rel_path is None:
+        return None
+
+    repo_root = Path(__file__).resolve().parents[4]
+    template_path = repo_root / rel_path
+    if not template_path.is_file():
+        return None
+
+    data = yaml.safe_load(template_path.read_text())
+    if not isinstance(data, dict):
+        return None
+    return data
 
 
 def _write_ofat_starter_config(path: Path, *, system_type: str) -> None:

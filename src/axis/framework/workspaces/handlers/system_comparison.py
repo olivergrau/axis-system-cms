@@ -21,16 +21,16 @@ class SystemComparisonHandler(WorkspaceHandler):
     def create_configs(
         self, ws: Path, manifest: "WorkspaceManifest",
     ) -> list[str]:
-        from axis.framework.workspaces.scaffold import _write_placeholder_config
+        from axis.framework.workspaces.scaffold import _write_investigation_config
 
         configs_dir = ws / "configs"
         ref_name = f"reference-{manifest.reference_system}.yaml"
         cand_name = f"candidate-{manifest.candidate_system}.yaml"
-        _write_placeholder_config(
+        _write_investigation_config(
             configs_dir / ref_name,
             system_type=manifest.reference_system or "system_a",
         )
-        _write_placeholder_config(
+        _write_investigation_config(
             configs_dir / cand_name,
             system_type=manifest.candidate_system or "system_a",
         )

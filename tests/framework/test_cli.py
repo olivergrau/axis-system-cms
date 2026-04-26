@@ -133,6 +133,18 @@ class TestExperimentsRun:
         eid = repo.list_experiments()[0]
         assert len(repo.list_runs(eid)) == 3
 
+    def test_single_run_json_output_is_clean(self, tmp_path, capsys):
+        config_path = _write_json_config(tmp_path, _single_run_config_dict())
+        root = str(tmp_path / "repo")
+        code, out, _ = _run_cli(capsys, [
+            "--root", root, "--output", "json",
+            "experiments", "run", str(config_path),
+        ])
+        assert code == 0
+        data = json.loads(out)
+        assert data["status"] == "completed"
+        assert data["num_runs"] == 1
+
     def test_missing_config_file(self, tmp_path, capsys):
         root = str(tmp_path / "repo")
         code, _, err = _run_cli(capsys, [

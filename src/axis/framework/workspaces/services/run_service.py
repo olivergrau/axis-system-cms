@@ -46,6 +46,7 @@ class WorkspaceRunService:
         allow_world_changes: bool = False,
         override_guard: bool = False,
         run_notes: str | None = None,
+        progress: object | None = None,
     ) -> list[RunServiceResult]:
         """Execute all run targets and sync the manifest.
 
@@ -95,12 +96,20 @@ class WorkspaceRunService:
                 f"{paths} compared to their previous comparable results."
             )
 
-        exec_results = self._execute_fn(ws, run_filter=run_filter)
+        if progress is None:
+            exec_results = self._execute_fn(ws, run_filter=run_filter)
+        else:
+            exec_results = self._execute_fn(
+                ws,
+                run_filter=run_filter,
+                progress=progress,
+            )
 
         summaries: list[RunServiceResult] = []
         for er in exec_results:
             run_ids = [rr.run_id for rr in er.experiment_result.run_results]
             config = er.experiment_result.experiment_config
+            execution = getattr(config, "execution", None)
             if config.experiment_type.value == "single_run":
                 o_form = "point"
                 p_run = "run-0000"
@@ -113,7 +122,7 @@ class WorkspaceRunService:
                 ws, er.experiment_result.experiment_id, run_ids, er.role,
                 config_path=er.config_path,
                 output_form=o_form,
-                trace_mode=config.execution.trace_mode,
+                trace_mode=getattr(execution, "trace_mode", None),
                 system_type=config.system_type,
                 primary_run_id=p_run,
                 baseline_run_id=b_run,

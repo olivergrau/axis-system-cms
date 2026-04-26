@@ -85,6 +85,7 @@ def cmd_experiments_run(
     catalogs: dict | None = None,
 ) -> None:
     from axis.framework.experiment import ExperimentExecutor
+    from axis.framework.progress import create_progress_reporter
 
     path = Path(config_path)
     if not path.exists():
@@ -98,11 +99,12 @@ def cmd_experiments_run(
         fail(f"Invalid config file: {exc}")
 
     try:
-        result = ExperimentExecutor(
-            repository=repo,
-            system_catalog=catalogs.get("systems") if catalogs else None,
-            world_catalog=catalogs.get("worlds") if catalogs else None,
-        ).execute(config)
+        with create_progress_reporter(output != "json") as progress:
+            result = ExperimentExecutor(
+                repository=repo,
+                system_catalog=catalogs.get("systems") if catalogs else None,
+                world_catalog=catalogs.get("worlds") if catalogs else None,
+            ).execute(config, progress=progress)
     except Exception as exc:
         fail(str(exc))
 

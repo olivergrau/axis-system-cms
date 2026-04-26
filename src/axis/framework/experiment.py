@@ -16,6 +16,7 @@ from axis.framework.config import (
 )
 from axis.framework.execution_policy import ParallelismMode, TraceMode
 from axis.framework.execution_results import DeltaRunResult, LightRunResult
+from axis.framework.progress import NullProgressReporter
 from axis.framework.run import RunConfig, RunExecutor, RunResult, RunSummary
 
 if TYPE_CHECKING:
@@ -220,11 +221,17 @@ class ExperimentExecutor:
         )
         self._repository = repository
 
-    def execute(self, config: ExperimentConfig) -> ExperimentResult:
+    def execute(
+        self,
+        config: ExperimentConfig,
+        *,
+        progress: object | None = None,
+    ) -> ExperimentResult:
         """Execute a complete experiment with optional persistence."""
+        reporter = progress or NullProgressReporter()
         if self._repository is None:
-            return self._execute_in_memory(config)
-        return self._execute_with_persistence(config)
+            return self._execute_in_memory(config, progress=reporter)
+        return self._execute_with_persistence(config, progress=reporter)
 
     def resume(self, experiment_id: str) -> ExperimentResult:
         """Resume a persisted experiment. Requires repository."""
@@ -234,8 +241,14 @@ class ExperimentExecutor:
 
     # -- In-memory execution (no repository) --------------------------------
 
-    def _execute_in_memory(self, config: ExperimentConfig) -> ExperimentResult:
+    def _execute_in_memory(
+        self,
+        config: ExperimentConfig,
+        *,
+        progress: object,
+    ) -> ExperimentResult:
         run_configs = resolve_run_configs(config)
+        run_task_id = progress.add_task("Experiment runs", total=len(run_configs))
 
         results: list[RunResult | LightRunResult | DeltaRunResult]
         if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
@@ -246,13 +259,19 @@ class ExperimentExecutor:
                     run_configs,
                     trace_mode=TraceMode(config.execution.trace_mode),
                     max_workers=config.execution.max_workers,
+                    progress_callback=lambda _index: progress.advance(run_task_id),
                 )
             )
         else:
             results = []
             for rc in run_configs:
-                result = self._run_executor.execute(rc)
+                result = self._run_executor.execute(
+                    rc,
+                    progress=progress,
+                    progress_description=f"{rc.run_id or 'run'}: episodes",
+                )
                 results.append(result)
+                progress.advance(run_task_id)
 
         run_results = tuple(results)
         summary = compute_experiment_summary(config, run_results)
@@ -267,7 +286,10 @@ class ExperimentExecutor:
     # -- Persistent execution -----------------------------------------------
 
     def _execute_with_persistence(
-        self, config: ExperimentConfig,
+        self,
+        config: ExperimentConfig,
+        *,
+        progress: object,
     ) -> ExperimentResult:
         from axis.framework.persistence import ExperimentMetadata, ExperimentStatus, RunStatus
 
@@ -309,6 +331,7 @@ class ExperimentExecutor:
 
         # Resolve and execute runs
         run_configs = resolve_run_configs(config)
+        run_task_id = progress.add_task("Experiment runs", total=len(run_configs))
         run_results: list[RunResult | LightRunResult | DeltaRunResult] = []
         completed_count = 0
 
@@ -330,6 +353,7 @@ class ExperimentExecutor:
                     run_configs,
                     trace_mode=TraceMode(config.execution.trace_mode),
                     max_workers=config.execution.max_workers,
+                    progress_callback=lambda _index: progress.advance(run_task_id),
                 )
                 for i, result in enumerate(results):
                     run_config = run_configs[i]
@@ -347,10 +371,11 @@ class ExperimentExecutor:
                 run_id = run_config.run_id or f"run-{i:04d}"
                 try:
                     result = self._execute_and_persist_run(
-                        experiment_id, run_config, config, i,
+                        experiment_id, run_config, config, i, progress=progress,
                     )
                     run_results.append(result)
                     completed_count += 1
+                    progress.advance(run_task_id)
                 except Exception:
                     repo.save_run_status(experiment_id, run_id, RunStatus.FAILED)
                     if completed_count > 0:
@@ -428,7 +453,9 @@ class ExperimentExecutor:
         run_config: RunConfig,
         config: ExperimentConfig,
         run_index: int,
-    ) -> RunResult | LightRunResult:
+        *,
+        progress: object | None = None,
+    ) -> RunResult | LightRunResult | DeltaRunResult:
         """Execute a single run and persist all its artifacts."""
         from axis.framework.persistence import RunMetadata, RunStatus
 
@@ -448,7 +475,11 @@ class ExperimentExecutor:
         )
         repo.save_run_status(experiment_id, run_id, RunStatus.RUNNING)
 
-        result = self._run_executor.execute(run_config)
+        result = self._run_executor.execute(
+            run_config,
+            progress=progress,
+            progress_description=f"{run_id}: episodes",
+        )
         self._persist_completed_run(experiment_id, run_config, result, run_index)
         return result
 

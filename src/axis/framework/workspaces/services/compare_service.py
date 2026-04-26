@@ -38,6 +38,7 @@ class WorkspaceCompareService:
         candidate_experiment: str | None = None,
         *,
         allow_world_changes: bool = False,
+        progress: object | None = None,
     ) -> CompareServiceResult:
         """Run a comparison and sync the manifest.
 
@@ -51,11 +52,14 @@ class WorkspaceCompareService:
             raise ValueError(
                 "Workspace is closed; no further comparisons are allowed."
             )
+        compare_kwargs = {"allow_world_changes": allow_world_changes}
+        if progress is not None:
+            compare_kwargs["progress"] = progress
         envelope, ws_relative_path = self._compare_fn(
             ws,
             reference_experiment,
             candidate_experiment,
-            allow_world_changes=allow_world_changes,
+            **compare_kwargs,
         )
         self._sync_fn(ws, ws_relative_path)
 

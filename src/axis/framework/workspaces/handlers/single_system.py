@@ -21,7 +21,7 @@ class SingleSystemHandler(WorkspaceHandler):
         self, ws: Path, manifest: "WorkspaceManifest",
     ) -> list[str]:
         from axis.framework.workspaces.scaffold import (
-            _write_placeholder_config,
+            _write_investigation_config,
         )
 
         configs_dir = ws / "configs"
@@ -29,7 +29,7 @@ class SingleSystemHandler(WorkspaceHandler):
 
         # Create a point baseline config (default scaffold).
         baseline_name = f"{system}-baseline.yaml"
-        _write_placeholder_config(
+        _write_investigation_config(
             configs_dir / baseline_name,
             system_type=system,
         )

@@ -9,6 +9,7 @@ from pathlib import Path
 from axis.framework.workspaces.scaffold import scaffold_workspace
 from axis.framework.workspaces.types import WorkspaceManifest, WorkspaceType
 from axis.framework.workspaces.validation import check_workspace
+from axis.framework.cli.commands.experiments import _load_config_file
 
 
 def _make_manifest(**overrides) -> WorkspaceManifest:
@@ -83,6 +84,56 @@ class TestScaffold:
         configs = list((ws / "configs").glob("*.yaml"))
         assert len(configs) >= 2
         assert check_workspace(ws).is_valid
+
+    def test_single_system_scaffold_uses_system_specific_template(self, tmp_path):
+        ws = tmp_path / "aw-ws"
+        manifest = _make_manifest(
+            workspace_id="aw-ws",
+            system_under_test="system_aw",
+        )
+        scaffold_workspace(ws, manifest)
+
+        config_path = ws / "configs" / "system_aw-baseline.yaml"
+        data = yaml.safe_load(config_path.read_text())
+        assert data["execution"] == {
+            "max_steps": 200,
+            "trace_mode": "delta",
+            "parallelism_mode": "episodes",
+            "max_workers": 4,
+        }
+        assert data["logging"] == {
+            "enabled": False,
+            "console_enabled": False,
+            "jsonl_enabled": False,
+            "verbosity": "compact",
+        }
+        assert "curiosity" in data["system"]
+        assert "arbitration" in data["system"]
+        cfg = _load_config_file(config_path)
+        assert cfg.system_type == "system_aw"
+
+    def test_comparison_scaffold_uses_world_appropriate_template(self, tmp_path):
+        ws = tmp_path / "b-cmp"
+        manifest = WorkspaceManifest.model_validate({
+            "workspace_id": "b-cmp",
+            "title": "Comparison",
+            "workspace_class": "investigation",
+            "workspace_type": "system_comparison",
+            "status": "draft",
+            "lifecycle_stage": "idea",
+            "created_at": "2026-01-01",
+            "question": "Which is better?",
+            "reference_system": "system_b",
+            "candidate_system": "system_c",
+        })
+        scaffold_workspace(ws, manifest)
+
+        ref_cfg = _load_config_file(ws / "configs" / "reference-system_b.yaml")
+        cand_cfg = _load_config_file(ws / "configs" / "candidate-system_c.yaml")
+        assert ref_cfg.world.world_type == "signal_landscape"
+        assert cand_cfg.world.world_type == "grid_2d"
+        assert ref_cfg.execution.trace_mode == "delta"
+        assert cand_cfg.execution.parallelism_mode == "episodes"
 
     def test_creates_valid_development(self, tmp_path):
         ws = tmp_path / "dev-ws"

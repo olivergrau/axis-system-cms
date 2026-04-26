@@ -10,6 +10,8 @@ from axis.framework.cli.output import fail, stdout_output
 
 def cmd_compare(args: argparse.Namespace, repo, output: str, catalogs: dict | None = None) -> None:
     """Run paired trace comparison between two episodes or full runs."""
+    from axis.framework.progress import create_progress_reporter
+
     ref_ep = args.reference_episode
     cand_ep = args.candidate_episode
 
@@ -20,10 +22,13 @@ def cmd_compare(args: argparse.Namespace, repo, output: str, catalogs: dict | No
             "provided (single-episode mode) or both omitted (run-level mode)."
         )
 
-    if ref_ep is not None:
-        _cmd_compare_episode(args, repo, output, catalogs=catalogs)
-    else:
-        _cmd_compare_runs(args, repo, output, catalogs=catalogs)
+    with create_progress_reporter(output != "json") as progress:
+        if ref_ep is not None:
+            _cmd_compare_episode(args, repo, output, catalogs=catalogs)
+        else:
+            _cmd_compare_runs(
+                args, repo, output, catalogs=catalogs, progress=progress,
+            )
 
 
 def _cmd_compare_episode(args: argparse.Namespace, repo, output: str, catalogs: dict | None = None) -> None:
@@ -81,7 +86,14 @@ def _cmd_compare_episode(args: argparse.Namespace, repo, output: str, catalogs: 
         _print_comparison_text(result)
 
 
-def _cmd_compare_runs(args: argparse.Namespace, repo, output: str, catalogs: dict | None = None) -> None:
+def _cmd_compare_runs(
+    args: argparse.Namespace,
+    repo,
+    output: str,
+    catalogs: dict | None = None,
+    *,
+    progress: object | None = None,
+) -> None:
     """Full-run comparison with statistical summary."""
     from axis.framework.comparison import compare_runs
 
@@ -91,6 +103,7 @@ def _cmd_compare_runs(args: argparse.Namespace, repo, output: str, catalogs: dic
         args.candidate_experiment, args.candidate_run,
         allow_world_changes=getattr(args, "allow_world_changes", False),
         extension_catalog=catalogs.get("comparison_extensions") if catalogs else None,
+        progress=progress,
     )
 
     if output == "json":

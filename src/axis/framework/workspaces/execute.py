@@ -36,7 +36,10 @@ class WorkspaceExecutionResult:
 
 
 def execute_workspace(
-    workspace_path: Path, run_filter: str | None = None,
+    workspace_path: Path,
+    run_filter: str | None = None,
+    *,
+    progress: object | None = None,
 ) -> list[WorkspaceExecutionResult]:
     """Execute all run targets in a workspace (workspace-owned mode).
 
@@ -78,17 +81,28 @@ def execute_workspace(
     # Workspace-local repository: artifacts go under <workspace>/results/.
     repo = ExperimentRepository(results_dir)
     executor = ExperimentExecutor(repository=repo)
+    workspace_task_id = None
+    if progress is not None:
+        workspace_task_id = progress.add_task(
+            "Workspace configs",
+            total=len(plan.targets),
+        )
 
     results: list[WorkspaceExecutionResult] = []
 
     for target in plan.targets:
         config_path = ws / target.config_path
         config = _load_config_file(config_path)
-        experiment_result = executor.execute(config)
+        experiment_result = executor.execute(
+            config,
+            progress=progress,
+        )
         results.append(WorkspaceExecutionResult(
             experiment_result=experiment_result,
             role=target.role,
             config_path=target.config_path,
         ))
+        if progress is not None and workspace_task_id is not None:
+            progress.advance(workspace_task_id)
 
     return results
