@@ -38,6 +38,7 @@ class WorkspaceCompareService:
         candidate_experiment: str | None = None,
         *,
         allow_world_changes: bool = False,
+        extension_catalog: object | None = None,
         progress: object | None = None,
     ) -> CompareServiceResult:
         """Run a comparison and sync the manifest.
@@ -53,6 +54,8 @@ class WorkspaceCompareService:
                 "Workspace is closed; no further comparisons are allowed."
             )
         compare_kwargs = {"allow_world_changes": allow_world_changes}
+        if extension_catalog is not None:
+            compare_kwargs["extension_catalog"] = extension_catalog
         if progress is not None:
             compare_kwargs["progress"] = progress
         envelope, ws_relative_path = self._compare_fn(

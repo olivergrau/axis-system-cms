@@ -1,0 +1,87 @@
+# System C+W baseline experiment
+system_type: "system_cw"
+experiment_type: "single_run"
+
+general:
+  seed: 42
+
+execution:
+  max_steps: 200
+
+world:
+  world_type: "grid_2d"
+  grid_width: 10
+  grid_height: 10
+  obstacle_density: 0.15
+  resource_regen_rate: 0.2
+  resource_regen_cooldown_steps: 0
+  topology: "bounded"
+  regeneration_mode: "sparse_fixed_ratio"
+  regen_eligible_ratio: 0.17
+
+system:
+  agent:
+    initial_energy: 50.0
+    max_energy: 100.0
+    buffer_capacity: 10
+  policy:
+    selection_mode: "sample"
+    temperature: 0.5
+    stay_suppression: 0.1
+    consume_weight: 2.5
+  transition:
+    move_cost: 1.0
+    consume_cost: 1.0
+    stay_cost: 0.5
+    max_consume: 1.0
+    energy_gain_factor: 10.0
+  curiosity:
+    base_curiosity: 1.0
+    spatial_sensory_balance: 0.5
+    explore_suppression: 0.3
+    novelty_sharpness: 1.0
+  arbitration:
+    hunger_weight_base: 0.3
+    curiosity_weight_base: 1.0
+    gating_sharpness: 2.0
+  prediction:
+    shared:
+      memory_learning_rate: 0.3
+      resource_threshold: 0.5
+      novelty_threshold: 0.35
+      novelty_contrast_threshold: 0.15
+      context_cardinality: 64
+      local_resource_current_weight: 0.7
+      local_resource_neighbor_weight: 0.3
+      positive_weights: [0.25, 0.10, 0.10, 0.10, 0.10, 0.0875, 0.0875, 0.0875, 0.0875, 0.0]
+      negative_weights: [0.25, 0.10, 0.10, 0.10, 0.10, 0.0875, 0.0875, 0.0875, 0.0875, 0.0]
+    hunger:
+      frustration_rate: 0.2
+      confidence_rate: 0.15
+      positive_sensitivity: 1.0
+      negative_sensitivity: 1.5
+      modulation_min: 0.3
+      modulation_max: 2.0
+      modulation_mode: "multiplicative"
+      prediction_bias_scale: 0.2
+      prediction_bias_clip: 1.0
+    curiosity:
+      frustration_rate: 0.2
+      confidence_rate: 0.15
+      positive_sensitivity: 1.0
+      negative_sensitivity: 1.5
+      modulation_min: 0.3
+      modulation_max: 2.0
+      modulation_mode: "multiplicative"
+      prediction_bias_scale: 0.2
+      prediction_bias_clip: 1.0
+    outcomes:
+      nonmove_curiosity_penalty: 0.2
+
+logging:
+  enabled: true
+  console_enabled: true
+  jsonl_enabled: false
+  verbosity: "compact"
+
+num_episodes_per_run: 5

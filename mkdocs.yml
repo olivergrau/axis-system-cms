@@ -44,6 +44,7 @@ nav:
       - "System A": cheat-sheets/system-a.md
       - "System A+W": cheat-sheets/system-aw.md
       - "System C": cheat-sheets/system-c.md
+      - "System C+W": cheat-sheets/system-cw.md
 
   - Tutorials:
       - tutorials/index.md
@@ -103,6 +104,10 @@ nav:
           - system-design/system-c/index.md
           - "Formal Model": system-design/system-c/01_System C Model.md
           - "Worked Examples": system-design/system-c/02_System C Worked Examples.md
+      - "System C+W":
+          - system-design/system-cw/index.md
+          - "Formal Model": system-design/system-cw/01_System C+W Model.md
+          - "Worked Examples": system-design/system-cw/02_System C+W Worked Examples.md
 
 plugins:
   - search

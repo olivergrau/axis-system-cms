@@ -54,6 +54,12 @@ with:
 - $r_c$: resource at the current cell
 - $r_u, r_d, r_l, r_r$: resource values in the four directions
 
+The system uses the von Neumann neighborhood in the fixed order:
+
+$$
+(UP, DOWN, LEFT, RIGHT)
+$$
+
 ## 3. Hunger Drive
 
 The only motivational source is hunger.
@@ -112,7 +118,10 @@ The policy consumes the action scores and performs softmax selection over
 admissible actions:
 
 $$
-\pi(a \mid u_t, x_t) \propto \exp\!\left(\tau\,\varphi_H(a)\right)
+\pi(a \mid u_t, x_t)
+=
+\frac{\exp\!\left(\tau\,\varphi_H(a)\right)}
+{\sum_{a' \in \mathcal{A}_{adm}(u_t)} \exp\!\left(\tau\,\varphi_H(a')\right)}
 $$
 
 where $\tau > 0$ is the temperature.
@@ -142,6 +151,11 @@ where:
 $$
 m_{t+1} = M(m_t, u_{t+1})
 $$
+
+Here $M$ is FIFO buffer update:
+
+- append $u_{t+1}$ to the buffer
+- if capacity is exceeded, drop the oldest entry
 
 ### Termination
 

@@ -3,46 +3,94 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from axis.framework.cli.output import fail, stdout_output
 
 
+def _fmt_metric_value(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:.6f}"
+    if value is None:
+        return "-"
+    return str(value)
+
+
+def _print_rich_metric_table(
+    title: str,
+    rows: list[tuple[str, Any]],
+    *,
+    caption: str | None = None,
+) -> None:
+    from rich.console import Console
+    from rich.table import Table
+
+    out = stdout_output()
+    console = Console(file=out.stream, force_terminal=False, color_system=None)
+    table = Table(title=title)
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", justify="right")
+    for metric, value in rows:
+        table.add_row(metric, _fmt_metric_value(value))
+    if caption:
+        table.caption = caption
+    console.print(table)
+
+
+def _system_metric_sort_key(key: str) -> tuple[int, str]:
+    preferred_order = {
+        "arbitration": 0,
+        "prediction": 1,
+        "modulation": 2,
+        "traces": 3,
+        "curiosity": 4,
+        "world_model": 5,
+        "behavior": 6,
+        "prediction_impact": 7,
+        "comparison": 8,
+    }
+    suffix = key
+    if "_" in key:
+        suffix = key.split("system_", 1)[-1]
+        if "_" in suffix:
+            suffix = suffix.split("_", 1)[-1]
+    return (preferred_order.get(suffix, 999), key)
+
+
 def _render_behavior_metrics_text(behavior: dict) -> None:
     """Render one behavioral metrics payload in text form."""
-    def _fmt(value: float) -> str:
-        return f"{value:.6f}"
-
     out = stdout_output()
     metrics = behavior["standard_metrics"]
     out.section("Behavioral Metrics")
-    out.list_row(
-        f"resource_gain_per_step={_fmt(metrics['resource_gain_per_step']['mean'])}",
-        f"net_energy_efficiency={_fmt(metrics['net_energy_efficiency']['mean'])}",
-        f"successful_consume_rate={_fmt(metrics['successful_consume_rate']['mean'])}",
-    )
-    out.list_row(
-        f"failed_movement_rate={_fmt(metrics['failed_movement_rate']['mean'])}",
-        f"action_entropy={_fmt(metrics['action_entropy']['mean'])}",
-        f"policy_sharpness={_fmt(metrics['policy_sharpness']['mean'])}",
-    )
-    out.list_row(
-        f"unique_cells_visited={_fmt(metrics['unique_cells_visited']['mean'])}",
-        f"coverage_efficiency={_fmt(metrics['coverage_efficiency']['mean'])}",
-        f"revisit_rate={_fmt(metrics['revisit_rate']['mean'])}",
+    _print_rich_metric_table(
+        "Standard Metrics",
+        [
+            ("resource_gain_per_step", metrics["resource_gain_per_step"]["mean"]),
+            ("net_energy_efficiency", metrics["net_energy_efficiency"]["mean"]),
+            ("successful_consume_rate", metrics["successful_consume_rate"]["mean"]),
+            ("failed_movement_rate", metrics["failed_movement_rate"]["mean"]),
+            ("action_entropy", metrics["action_entropy"]["mean"]),
+            ("policy_sharpness", metrics["policy_sharpness"]["mean"]),
+            ("unique_cells_visited", metrics["unique_cells_visited"]["mean"]),
+            ("coverage_efficiency", metrics["coverage_efficiency"]["mean"]),
+            ("revisit_rate", metrics["revisit_rate"]["mean"]),
+        ],
+        caption="Mean values across the run.",
     )
     if behavior.get("system_specific_metrics"):
         out.section("System Metrics")
-        for key, values in behavior["system_specific_metrics"].items():
+        items = sorted(
+            behavior["system_specific_metrics"].items(),
+            key=lambda item: _system_metric_sort_key(item[0]),
+        )
+        for key, values in items:
             if not isinstance(values, dict):
-                out.list_row(f"{key}={values}")
+                _print_rich_metric_table(key, [(key, values)])
                 continue
-            parts = []
-            for metric_key, metric_value in values.items():
-                if isinstance(metric_value, float):
-                    parts.append(f"{metric_key}={_fmt(metric_value)}")
-                else:
-                    parts.append(f"{metric_key}={metric_value}")
-            out.list_row(key, *parts)
+            _print_rich_metric_table(
+                key,
+                [(metric_key, metric_value) for metric_key, metric_value in values.items()],
+            )
 
 
 def cmd_runs_list(repo, experiment_id: str, output: str) -> None:

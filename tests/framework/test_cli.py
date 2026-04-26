@@ -8,6 +8,22 @@ from pathlib import Path
 import pytest
 import yaml
 
+from axis.framework.cli.commands.compare import print_run_comparison_text
+from axis.framework.comparison.types import (
+    ActionDivergence,
+    ActionUsageComparison,
+    AlignmentSummary,
+    GenericComparisonMetrics,
+    OutcomeComparison,
+    PairedTraceComparisonResult,
+    PairIdentity,
+    PairValidationResult,
+    PositionDivergence,
+    ResultMode,
+    RunComparisonResult,
+    RunComparisonSummary,
+    VitalityDivergence,
+)
 from axis.framework.cli import main
 from axis.framework.persistence import (
     ExperimentRepository,
@@ -346,9 +362,49 @@ class TestRunsMetrics:
 
         _render_behavior_metrics_text(payload)
         out = capsys.readouterr().out
-        assert "resource_gain_per_step=0.588000" in out
-        assert "unique_cells_visited=49.620000" in out
-        assert "prediction_modulation_strength=0.000400" in out
+        assert "Standard Metrics" in out
+        assert "resource_gain_per_step" in out
+        assert "0.588000" in out
+        assert "unique_cells_visited" in out
+        assert "49.620000" in out
+        assert "system_c_prediction" in out
+        assert "prediction_modulation_strength" in out
+        assert "0.000400" in out
+
+    def test_metrics_run_text_orders_system_cw_blocks(self, capsys):
+        from axis.framework.cli.commands.runs import _render_behavior_metrics_text
+
+        payload = {
+            "standard_metrics": {
+                "resource_gain_per_step": {"mean": 0.1},
+                "net_energy_efficiency": {"mean": 0.2},
+                "successful_consume_rate": {"mean": 0.3},
+                "failed_movement_rate": {"mean": 0.4},
+                "action_entropy": {"mean": 0.5},
+                "policy_sharpness": {"mean": 0.6},
+                "unique_cells_visited": {"mean": 0.7},
+                "coverage_efficiency": {"mean": 0.8},
+                "revisit_rate": {"mean": 0.9},
+            },
+            "system_specific_metrics": {
+                "system_cw_prediction_impact": {"behavioral_prediction_impact_rate": 0.3},
+                "system_cw_world_model": {"world_model_unique_cells": 4.0},
+                "system_cw_traces": {"hunger_trace_balance": 0.2},
+                "system_cw_curiosity": {"mean_composite_novelty": 0.4},
+                "system_cw_arbitration": {"mean_hunger_weight": 0.5},
+                "system_cw_modulation": {"hunger_modulation_strength": 0.6},
+                "system_cw_prediction": {"feature_prediction_error_mean": 0.7},
+            },
+        }
+
+        _render_behavior_metrics_text(payload)
+        out = capsys.readouterr().out
+        assert out.index("system_cw_arbitration") < out.index("system_cw_prediction")
+        assert out.index("system_cw_prediction") < out.index("system_cw_modulation")
+        assert out.index("system_cw_modulation") < out.index("system_cw_traces")
+        assert out.index("system_cw_traces") < out.index("system_cw_curiosity")
+        assert out.index("system_cw_curiosity") < out.index("system_cw_world_model")
+        assert out.index("system_cw_world_model") < out.index("system_cw_prediction_impact")
 
 
 # ---------------------------------------------------------------------------
@@ -404,6 +460,59 @@ class TestCompare:
         assert code == 0
         assert "Comparison" in out
         assert "Alignment" in out or "Metrics" in out
+
+    def test_compare_run_text_includes_system_specific_summary(self, capsys):
+        episode = PairedTraceComparisonResult(
+            result_mode=ResultMode.COMPARISON_SUCCEEDED,
+            identity=PairIdentity(
+                reference_system_type="system_aw",
+                candidate_system_type="system_cw",
+            ),
+            validation=PairValidationResult(is_valid_pair=True),
+            alignment=AlignmentSummary(
+                reference_total_steps=1,
+                candidate_total_steps=1,
+                aligned_steps=1,
+            ),
+            metrics=GenericComparisonMetrics(
+                action_divergence=ActionDivergence(),
+                position_divergence=PositionDivergence(),
+                vitality_divergence=VitalityDivergence(),
+                action_usage=ActionUsageComparison(),
+            ),
+            outcome=OutcomeComparison(
+                reference_termination_reason="max_steps_reached",
+                candidate_termination_reason="max_steps_reached",
+                reference_final_vitality=0.5,
+                candidate_final_vitality=0.6,
+                reference_total_steps=1,
+                candidate_total_steps=1,
+            ),
+            system_specific_analysis={
+                "system_cw_comparison": {
+                    "comparison_scope": "aw_cw_intersection",
+                    "mean_hunger_weight_delta": -0.2,
+                },
+            },
+        )
+        result = RunComparisonResult(
+            reference_run_id="run-0000",
+            candidate_run_id="run-0001",
+            reference_system_type="system_aw",
+            candidate_system_type="system_cw",
+            episode_results=(episode,),
+            summary=RunComparisonSummary(
+                num_episodes_compared=1,
+                num_valid_pairs=1,
+                num_invalid_pairs=0,
+            ),
+        )
+
+        print_run_comparison_text(result)
+        out = capsys.readouterr().out
+        assert "System-specific Summary" in out
+        assert "system_cw_comparison" in out
+        assert "comparison_scope" in out
 
 
 # ---------------------------------------------------------------------------

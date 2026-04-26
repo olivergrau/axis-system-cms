@@ -62,9 +62,9 @@ class TestCrossSystemBoundaries:
     def test_no_cross_system_imports(self) -> None:
         """All shared code should come from the construction kit."""
         violations: list[str] = []
-        for system_name in ("system_a", "system_aw", "system_b", "system_c"):
+        for system_name in ("system_a", "system_aw", "system_b", "system_c", "system_cw"):
             other_systems = [
-                s for s in ("system_a", "system_aw", "system_b", "system_c")
+                s for s in ("system_a", "system_aw", "system_b", "system_c", "system_cw")
                 if s != system_name
             ]
             for other in other_systems:

@@ -29,6 +29,21 @@ observation in canonical order. This is the explicit abstraction boundary
 so that future systems can swap in a different feature extractor without
 touching the rest of the predictive pipeline.
 
+The important architectural point is that the **predictive memory and
+error code do not depend on this exact 5-dimensional feature map**.
+`extract_predictive_features()` is simply the baseline helper used by
+System C.
+
+System C+W reuses the same predictive memory and error machinery with a
+different, system-local feature extractor:
+
+- 5 exogenous local resource features
+- 4 directional novelty-derived features
+- 1 local mean novelty feature
+
+This yields a 10-dimensional predictive target while still using the
+same generic `PredictiveMemory` and `compute_prediction_error()` logic.
+
 ---
 
 ## Context Encoding
@@ -53,6 +68,16 @@ threshold). The 5 bits are packed into an integer:
 | center | up | down | left | right |
 
 This yields $|S| = 2^5 = 32$ discrete contexts.
+
+As with feature extraction, the predictive core does not require this
+exact context encoder. System C uses the simple 5-bit resource encoder
+above, while System C+W uses a system-local compact encoder over mixed
+resource and novelty-derived features. The shared contract is only:
+
+$$C(y_t) \to s_t \in \mathcal{S}_{disc}$$
+
+where $s_t$ is a compact discrete context suitable for lookup in
+predictive memory and trace state.
 
 ---
 
@@ -84,6 +109,12 @@ $$q_{t+1}(s_t, a_t) = (1 - \eta_q) \cdot q_t(s_t, a_t) + \eta_q \cdot y_{t+1}$$
 `PredictiveMemory` is a frozen Pydantic model. Updates return a new
 instance. Entries are stored as sorted tuples for serialization
 compatibility.
+
+Because the memory stores tuples of floats without assuming a fixed
+semantic interpretation, the same structure can support:
+
+- System C: resource-only predictive targets
+- System C+W: mixed resource + novelty-derived predictive targets
 
 ---
 
@@ -137,3 +168,4 @@ the center cell (current position) at 4x the weight of each neighbor.
 - [Traces](traces.md) -- dual-trace accumulation from prediction errors
 - [Modulation](modulation.md) -- action score modulation from traces
 - [System C Math Spec](../system-design/system-c/index.md) -- full mathematical model
+- [System C+W Math Spec](../system-design/system-cw/index.md) -- shared predictive memory with mixed resource/novelty targets

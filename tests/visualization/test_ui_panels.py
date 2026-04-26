@@ -422,6 +422,55 @@ class TestPredictionSummaryWidget:
         width = _visible_modulation_bar_width(0.0, 80.0)
         assert width == 0.0
 
+    def test_widget_accepts_dual_prediction_payload(self, qapp) -> None:
+        from axis.visualization.ui.prediction_summary_widget import PredictionSummaryWidget
+
+        widget = PredictionSummaryWidget()
+        widget.set_data({
+            "widget_mode": "dual_prediction",
+            "context": 19,
+            "features": (0.5, 0.2, 0.0, 0.1, 0.8),
+            "selected_action": "right",
+            "counterfactual_top_action": "consume",
+            "hunger": {
+                "modulation_factors": {
+                    "up": 1.2, "down": 0.8, "left": 1.0,
+                    "right": 1.3, "consume": 1.1, "stay": 0.9,
+                },
+                "confidences": {
+                    "up": 0.4, "down": 0.0, "left": 0.1,
+                    "right": 0.5, "consume": 0.2, "stay": 0.0,
+                },
+                "frustrations": {
+                    "up": 0.0, "down": 0.3, "left": 0.0,
+                    "right": 0.0, "consume": 0.0, "stay": 0.1,
+                },
+                "error_positive": 0.12,
+                "error_negative": 0.01,
+            },
+            "curiosity": {
+                "modulation_factors": {
+                    "up": 1.1, "down": 0.7, "left": 0.9,
+                    "right": 1.25, "consume": 0.8, "stay": 0.75,
+                },
+                "confidences": {
+                    "up": 0.3, "down": 0.0, "left": 0.0,
+                    "right": 0.4, "consume": 0.0, "stay": 0.0,
+                },
+                "frustrations": {
+                    "up": 0.0, "down": 0.35, "left": 0.1,
+                    "right": 0.0, "consume": 0.2, "stay": 0.2,
+                },
+                "error_positive": 0.09,
+                "error_negative": 0.02,
+            },
+        })
+        widget.resize(280, widget.height())
+        widget.show()
+        qapp.processEvents()
+        assert widget.isVisible()
+        assert widget.height() > 200
+
 
 # ---------------------------------------------------------------------------
 # ReplayControlsPanel tests

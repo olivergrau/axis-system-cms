@@ -14,6 +14,7 @@ from axis.framework.comparison.extensions import (
 
 # Ensure system_c comparison extension is registered for tests.
 import axis.systems.system_c.comparison  # noqa: F401
+import axis.systems.system_cw.comparison  # noqa: F401
 from axis.framework.comparison.metrics import (
     compute_action_divergence,
     compute_position_divergence,
@@ -38,6 +39,7 @@ from tests.framework.comparison.fixtures import (
     make_identical_pair,
     make_step,
     make_system_c_step,
+    make_system_cw_step,
 )
 
 
@@ -432,6 +434,14 @@ class TestExtensionDispatch:
         assert result is not None
         assert "system_c_prediction" in result
 
+    def test_system_cw_extension_called(self):
+        ref = make_episode([make_system_cw_step(0)], system_type="system_cw")
+        cand = make_episode([make_system_cw_step(0)], system_type="system_cw")
+        alignment = compute_alignment(ref, cand)
+        result = build_system_specific_analysis(ref, cand, alignment)
+        assert result is not None
+        assert "system_cw_comparison" in result
+
 
 # ===================================================================
 # WP-10: System C extension tests
@@ -499,6 +509,74 @@ class TestSystemCExtension:
         result = compare_episode_traces(ref, cand)
         sc = result.system_specific_analysis["system_c_prediction"]
         assert sc["mean_modulation_delta"] == pytest.approx(0.5)
+
+
+class TestSystemCWExtension:
+    def test_cw_full_analysis(self):
+        ref = make_episode(
+            [make_system_cw_step(0, combined_scores=(0.1, 0.3, 0.2, 0.1, -0.1, -0.2))],
+            system_type="system_cw",
+        )
+        cand = make_episode(
+            [make_system_cw_step(0, combined_scores=(0.4, 0.3, 0.2, 0.1, -0.1, -0.2))],
+            system_type="system_cw",
+        )
+        result = compare_episode_traces(ref, cand)
+        ext = result.system_specific_analysis
+        assert ext is not None
+        data = ext["system_cw_comparison"]
+        assert data["comparison_scope"] == "cw_full"
+        assert data["behavioral_prediction_impact_rate_delta"] == pytest.approx(1.0)
+        assert "mean_feature_prediction_error_delta" in data
+
+    def test_aw_cw_intersection_only(self):
+        ref = make_episode(
+            [make_step(
+                0,
+                action="up",
+                system_data={
+                    "decision_data": {
+                        "curiosity_drive": {
+                            "activation": 0.2,
+                            "composite_novelty": (0.1, 0.1, 0.1, 0.1),
+                        },
+                        "arbitration": {
+                            "hunger_weight": 0.7,
+                            "curiosity_weight": 0.3,
+                        },
+                    },
+                    "trace_data": {"visit_count_at_current": 1.0},
+                },
+            )],
+            system_type="system_aw",
+        )
+        cand = make_episode([make_system_cw_step(0)], system_type="system_cw")
+        result = compare_episode_traces(ref, cand)
+        ext = result.system_specific_analysis
+        assert ext is not None
+        data = ext["system_cw_comparison"]
+        assert data["comparison_scope"] == "aw_cw_intersection"
+        assert "mean_hunger_weight_delta" in data
+        assert "mean_feature_prediction_error_delta" not in data
+
+    def test_c_cw_prediction_intersection_only(self):
+        ref = make_episode(
+            [make_system_c_step(
+                0,
+                action="up",
+                raw_contributions={"up": 0.1, "consume": 0.2},
+                modulated_scores={"up": 0.4, "consume": 0.1},
+            )],
+            system_type="system_c",
+        )
+        cand = make_episode([make_system_cw_step(0)], system_type="system_cw")
+        result = compare_episode_traces(ref, cand)
+        ext = result.system_specific_analysis
+        assert ext is not None
+        data = ext["system_cw_comparison"]
+        assert data["comparison_scope"] == "c_cw_prediction_intersection"
+        assert "prediction_modulation_delta_shift" in data
+        assert "mean_hunger_weight_delta" not in data
 
 
 # ===================================================================

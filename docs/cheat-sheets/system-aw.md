@@ -63,7 +63,19 @@ $$
 ### Contributions
 
 $$
-\varphi_H(dir) = d_H \cdot r_{dir}
+\varphi_H(UP) = d_H \cdot r_u
+$$
+
+$$
+\varphi_H(DOWN) = d_H \cdot r_d
+$$
+
+$$
+\varphi_H(LEFT) = d_H \cdot r_l
+$$
+
+$$
+\varphi_H(RIGHT) = d_H \cdot r_r
 $$
 
 $$
@@ -124,15 +136,27 @@ where $\mu_C$ is the base-curiosity level.
 ### Curiosity action contributions
 
 $$
-\varphi_C(dir) = \nu_{dir}
+\varphi_C(UP) = d_C \cdot \nu_u
 $$
 
 $$
-\varphi_C(CONSUME) = -\lambda_{\text{explore}}
+\varphi_C(DOWN) = d_C \cdot \nu_d
 $$
 
 $$
-\varphi_C(STAY) = -\lambda_{\text{explore}}
+\varphi_C(LEFT) = d_C \cdot \nu_l
+$$
+
+$$
+\varphi_C(RIGHT) = d_C \cdot \nu_r
+$$
+
+$$
+\varphi_C(CONSUME) = -d_C \cdot \lambda_{\text{explore}}
+$$
+
+$$
+\varphi_C(STAY) = -d_C \cdot \lambda_{\text{explore}}
 $$
 
 ## 5. Drive Arbitration
@@ -160,10 +184,17 @@ where:
 For each action $a$:
 
 $$
-\psi(a,t) = w_H(t)\,d_H(t)\,\varphi_H(a) + w_C(t)\,d_C(t)\,\varphi_C(a)
+\psi(a,t) = w_H(t)\,\varphi_H(a) + w_C(t)\,\varphi_C(a)
 $$
 
-Then the softmax policy selects from $\psi(a,t)$.
+Then the softmax policy selects from $\psi(a,t)$:
+
+$$
+\pi(a \mid x_t, u_t)
+=
+\frac{\exp(\tau\,\psi(a,t))}
+{\sum_{a' \in \mathcal{A}_{adm}(u_t)} \exp(\tau\,\psi(a',t))}
+$$
 
 ## 6. Transition and World Model Update
 
@@ -175,6 +206,17 @@ visit-count updating.
 $$
 e_{t+1} = \mathrm{clip}\!\left(e_t - \mathrm{cost}(a_t) + g \cdot \rho_t,\; E_{\max}\right)
 $$
+
+### Observation-buffer update
+
+$$
+m_{t+1} = M(m_t, u_{t+1})
+$$
+
+where $M$ is FIFO update:
+
+- append $u_{t+1}$
+- drop the oldest entry if capacity is exceeded
 
 ### Relative position update
 

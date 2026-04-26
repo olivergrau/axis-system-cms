@@ -80,6 +80,22 @@ $$
 s_t = C(y_t) \in \{0,\dots,31\}
 $$
 
+With threshold $\theta_r$, this means:
+
+$$
+b_c = \mathbf{1}[r_c \ge \theta_r],\quad
+b_u = \mathbf{1}[r_u \ge \theta_r],\quad
+b_d = \mathbf{1}[r_d \ge \theta_r],\quad
+b_l = \mathbf{1}[r_l \ge \theta_r],\quad
+b_r = \mathbf{1}[r_r \ge \theta_r]
+$$
+
+and
+
+$$
+s_t = 16b_c + 8b_u + 4b_d + 2b_l + b_r
+$$
+
 So prediction is keyed by:
 
 $$
@@ -229,6 +245,17 @@ Prediction still does not become a full drive in these modes, because the
 additive bias is explicitly bounded and intended as a correction rather than a
 new motivational layer
 
+### Policy
+
+The selected score field $\psi_t(a)$ is passed to softmax:
+
+$$
+\pi(a \mid x_t, u_t)
+=
+\frac{\exp(\tau\,\psi_t(a))}
+{\sum_{a' \in \mathcal{A}_{adm}(u_t)} \exp(\tau\,\psi_t(a'))}
+$$
+
 ## 8. Transition
 
 System C keeps the System A transition core and adds the predictive update
@@ -245,6 +272,11 @@ $$
 $$
 m_{t+1} = M(m_t, u_{t+1})
 $$
+
+where $M$ is FIFO update:
+
+- append $u_{t+1}$
+- drop the oldest entry if capacity is exceeded
 
 ### Predictive cycle
 

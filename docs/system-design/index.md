@@ -30,3 +30,10 @@ These documents define the mathematical models that the code implements.
 |---|---|
 | [Formal Model](system-c/01_System C Model.md) | Full model: predictive memory, signed prediction error, bounded action-level modulation |
 | [Worked Examples](system-c/02_System C Worked Examples.md) | Numerical walkthroughs of disappointment and positive-surprise learning |
+
+## System C+W -- Predictive Dual-Drive Agent
+
+| Document | Content |
+|---|---|
+| [Formal Model](system-cw/01_System C+W Model.md) | Full model: shared predictive memory, dual drive-specific traces, dual modulation, and arbitration |
+| [Worked Examples](system-cw/02_System C+W Worked Examples.md) | Numerical walkthroughs of movement-based curiosity yield, dual predictive learning, and reduction behavior |

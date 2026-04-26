@@ -34,6 +34,7 @@ _KNOWN_SYSTEM_TEMPLATE_FILES = {
     "system_aw": "experiments/configs/system-aw-baseline.yaml",
     "system_b": "experiments/configs/system-b-sdk-demo.yaml",
     "system_c": "experiments/configs/system-c-baseline.yaml",
+    "system_cw": "experiments/configs/system-cw-baseline.yaml",
 }
 
 

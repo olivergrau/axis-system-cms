@@ -29,9 +29,9 @@ The framework never sees the kit -- it only sees `SystemInterface`.
 | [Energy](energy.md) | `clip_energy`, `compute_vitality`, `check_energy_termination`, `get_action_cost` | Energy clamping, vitality, termination, action costs |
 | [Memory](memory.md) | `ObservationBuffer`, `WorldModelState`, `update_observation_buffer`, `create_world_model`, `update_world_model` | FIFO observation buffer and spatial visit-count world model |
 | [Types](types.md) | `AgentConfig`, `PolicyConfig`, `TransitionConfig`, `handle_consume` | Shared config models and consume action handler |
-| [Prediction](prediction.md) | `extract_predictive_features`, `encode_context`, `PredictiveMemory`, `compute_prediction_error` | Predictive memory, context encoding, and signed error decomposition |
+| [Prediction](prediction.md) | `extract_predictive_features`, `encode_context`, `PredictiveMemory`, `compute_prediction_error` | Predictive memory, context encoding, signed error decomposition, and reusable feature-agnostic prediction core |
 | [Traces](traces.md) | `TraceState`, `create_trace_state`, `update_traces` | Dual-trace dynamics (frustration/confidence) with EMA accumulation |
-| [Modulation](modulation.md) | `compute_modulation`, `modulate_action_scores` | Exponential action score modulation from trace state |
+| [Modulation](modulation.md) | `compute_modulation`, `compute_prediction_bias`, `describe_action_modulation`, `modulate_action_scores` | Exponential and hybrid action score modulation from trace state |
 
 ---
 
@@ -65,27 +65,37 @@ These constraints are verified by 7 automated tests in
 
 ## Which Systems Use Which Components?
 
-| Component | System A | System A+W | System C | System B |
-|-----------|:--------:|:----------:|:--------:|:--------:|
-| `VonNeumannSensor` | yes | yes | yes | -- |
-| `HungerDrive` | yes | yes | yes | -- |
-| `CuriosityDrive` | -- | yes | -- | -- |
-| `SoftmaxPolicy` | yes | yes | yes | -- |
-| `compute_maslow_weights` | -- | yes | -- | -- |
-| `combine_drive_scores` | -- | yes | -- | -- |
-| `ObservationBuffer` | yes | yes | yes | -- |
-| `WorldModelState` | -- | yes | -- | -- |
-| `PredictiveMemory` | -- | -- | yes | -- |
-| `TraceState` | -- | -- | yes | -- |
-| `modulate_action_scores` | -- | -- | yes | -- |
-| `clip_energy` | yes | yes | yes | -- |
-| `AgentConfig` | yes | yes | yes | -- |
-| `PolicyConfig` | yes | yes | yes | -- |
-| `TransitionConfig` | yes | yes | yes | -- |
-| `handle_consume` | yes | yes | yes | -- |
+| Component | System A | System A+W | System C | System C+W | System B |
+|-----------|:--------:|:----------:|:--------:|:----------:|:--------:|
+| `VonNeumannSensor` | yes | yes | yes | yes | -- |
+| `HungerDrive` | yes | yes | yes | yes | -- |
+| `CuriosityDrive` | -- | yes | -- | yes | -- |
+| `SoftmaxPolicy` | yes | yes | yes | yes | -- |
+| `compute_maslow_weights` | -- | yes | -- | yes | -- |
+| `combine_drive_scores` | -- | yes | -- | yes | -- |
+| `ObservationBuffer` | yes | yes | yes | yes | -- |
+| `WorldModelState` | -- | yes | -- | yes | -- |
+| `PredictiveMemory` | -- | -- | yes | yes | -- |
+| `TraceState` | -- | -- | yes | yes | -- |
+| `describe_action_modulation` | -- | -- | yes | yes | -- |
+| `clip_energy` | yes | yes | yes | yes | -- |
+| `AgentConfig` | yes | yes | yes | yes | -- |
+| `PolicyConfig` | yes | yes | yes | yes | -- |
+| `TransitionConfig` | yes | yes | yes | yes | -- |
+| `handle_consume` | yes | yes | yes | yes | -- |
 
 System B implements its own sensor, policy, and action handler (scan),
 and does not use any kit components.
+
+System C+W does **not** introduce a new construction-kit package of its
+own. Instead, it reuses the existing observation, drive, arbitration,
+memory, prediction, traces, and modulation components in a new pattern:
+
+- one shared predictive memory,
+- two independent trace states,
+- two independent drive-specific modulation passes,
+- and system-local feature/context/outcome helpers layered around the
+  generic kit primitives.
 
 ---
 
@@ -99,3 +109,5 @@ and does not use any kit components.
   -- mathematical model behind the hunger drive, policy, and energy system
 - [System A+W Formal Model](../system-design/system-a+w/01_System A+W Model.md)
   -- mathematical model behind curiosity, world model, and arbitration
+- [System C+W Formal Model](../system-design/system-cw/01_System C+W Model.md)
+  -- mathematical model behind shared predictive memory plus drive-specific traces and modulation

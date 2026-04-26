@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics
+from collections.abc import Sequence
+from typing import Any
 
 from axis.framework.cli.output import fail, stdout_output
 
@@ -117,6 +120,36 @@ def _cmd_compare_runs(
 # ---------------------------------------------------------------------------
 
 
+def _fmt_compare_value(value: Any, *, signed: bool = False) -> str:
+    if isinstance(value, float):
+        return f"{value:+.4f}" if signed else f"{value:.4f}"
+    if value is None:
+        return "-"
+    return str(value)
+
+
+def _print_rich_table(
+    title: str,
+    columns: list[tuple[str, dict[str, Any]]],
+    rows: list[tuple[Any, ...]],
+    *,
+    caption: str | None = None,
+) -> None:
+    from rich.console import Console
+    from rich.table import Table
+
+    out = stdout_output()
+    console = Console(file=out.stream, force_terminal=False, color_system=None)
+    table = Table(title=title)
+    for label, kwargs in columns:
+        table.add_column(label, **kwargs)
+    for row in rows:
+        table.add_row(*(str(cell) for cell in row))
+    if caption:
+        table.caption = caption
+    console.print(table)
+
+
 def print_run_comparison_text(result) -> None:
     """Pretty-print a RunComparisonResult in text mode."""
     out = stdout_output()
@@ -162,36 +195,73 @@ def print_run_comparison_text(result) -> None:
         return
 
     out.section("Per-episode Results")
+    per_episode_rows: list[tuple[Any, ...]] = []
     for r in result.episode_results:
         ep = r.identity.reference_episode_index
         if r.result_mode.value != "comparison_succeeded":
-            out.list_row(
-                f"Episode {ep}",
-                "[validation_failed]",
-                ", ".join(r.validation.errors),
+            per_episode_rows.append(
+                (
+                    ep,
+                    "validation_failed",
+                    "-",
+                    "-",
+                    "-",
+                    ", ".join(r.validation.errors),
+                )
             )
             continue
         m = r.metrics
         o = r.outcome
         assert m is not None and o is not None
-        out.list_row(
-            f"Episode {ep}",
-            f"mismatch={m.action_divergence.action_mismatch_rate:.1%}",
-            f"pos_div={m.position_divergence.mean_trajectory_distance:.2f}",
-            f"steps={o.reference_total_steps}/{o.candidate_total_steps}",
-            f"survivor={o.longer_survivor}",
+        per_episode_rows.append(
+            (
+                ep,
+                f"{m.action_divergence.action_mismatch_rate:.1%}",
+                f"{m.position_divergence.mean_trajectory_distance:.2f}",
+                f"{o.reference_total_steps}/{o.candidate_total_steps}",
+                o.longer_survivor,
+                "",
+            )
         )
+    _print_rich_table(
+        "Per-episode Results",
+        [
+            ("Episode", {"style": "bold"}),
+            ("Mismatch", {"justify": "right"}),
+            ("Pos div", {"justify": "right"}),
+            ("Steps r/c", {"justify": "right"}),
+            ("Survivor", {}),
+            ("Notes", {}),
+        ],
+        per_episode_rows,
+        caption="Aligned run-level comparison across matched episode pairs.",
+    )
 
     out.section("Statistical Summary")
-    _print_metric("Action mismatch rate", s.action_mismatch_rate)
+    summary_rows = [
+        _metric_summary_row("Action mismatch rate", s.action_mismatch_rate),
+        _metric_summary_row("Mean trajectory distance", s.mean_trajectory_distance),
+        _metric_summary_row("Mean vitality difference", s.mean_vitality_difference),
+        _metric_summary_row("Final vitality delta", s.final_vitality_delta, signed=True),
+        _metric_summary_row("Total steps delta", s.total_steps_delta, signed=True),
+    ]
+    _print_rich_table(
+        "Statistical Summary",
+        [
+            ("Metric", {"style": "bold"}),
+            ("Mean", {"justify": "right"}),
+            ("Std", {"justify": "right"}),
+            ("Min", {"justify": "right"}),
+            ("Max", {"justify": "right"}),
+            ("N", {"justify": "right"}),
+        ],
+        summary_rows,
+        caption="Descriptive statistics across valid episode pairs.",
+    )
     out.hint("How often the two agents chose different actions at the same timestep.")
-    _print_metric("Mean trajectory distance", s.mean_trajectory_distance)
     out.hint("Average Manhattan distance between the two agents per episode.")
-    _print_metric("Mean vitality difference", s.mean_vitality_difference)
     out.hint("Average absolute difference in vitality between the two agents.")
-    _print_metric("Final vitality delta", s.final_vitality_delta, signed=True)
     out.hint("Candidate final vitality minus reference final vitality.")
-    _print_metric("Total steps delta", s.total_steps_delta, signed=True)
     out.hint("Candidate episode length minus reference episode length.")
     out.kv(
         "Survival rates",
@@ -203,6 +273,7 @@ def print_run_comparison_text(result) -> None:
         f"candidate={s.candidate_longer_count}  "
         f"reference={s.reference_longer_count}  equal={s.equal_count}",
     )
+    _print_system_specific_run_summary(result)
 
 
 def _print_metric(label: str, stats, *, signed: bool = False) -> None:
@@ -213,6 +284,94 @@ def _print_metric(label: str, stats, *, signed: bool = False) -> None:
         f"mean={stats.mean:{fmt}}, std={stats.std:.4f}, "
         f"min={stats.min:{fmt}}, max={stats.max:{fmt}} (n={stats.n})",
     )
+
+
+def _metric_summary_row(label: str, stats, *, signed: bool = False) -> tuple[str, str, str, str, str, str]:
+    return (
+        label,
+        _fmt_compare_value(stats.mean, signed=signed),
+        _fmt_compare_value(stats.std),
+        _fmt_compare_value(stats.min, signed=signed),
+        _fmt_compare_value(stats.max, signed=signed),
+        str(stats.n),
+    )
+
+
+def _summary_stats(values: Sequence[float]):
+    class _Stats:
+        def __init__(self, mean: float, std: float, min_value: float, max_value: float, n: int):
+            self.mean = mean
+            self.std = std
+            self.min = min_value
+            self.max = max_value
+            self.n = n
+
+    n = len(values)
+    mean = statistics.mean(values)
+    std = statistics.stdev(values) if n >= 2 else 0.0
+    return _Stats(mean, std, min(values), max(values), n)
+
+
+def _print_system_specific_run_summary(result) -> None:
+    out = stdout_output()
+    valid = [
+        r.system_specific_analysis
+        for r in result.episode_results
+        if r.result_mode.value == "comparison_succeeded" and r.system_specific_analysis
+    ]
+    if not valid:
+        return
+
+    extension_keys = set.intersection(
+        *(set(analysis.keys()) for analysis in valid if isinstance(analysis, dict))
+    )
+    if not extension_keys:
+        return
+
+    out.section("System-specific Summary")
+    for extension_key in sorted(extension_keys):
+        payloads = []
+        for analysis in valid:
+            payload = analysis.get(extension_key)
+            if isinstance(payload, dict):
+                payloads.append(payload)
+        if not payloads:
+            continue
+        summary_rows: list[tuple[Any, ...]] = []
+        common_keys = set.intersection(*(set(payload.keys()) for payload in payloads))
+        for key in sorted(common_keys):
+            values = [payload[key] for payload in payloads]
+            if all(isinstance(value, str) for value in values):
+                summary_rows.append((key, values[0] if len(set(values)) == 1 else "varies", "-", "-", "-", "-"))
+                continue
+            if all(
+                isinstance(value, (int, float)) and not isinstance(value, bool)
+                for value in values
+            ):
+                stats = _summary_stats([float(value) for value in values])
+                summary_rows.append(
+                    (
+                        key,
+                        _fmt_compare_value(stats.mean),
+                        _fmt_compare_value(stats.std),
+                        _fmt_compare_value(stats.min),
+                        _fmt_compare_value(stats.max),
+                        str(stats.n),
+                    )
+                )
+        if summary_rows:
+            _print_rich_table(
+                extension_key,
+                [
+                    ("Metric", {"style": "bold"}),
+                    ("Mean/Value", {"justify": "right"}),
+                    ("Std", {"justify": "right"}),
+                    ("Min", {"justify": "right"}),
+                    ("Max", {"justify": "right"}),
+                    ("N", {"justify": "right"}),
+                ],
+                summary_rows,
+            )
 
 
 def _print_comparison_text(result) -> None:

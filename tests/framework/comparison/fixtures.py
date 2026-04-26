@@ -149,3 +149,72 @@ def make_system_c_step(
         "prediction": {"modulated_scores": mod, "context": 0, "features": {}},
     }
     return make_step(timestep=timestep, action=action, system_data=system_data, **kwargs)
+
+
+def make_system_cw_step(
+    timestep: int,
+    action: str = "up",
+    *,
+    combined_scores: tuple[float, ...] | None = None,
+    counterfactual_scores: tuple[float, ...] | None = None,
+    hunger_weight: float = 0.4,
+    curiosity_weight: float = 0.6,
+    hunger_activation: float = 0.7,
+    curiosity_activation: float = 0.5,
+    composite_novelty: tuple[float, ...] = (0.3, 0.3, 0.3, 0.3),
+    feature_error_positive: float = 0.2,
+    feature_error_negative: float = 0.1,
+    hunger_error_positive: float = 0.1,
+    hunger_error_negative: float = 0.0,
+    curiosity_error_positive: float = 0.2,
+    curiosity_error_negative: float = 0.0,
+    hunger_confidence: float = 0.4,
+    hunger_frustration: float = 0.1,
+    curiosity_confidence: float = 0.5,
+    curiosity_frustration: float = 0.2,
+    visit_count_at_current: float = 2.0,
+    used_nonmove_penalty_rule: bool = False,
+    **kwargs,
+) -> BaseStepTrace:
+    combined = combined_scores or (0.4, 0.3, 0.2, 0.1, -0.1, -0.2)
+    counterfactual = counterfactual_scores or (0.2, 0.3, 0.2, 0.1, -0.1, -0.2)
+    system_data = {
+        "decision_data": {
+            "hunger_drive": {"activation": hunger_activation},
+            "curiosity_drive": {
+                "activation": curiosity_activation,
+                "spatial_novelty": composite_novelty,
+                "sensory_novelty": composite_novelty,
+                "composite_novelty": composite_novelty,
+            },
+            "arbitration": {
+                "hunger_weight": hunger_weight,
+                "curiosity_weight": curiosity_weight,
+            },
+            "prediction": {
+                "counterfactual_combined_scores": counterfactual,
+            },
+            "combined_scores": combined,
+        },
+        "trace_data": {
+            "visit_count_at_current": visit_count_at_current,
+            "prediction": {
+                "feature_error_positive": feature_error_positive,
+                "feature_error_negative": feature_error_negative,
+                "hunger": {
+                    "error_positive": hunger_error_positive,
+                    "error_negative": hunger_error_negative,
+                    "confidence_value": hunger_confidence,
+                    "frustration_value": hunger_frustration,
+                },
+                "curiosity": {
+                    "error_positive": curiosity_error_positive,
+                    "error_negative": curiosity_error_negative,
+                    "confidence_value": curiosity_confidence,
+                    "frustration_value": curiosity_frustration,
+                    "used_nonmove_penalty_rule": used_nonmove_penalty_rule,
+                },
+            },
+        },
+    }
+    return make_step(timestep=timestep, action=action, system_data=system_data, **kwargs)

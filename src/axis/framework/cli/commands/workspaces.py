@@ -421,6 +421,7 @@ def cmd_workspaces_compare(
     candidate_experiment: str | None = None,
     allow_world_changes: bool = False,
     compare_service: object = None,
+    catalogs: dict | None = None,
 ) -> None:
     """Run workspace comparison."""
     from axis.framework.progress import create_progress_reporter
@@ -432,6 +433,9 @@ def cmd_workspaces_compare(
             reference_experiment,
             candidate_experiment,
             allow_world_changes=allow_world_changes,
+            extension_catalog=(
+                catalogs.get("comparison_extensions") if catalogs else None
+            ),
             progress=progress,
         )
 
@@ -480,6 +484,7 @@ def cmd_workspaces_comparison_result(
     output: str,
     comparison_number: int | None = None,
     allow_world_changes: bool = False,
+    catalogs: dict | None = None,
 ) -> None:
     """Display a stored workspace comparison result."""
     from axis.framework.comparison.types import RunComparisonResult
@@ -542,6 +547,9 @@ def cmd_workspaces_comparison_result(
         ws,
         env,
         allow_world_changes=effective_allow_world_changes,
+        extension_catalog=(
+            catalogs.get("comparison_extensions") if catalogs else None
+        ),
     )
 
     if output == "json":
@@ -614,6 +622,7 @@ def _resolve_comparison_result(
     envelope,
     *,
     allow_world_changes: bool,
+    extension_catalog: object | None = None,
 ):
     """Return a stored or recomputed comparison result for display."""
     from axis.framework.comparison import compare_runs
@@ -647,6 +656,7 @@ def _resolve_comparison_result(
         candidate_experiment_id,
         candidate_run_id,
         allow_world_changes=allow_world_changes,
+        extension_catalog=extension_catalog,
     )
 
 

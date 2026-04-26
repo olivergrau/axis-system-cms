@@ -64,6 +64,7 @@ src/axis/
     system_a/             Energy-driven forager (composes kit components)
     system_aw/            Dual-drive agent with curiosity and world model
     system_c/             Predictive action modulation agent
+    system_cw/            Predictive dual-drive agent with shared memory
     system_b/             Scout agent with scan action
 
   world/                Pluggable world implementations
@@ -170,6 +171,7 @@ Ready-to-use configs ship at `experiments/configs/`:
 | `system-b-sdk-demo.yaml` | System B scout agent on a signal landscape |
 | `system-c-baseline.yaml` | System C predictive modulation baseline |
 | `system-c-prediction-demo.yaml` | System C prediction demo with verbose output |
+| `system-cw-baseline.yaml` | System C+W predictive dual-drive baseline |
 
 ```bash
 axis experiments run experiments/configs/system-a-baseline.yaml
@@ -182,6 +184,9 @@ axis experiments run experiments/configs/system-aw-curiosity-sweep.yaml
 
 # Exploration demo (large grid, high curiosity)
 axis experiments run experiments/configs/system-aw-exploration-demo.yaml
+
+# System C+W predictive dual-drive baseline
+axis experiments run experiments/configs/system-cw-baseline.yaml
 ```
 
 ## Systems
@@ -258,6 +263,66 @@ system:
     modulation_min: 0.3             # μ_min: modulation floor
     modulation_max: 2.0             # μ_max: modulation ceiling
 ```
+
+Design documents: `docs/system-design/system-c/`
+
+### System C+W — Predictive Dual-Drive Agent
+
+System C+W combines the dual-drive structure of System A+W with the
+predictive layer of System C.
+
+The key design is:
+
+- **shared predictive memory** over compact local contexts
+- **shared predictive feature representation** mixing resource and novelty-derived features
+- **separate hunger-side and curiosity-side predictive outcomes**
+- **separate hunger and curiosity trace states**
+- **separate predictive modulation parameters per drive**
+- **predictive modulation before arbitration**
+
+This means the agent can share one expectation model of the local
+agent-environment loop while still learning different predictive trust
+for homeostatic value and exploratory value.
+
+System C+W configuration adds `curiosity`, `arbitration`, and a structured
+`prediction` subtree:
+
+```yaml
+system:
+  curiosity:
+    base_curiosity: 1.0
+    spatial_sensory_balance: 0.5
+    explore_suppression: 0.3
+    novelty_sharpness: 1.0
+  arbitration:
+    hunger_weight_base: 0.3
+    curiosity_weight_base: 1.0
+    gating_sharpness: 2.0
+  prediction:
+    shared:
+      memory_learning_rate: 0.3
+      resource_threshold: 0.5
+      novelty_threshold: 0.35
+      novelty_contrast_threshold: 0.15
+    hunger:
+      frustration_rate: 0.2
+      confidence_rate: 0.15
+      positive_sensitivity: 1.0
+      negative_sensitivity: 1.5
+      modulation_min: 0.3
+      modulation_max: 2.0
+    curiosity:
+      frustration_rate: 0.2
+      confidence_rate: 0.15
+      positive_sensitivity: 1.0
+      negative_sensitivity: 1.5
+      modulation_min: 0.3
+      modulation_max: 2.0
+    outcomes:
+      nonmove_curiosity_penalty: 0.2
+```
+
+Design documents: `docs/system-design/system-cw/`
 
 ### System B — Scout Agent
 
@@ -355,6 +420,7 @@ Reference documentation for using and extending the framework.
 | `manuals/comparison-manual.md` | Paired trace comparison and run analysis |
 | `manuals/visualization-extension-manual.md` | Building system-specific visualization adapters |
 | `manuals/comparison-extension-manual.md` | Building system-specific comparison extensions |
+| `manuals/metrics-extension-manual.md` | Building system-specific behavioral metric extensions |
 | `manuals/workspace-manual.md` | Experiment workspaces: scaffold, run, compare, iterate |
 
 ### Specifications and Design
@@ -363,9 +429,13 @@ Reference documentation for using and extending the framework.
 |---|---|
 | `docs/system-design/system-a/` | System A formal specification and worked examples |
 | `docs/system-design/system-a+w/` | System A+W formal model and worked examples |
+| `docs/system-design/system-c/` | System C formal model and worked examples |
+| `docs/system-design/system-cw/` | System C+W formal model and worked examples |
+| `docs/cheat-sheets/` | Compact mathematical quick references for Systems A, A+W, C, and C+W |
+| `docs/construction-kit/` | Reusable system-building blocks and their mathematical role |
 | `docs-internal/specs/` | Implementation briefs (work packages) for all framework components |
 | `docs-internal/architecture/` | Architecture documents and evolution history |
-| `docs-internal/system-design/` | Implementation roadmap and work packages for System A+W |
+| `docs-internal/ideas/system-cw/` | Drafts, specs, engineering specs, work packages, and open issues for System C+W |
 
 The documents in `docs-internal/` are part of the development process and define
 the conceptual and technical contracts the implementation is expected to follow.

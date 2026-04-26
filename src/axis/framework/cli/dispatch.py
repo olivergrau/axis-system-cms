@@ -128,7 +128,8 @@ def dispatch(
                         args, "candidate_experiment", None),
                     allow_world_changes=getattr(
                         args, "allow_world_changes", False),
-                    compare_service=ctx.compare_service)
+                    compare_service=ctx.compare_service,
+                    catalogs=catalogs)
             elif args.action == "compare-configs":
                 cmd_workspaces_compare_configs(args.workspace_path, output)
             elif args.action == "comparison-summary":
@@ -137,6 +138,7 @@ def dispatch(
                     comparison_number=getattr(args, "number", None),
                     allow_world_changes=getattr(
                         args, "allow_world_changes", False),
+                    catalogs=catalogs,
                 )
             elif args.action == "set-candidate":
                 cmd_workspaces_set_candidate(

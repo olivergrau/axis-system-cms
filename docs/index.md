@@ -37,6 +37,7 @@ axis experiments run experiments/configs/system-aw-baseline.yaml
 | **System A+W** | Dual-drive agent adding curiosity and spatial world model |
 | **System B** | Scout agent with scan action on signal landscapes |
 | **System C** | Predictive hunger agent with local predictive memory and action-level modulation |
+| **System C+W** | Predictive dual-drive agent with shared predictive memory and separate hunger/curiosity trust dynamics |
 
 ## Plugin System
 
