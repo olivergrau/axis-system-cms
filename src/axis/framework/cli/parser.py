@@ -362,6 +362,47 @@ examples:
         ),
     )
 
+    ws_measure_p = ws_action.add_parser(
+        "measure", parents=[common],
+        help="Run the system_comparison measurement workflow and export logs",
+    )
+    ws_measure_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_measure_p.add_argument(
+        "--label",
+        default=None,
+        help=(
+            "Optional filename label override for this measurement run. "
+            "Overrides the manifest-derived label token but keeps the next "
+            "measurement directory number."
+        ),
+    )
+    ws_measure_p.add_argument(
+        "--allow-world-changes",
+        action="store_true",
+        default=False,
+        help=(
+            "Treat world-only config changes as intentional for both run and "
+            "compare during the measurement workflow."
+        ),
+    )
+    ws_measure_p.add_argument(
+        "--override-guard",
+        action="store_true",
+        default=False,
+        help=(
+            "Bypass the duplicate-run guard during the measurement workflow."
+        ),
+    )
+    ws_measure_p.add_argument(
+        "--notes",
+        default=None,
+        help=(
+            "Optional run note to store with each resulting primary_results "
+            "entry created by the measurement workflow."
+        ),
+    )
+
     ws_cmp_cfg_p = ws_action.add_parser(
         "compare-configs",
         parents=[common],

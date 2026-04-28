@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 import json
 from datetime import datetime
 from pathlib import Path
@@ -449,6 +450,63 @@ def cmd_workspaces_compare(
         out.kv("Output", ws / svc_result.output_path)
 
 
+def cmd_workspaces_measure(
+    workspace_path: str,
+    output: str,
+    *,
+    label: str | None = None,
+    allow_world_changes: bool = False,
+    override_guard: bool = False,
+    run_notes: str | None = None,
+    measurement_service: object = None,
+    catalogs: dict | None = None,
+) -> None:
+    """Run the system-comparison measurement workflow and export logs."""
+    from axis.framework.progress import create_progress_reporter
+
+    ws = Path(workspace_path)
+    with create_progress_reporter(output != "json") as progress:
+        result = measurement_service.measure(
+            ws,
+            label=label,
+            allow_world_changes=allow_world_changes,
+            override_guard=override_guard,
+            run_notes=run_notes,
+            extension_catalog=(
+                catalogs.get("comparison_extensions") if catalogs else None
+            ),
+            progress=progress,
+        )
+
+    _export_measurement_reports(
+        ws,
+        comparison_number=result.comparison_number,
+        comparison_log_path=result.comparison_log_path,
+        run_summary_role=result.run_summary_role,
+        run_summary_log_path=result.run_summary_log_path,
+        allow_world_changes=allow_world_changes,
+        catalogs=catalogs,
+    )
+
+    if output == "json":
+        print(json.dumps({
+            "measurement_number": result.measurement_number,
+            "measurement_dir": result.measurement_dir,
+            "label": result.label,
+            "comparison_number": result.comparison_number,
+            "comparison_log_path": result.comparison_log_path,
+            "run_summary_log_path": result.run_summary_log_path,
+            "run_summary_role": result.run_summary_role,
+            "run_experiment_ids": result.run_experiment_ids,
+        }, indent=2))
+    else:
+        out = stdout_output()
+        out.success(f"workspace measurement #{result.measurement_number}")
+        out.kv("Directory", ws / result.measurement_dir)
+        out.kv("Comparison log", ws / result.comparison_log_path)
+        out.kv("Run-summary log", ws / result.run_summary_log_path)
+
+
 def cmd_workspaces_compare_configs(
     workspace_path: str,
     output: str,
@@ -615,6 +673,46 @@ def _print_comparison_targets(ws: Path, comparison_path: str, *, out=None) -> No
         out.kv("Candidate used", cand_eid, indent=4)
     except Exception:
         pass
+
+
+def _export_measurement_reports(
+    ws: Path,
+    *,
+    comparison_number: int,
+    comparison_log_path: str,
+    run_summary_role: str,
+    run_summary_log_path: str,
+    allow_world_changes: bool,
+    catalogs: dict | None = None,
+) -> None:
+    """Export comparison-summary and run-summary text reports to files."""
+    from axis.framework.cli.commands.runs import cmd_runs_show
+    from axis.framework.persistence import ExperimentRepository
+    from axis.framework.workspaces.run_summary import (
+        resolve_run_summary_target,
+    )
+
+    comparison_path = ws / comparison_log_path
+    comparison_path.parent.mkdir(parents=True, exist_ok=True)
+    with comparison_path.open("w", encoding="utf-8") as stream:
+        with redirect_stdout(stream):
+            cmd_workspaces_comparison_result(
+                str(ws),
+                "text",
+                comparison_number=comparison_number,
+                allow_world_changes=allow_world_changes,
+                catalogs=catalogs,
+            )
+
+    run_summary_path = ws / run_summary_log_path
+    run_summary_path.parent.mkdir(parents=True, exist_ok=True)
+    target = resolve_run_summary_target(ws, role=run_summary_role)
+    repo = ExperimentRepository(ws / "results")
+    with run_summary_path.open("w", encoding="utf-8") as stream:
+        with redirect_stdout(stream):
+            if getattr(target, "run_notes", None):
+                stdout_output().kv("Run notes", target.run_notes)
+            cmd_runs_show(repo, target.experiment_id, target.run_id, "text")
 
 
 def _resolve_comparison_result(

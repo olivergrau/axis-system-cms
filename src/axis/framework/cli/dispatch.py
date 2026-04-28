@@ -24,6 +24,7 @@ from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_compare,
     cmd_workspaces_compare_configs,
     cmd_workspaces_comparison_result,
+    cmd_workspaces_measure,
     cmd_workspaces_run,
     cmd_workspaces_run_metrics,
     cmd_workspaces_run_summary,
@@ -130,6 +131,17 @@ def dispatch(
                         args, "allow_world_changes", False),
                     compare_service=ctx.compare_service,
                     catalogs=catalogs)
+            elif args.action == "measure":
+                cmd_workspaces_measure(
+                    args.workspace_path, output,
+                    label=getattr(args, "label", None),
+                    allow_world_changes=getattr(
+                        args, "allow_world_changes", False),
+                    override_guard=getattr(args, "override_guard", False),
+                    run_notes=getattr(args, "notes", None),
+                    measurement_service=ctx.measurement_service,
+                    catalogs=catalogs,
+                )
             elif args.action == "compare-configs":
                 cmd_workspaces_compare_configs(args.workspace_path, output)
             elif args.action == "comparison-summary":

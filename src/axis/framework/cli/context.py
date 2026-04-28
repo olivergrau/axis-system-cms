@@ -34,6 +34,9 @@ class CLIContext:
     compare_service: object = field(default=None)
     """``WorkspaceCompareService`` instance."""
 
+    measurement_service: object = field(default=None)
+    """``WorkspaceMeasurementService`` instance."""
+
     inspection_service: object = field(default=None)
     """``WorkspaceInspectionService`` instance."""
 
@@ -55,6 +58,9 @@ def build_context(root: Path) -> CLIContext:
     from axis.framework.workspaces.manifest_mutator import (
         close_workspace,
         set_candidate_config,
+    )
+    from axis.framework.workspaces.services.measurement_service import (
+        WorkspaceMeasurementService,
     )
     from axis.framework.workspaces.services.compare_service import (
         WorkspaceCompareService,
@@ -79,24 +85,32 @@ def build_context(root: Path) -> CLIContext:
         sync_manifest_after_compare,
         sync_manifest_after_run,
     )
+    from axis.framework.workspaces.types import load_manifest
     from axis.framework.workspaces.validation import check_workspace
 
     repo = ExperimentRepository(root)
     catalogs = build_catalogs_from_registries()
+    run_service = WorkspaceRunService(
+        execute_fn=execute_workspace,
+        sync_fn=sync_manifest_after_run,
+        set_candidate_config_fn=set_candidate_config,
+        load_yaml_roundtrip_fn=_load_yaml_roundtrip,
+        save_yaml_roundtrip_fn=_save_yaml_roundtrip,
+    )
+    compare_service = WorkspaceCompareService(
+        compare_fn=compare_workspace,
+        sync_fn=sync_manifest_after_compare,
+    )
     return CLIContext(
         repo=repo,
         root=root,
         catalogs=catalogs,
-        run_service=WorkspaceRunService(
-            execute_fn=execute_workspace,
-            sync_fn=sync_manifest_after_run,
-            set_candidate_config_fn=set_candidate_config,
-            load_yaml_roundtrip_fn=_load_yaml_roundtrip,
-            save_yaml_roundtrip_fn=_save_yaml_roundtrip,
-        ),
-        compare_service=WorkspaceCompareService(
-            compare_fn=compare_workspace,
-            sync_fn=sync_manifest_after_compare,
+        run_service=run_service,
+        compare_service=compare_service,
+        measurement_service=WorkspaceMeasurementService(
+            run_service=run_service,
+            compare_service=compare_service,
+            load_manifest_fn=load_manifest,
         ),
         inspection_service=WorkspaceInspectionService(
             summarize_fn=summarize_workspace,

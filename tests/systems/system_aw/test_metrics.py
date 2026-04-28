@@ -28,6 +28,7 @@ def _step(
     *,
     timestep: int,
     action: str,
+    hunger_activation: float,
     hunger_weight: float,
     curiosity_weight: float,
     curiosity_activation: float,
@@ -50,6 +51,9 @@ def _step(
         terminated=False,
         system_data={
             "decision_data": {
+                "hunger_drive": {
+                    "activation": hunger_activation,
+                },
                 "curiosity_drive": {
                     "activation": curiosity_activation,
                     "spatial_novelty": spatial_novelty,
@@ -98,6 +102,7 @@ class TestSystemAWBehaviorMetrics:
                 _step(
                     timestep=0,
                     action="up",
+                    hunger_activation=0.4,
                     hunger_weight=0.3,
                     curiosity_weight=0.6,
                     curiosity_activation=0.8,
@@ -110,6 +115,7 @@ class TestSystemAWBehaviorMetrics:
                 _step(
                     timestep=1,
                     action="consume",
+                    hunger_activation=0.6,
                     hunger_weight=0.8,
                     curiosity_weight=0.2,
                     curiosity_activation=0.4,
@@ -144,11 +150,11 @@ class TestSystemAWBehaviorMetrics:
         assert curiosity["mean_spatial_novelty"] == pytest.approx(0.5)
         assert curiosity["mean_sensory_novelty"] == pytest.approx(0.1)
         assert curiosity["mean_composite_novelty"] == pytest.approx(0.3)
-        assert curiosity["curiosity_pressure_rate"] == pytest.approx(1.0)
+        assert curiosity["curiosity_pressure_rate"] == pytest.approx(0.5)
 
         behavior = result["system_aw_behavior"]
         assert behavior["curiosity_led_move_rate"] == pytest.approx(0.5)
-        assert behavior["consume_under_curiosity_pressure_rate"] == pytest.approx(0.5)
+        assert behavior["consume_under_curiosity_pressure_rate"] == pytest.approx(0.0)
         assert behavior["movement_step_rate"] == pytest.approx(0.5)
         assert behavior["consume_step_rate"] == pytest.approx(0.5)
 

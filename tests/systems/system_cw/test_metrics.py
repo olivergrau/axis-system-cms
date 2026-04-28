@@ -165,15 +165,15 @@ def test_system_cw_metrics_extract_dual_channels() -> None:
     assert arbitration["mean_curiosity_weight"] == pytest.approx(0.6)
     assert arbitration["curiosity_dominance_rate"] == pytest.approx(1.0)
     assert arbitration["mean_curiosity_activation"] == pytest.approx(0.5)
-    assert arbitration["curiosity_pressure_rate"] == pytest.approx(1.0)
+    assert arbitration["curiosity_pressure_rate"] == pytest.approx(0.0)
     assert arbitration["prediction_weighted_curiosity_pressure"] == pytest.approx(0.21)
     assert arbitration["prediction_weighted_hunger_pressure"] == pytest.approx(0.32)
 
     assert curiosity["mean_spatial_novelty"] == pytest.approx(0.5)
     assert curiosity["mean_sensory_novelty"] == pytest.approx(0.25)
     assert curiosity["mean_composite_novelty"] == pytest.approx(0.375)
-    assert curiosity["curiosity_led_move_rate"] == pytest.approx(1.0)
-    assert curiosity["consume_under_curiosity_pressure_rate"] == pytest.approx(0.0)
+    assert curiosity["curiosity_led_move_rate"] == pytest.approx(0.0)
+    assert curiosity["consume_under_curiosity_pressure_rate"] is None
     assert curiosity["novel_move_yield_mean"] == pytest.approx(0.21)
     assert curiosity["novel_move_success_rate"] == pytest.approx(1.0)
 

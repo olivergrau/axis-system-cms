@@ -238,7 +238,8 @@ def system_cw_behavior_metrics(
                 curiosity_activation = 0.0
 
             curiosity_pressure = curiosity_weight * curiosity_activation
-            if curiosity_pressure > 0.0:
+            hunger_pressure = hunger_weight * hunger_activation
+            if curiosity_pressure > hunger_pressure:
                 curiosity_pressure_steps += 1
                 if step.action in MOVEMENT_ACTIONS:
                     curiosity_led_move_steps += 1

@@ -80,6 +80,38 @@ class ConfigEntry(BaseModel, frozen=True):
     role: str | None = None
 
 
+class MeasurementWorkflowConfig(BaseModel, frozen=True):
+    """Optional workspace-local automation config for measurement workflows."""
+
+    root_dir: str = "measurements"
+    experiment_dir_pattern: str = "experiment_{number}"
+    label_pattern: str = "config{number}"
+    comparison_log_pattern: str = "{label}-comparison.log"
+    run_summary_log_pattern: str = "{label}-{role}-run-summary.log"
+    default_run_summary_role: str = "candidate"
+
+    @field_validator("experiment_dir_pattern", "label_pattern")
+    @classmethod
+    def _require_number_placeholder(cls, value: str) -> str:
+        if "{number}" not in value:
+            raise ValueError("pattern must include '{number}'")
+        return value
+
+    @field_validator("root_dir")
+    @classmethod
+    def _validate_root_dir(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("root_dir must not be empty")
+        return value
+
+    @field_validator("default_run_summary_role")
+    @classmethod
+    def _validate_default_role(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("default_run_summary_role must not be empty")
+        return value
+
+
 class WorkspaceManifest(BaseModel, frozen=True):
     """Authoritative workspace manifest model.
 
@@ -126,6 +158,7 @@ class WorkspaceManifest(BaseModel, frozen=True):
     linked_experiments: list[LinkedArtifactRef | str] | None = None
     linked_runs: list[LinkedArtifactRef | str] | None = None
     linked_comparisons: list[LinkedArtifactRef | str] | None = None
+    measurement_workflow: MeasurementWorkflowConfig | None = None
 
     @field_validator("primary_results", mode="before")
     @classmethod

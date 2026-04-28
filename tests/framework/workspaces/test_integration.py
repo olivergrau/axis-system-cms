@@ -420,6 +420,84 @@ class TestCLIIntegration:
         out = capsys.readouterr().out
         assert "integration-single" in out
 
+    def test_measure_rejects_non_comparison_workspace(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        code = cli_main(["workspaces", "measure", str(ws)])
+        captured = capsys.readouterr()
+        assert code == 1
+        assert "only supported for system_comparison workspaces" in captured.err
+        assert "single_system" in captured.err
+
+    def test_measure_runs_workflow_and_exports_configured_logs(
+        self, tmp_path, capsys,
+    ):
+        ws = _scaffold_comparison(tmp_path)
+        manifest_path = ws / "workspace.yaml"
+        data = yaml.safe_load(manifest_path.read_text())
+        data["measurement_workflow"] = {
+            "root_dir": "measurements",
+            "experiment_dir_pattern": "experiment_{number}",
+            "label_pattern": "trial{number}",
+            "comparison_log_pattern": "{label}-cmp.log",
+            "run_summary_log_pattern": "{label}-{role}.log",
+            "default_run_summary_role": "candidate",
+        }
+        manifest_path.write_text(yaml.dump(data))
+
+        code = cli_main(["workspaces", "measure", str(ws), "--output", "json"])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        payload = json.loads(captured.out)
+        assert payload["measurement_number"] == 1
+        assert payload["measurement_dir"] == "measurements/experiment_1"
+        assert payload["comparison_log_path"] == (
+            "measurements/experiment_1/trial1-cmp.log"
+        )
+        assert payload["run_summary_log_path"] == (
+            "measurements/experiment_1/trial1-candidate.log"
+        )
+
+        comparison_log = ws / payload["comparison_log_path"]
+        run_summary_log = ws / payload["run_summary_log_path"]
+        assert comparison_log.is_file()
+        assert run_summary_log.is_file()
+        assert "Run Comparison" in comparison_log.read_text()
+        assert "Run run-0000" in run_summary_log.read_text()
+
+    def test_measure_allows_label_override(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        manifest_path = ws / "workspace.yaml"
+        data = yaml.safe_load(manifest_path.read_text())
+        data["measurement_workflow"] = {
+            "root_dir": "measurements",
+            "experiment_dir_pattern": "experiment_{number}",
+            "label_pattern": "trial{number}",
+            "comparison_log_pattern": "{label}-cmp.log",
+            "run_summary_log_pattern": "{label}-{role}.log",
+            "default_run_summary_role": "candidate",
+        }
+        manifest_path.write_text(yaml.dump(data))
+
+        code = cli_main([
+            "workspaces", "measure", str(ws),
+            "--label", "hybrid-x",
+            "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        payload = json.loads(captured.out)
+        assert payload["measurement_number"] == 1
+        assert payload["label"] == "hybrid-x"
+        assert payload["measurement_dir"] == "measurements/experiment_1"
+        assert payload["comparison_log_path"] == (
+            "measurements/experiment_1/hybrid-x-cmp.log"
+        )
+        assert payload["run_summary_log_path"] == (
+            "measurements/experiment_1/hybrid-x-candidate.log"
+        )
+
     def test_show_json(self, tmp_path, capsys):
         ws = _scaffold_single_system(tmp_path)
         code = cli_main(["workspaces", "show", str(ws), "--output", "json"])

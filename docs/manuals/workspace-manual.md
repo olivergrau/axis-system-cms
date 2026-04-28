@@ -101,6 +101,64 @@ axis workspaces run workspaces/my-workspace --notes "My notes for this run"
 The note is stored in each new `primary_results` entry as `run_notes` and is
 shown in `axis workspaces show` and `axis workspaces run-summary`.
 
+### Run the measurement workflow
+
+```bash
+axis workspaces measure workspaces/my-workspace
+```
+
+This command automates a common `system_comparison` investigation loop:
+
+1. create the next measurement directory under the workspace-local measurements root
+2. execute the workspace configs
+3. run a workspace comparison
+4. export the latest comparison summary to a text log
+5. export the configured role's run summary to a text log
+
+The command is currently supported only for `system_comparison`
+workspaces. If you call it on a `single_system` or
+`system_development` workspace, AXIS aborts with an explicit error
+explaining the workspace-type mismatch.
+
+By default, AXIS uses the workspace manifest's `measurement_workflow`
+block to determine:
+
+- where measurement directories are created
+- how the measurement number maps to a label such as `config4`
+- how the comparison log filename is built
+- how the run-summary log filename is built
+- which role should be exported for the run-summary log
+
+The command forwards the same execution controls as `run` / `compare`:
+
+```bash
+axis workspaces measure workspaces/my-workspace --label configX
+axis workspaces measure workspaces/my-workspace --allow-world-changes
+axis workspaces measure workspaces/my-workspace --override-guard
+axis workspaces measure workspaces/my-workspace --notes "My notes for this run"
+```
+
+`--label <name>` overrides only the filename label token for this one
+measurement run. The measurement directory still uses the next automatic
+number from `experiment_dir_pattern`.
+
+Example manifest configuration:
+
+```yaml
+measurement_workflow:
+  root_dir: measurements
+  experiment_dir_pattern: experiment_{number}
+  label_pattern: config{number}
+  comparison_log_pattern: '{label}-comparison.log'
+  run_summary_log_pattern: '{label}-{role}-run-summary.log'
+  default_run_summary_role: candidate
+```
+
+With that configuration, a run such as measurement 4 produces:
+
+- `measurements/experiment_4/config4-comparison.log`
+- `measurements/experiment_4/config4-candidate-run-summary.log`
+
 ### Run a workspace comparison
 
 ```bash
@@ -397,6 +455,15 @@ axis workspaces run workspaces/my-comparison
 
 Both configs are executed. Results land in `results/` and the manifest is updated with `primary_results` entries.
 
+If you prefer a one-command iteration loop for this workspace type, use:
+
+```bash
+axis workspaces measure workspaces/my-comparison
+```
+
+That performs the run, creates a new comparison, and exports measurement logs
+under the manifest-configured `measurement_workflow` directory.
+
 **4. Compare**
 
 ```bash
@@ -461,6 +528,19 @@ axis workspaces compare workspaces/system-a-vs-system-c-grid2d
 axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d --number 1
 axis workspaces comparison-summary workspaces/system-a-vs-system-c-grid2d --number 2
 ```
+
+#### Example: automated comparison measurements
+
+```bash
+# One-command measurement workflow for system_comparison workspaces
+axis workspaces measure workspaces/system-a-vs-system-c-grid2d
+
+# Tweak the candidate config and measure again
+axis workspaces measure workspaces/system-a-vs-system-c-grid2d
+```
+
+Each call creates the next numbered measurement directory and writes the
+configured comparison/run-summary logs there.
 
 ---
 
@@ -780,6 +860,7 @@ The manifest is the authoritative source of workspace identity and semantics.
 - `description`, `tags`
 - `baseline_artifacts`, `validation_scenarios`
 - `primary_configs`, `primary_results`, `primary_comparisons`
+- `measurement_workflow`
 - `linked_experiments`, `linked_runs`, `linked_comparisons`
 
 ### Primary artifact tracking
@@ -789,6 +870,10 @@ The manifest tracks workspace-produced artifacts via four list fields:
 - **`primary_configs`** — workspace-relative config entries populated at scaffold time. New workspaces use structured entries with a `path` and role metadata such as `reference`, `candidate`, or `baseline`; legacy plain string entries are still accepted for compatibility.
 - **`primary_results`** — workspace-relative paths to experiment output directories (populated after `axis workspaces run`). Entries point to experiment roots, e.g. `results/<experiment-id>`, and include output semantics such as `output_form` (`point` or `sweep`), `system_type`, `role`, and `primary_run_id` or `baseline_run_id`. Optional `run_notes` can be attached at run time via `axis workspaces run --notes "..."`. When possible, each entry also stores the changed config elements relative to the previous comparable result so `axis workspaces show` can surface iteration history directly from the manifest.
 - **`primary_comparisons`** — workspace-relative paths to comparison output files (accumulated after each `axis workspaces compare`), e.g. `comparisons/comparison-001.json`.
+- **`measurement_workflow`** — optional automation settings for
+  `axis workspaces measure` on `system_comparison` workspaces. This
+  block controls the measurement root directory, numbering pattern,
+  label pattern, log filename patterns, and default run-summary role.
 These fields are updated automatically by the workspace commands. The manifest uses comment-preserving YAML round-trip writes, so manual comments and ordering in `workspace.yaml` are retained.
 
 ---
@@ -872,6 +957,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `axis workspaces run <path>` | Execute all workspace configs |
 | `axis workspaces run <path> --baseline-only` | Run only baseline config (system_development) |
 | `axis workspaces run <path> --candidate-only` | Run only candidate config (system_development) |
+| `axis workspaces measure <path>` | Run the automated measurement workflow (system_comparison only) |
 | `axis workspaces set-candidate <path> <config>` | Set candidate config for a development workspace |
 | `axis workspaces compare <path>` | Run workspace comparison (sequential, self-contained) |
 | `axis workspaces compare-configs <path>` | Display reference/candidate config deltas (system_comparison only) |
@@ -889,9 +975,10 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--reference-experiment <id>` | `compare` | Explicit reference experiment ID |
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
 | `--number <N>` | `comparison-summary` | Select a specific comparison by number |
-| `--allow-world-changes` | `run`, `compare`, `comparison-summary` | Allow world-only changes as the intentional variable |
-| `--override-guard` | `run` | Bypass the duplicate-run guard for an intentional rerun |
-| `--notes "<text>"` | `run` | Store a free-text note in each created `primary_results` entry |
+| `--label <name>` | `measure` | Override the manifest-derived filename label for one measurement run |
+| `--allow-world-changes` | `run`, `measure`, `compare`, `comparison-summary` | Allow world-only changes as the intentional variable |
+| `--override-guard` | `run`, `measure` | Bypass the duplicate-run guard for an intentional rerun |
+| `--notes "<text>"` | `run`, `measure` | Store a free-text note in each created `primary_results` entry |
 | `--role <name>` | `run-summary`, `visualize --workspace` | Select role-specific workspace output |
 | `--experiment <id>` | `run-summary` | Select a specific experiment in workspace results |
 | `--run <id>` | `run-summary` | Select a specific run (required for sweep outputs) |

@@ -107,6 +107,24 @@ def test_parser_accepts_workspace_compare_configs():
     assert args.workspace_path == "/tmp/ws"
 
 
+def test_parser_accepts_workspace_measure_arguments():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "measure", "/tmp/ws",
+        "--label", "manual-tag",
+        "--allow-world-changes",
+        "--override-guard",
+        "--notes", "measurement note",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "measure"
+    assert args.workspace_path == "/tmp/ws"
+    assert args.label == "manual-tag"
+    assert args.allow_world_changes is True
+    assert args.override_guard is True
+    assert args.notes == "measurement note"
+
+
 def test_parser_accepts_workspace_run_summary_arguments():
     parser = build_parser()
     args = parser.parse_args([

@@ -84,6 +84,7 @@ def system_aw_behavior_metrics(
             trace_data = _trace_data(step)
             arbitration = decision.get("arbitration", {}) or {}
             curiosity_drive = decision.get("curiosity_drive", {}) or {}
+            hunger_drive = decision.get("hunger_drive", {}) or {}
 
             if isinstance(arbitration, dict):
                 hunger = float(arbitration.get("hunger_weight", 0.0))
@@ -93,6 +94,11 @@ def system_aw_behavior_metrics(
                 arbitrated_steps += 1
                 if curiosity > hunger:
                     curiosity_dominance_steps += 1
+
+            if isinstance(hunger_drive, dict):
+                hunger_activation = float(hunger_drive.get("activation", 0.0))
+            else:
+                hunger_activation = 0.0
 
             if isinstance(curiosity_drive, dict):
                 activation = float(curiosity_drive.get("activation", 0.0))
@@ -109,8 +115,10 @@ def system_aw_behavior_metrics(
                     mean_composite_novelties.append(sum(composite) / len(composite))
 
                 curiosity_weight = float(arbitration.get("curiosity_weight", 0.0))
+                hunger_weight = float(arbitration.get("hunger_weight", 0.0))
                 curiosity_pressure = curiosity_weight * activation
-                if curiosity_pressure > 0.0:
+                hunger_pressure = hunger_weight * hunger_activation
+                if curiosity_pressure > hunger_pressure:
                     curiosity_pressure_steps += 1
                     if step.action in {"up", "down", "left", "right"}:
                         curiosity_led_move_steps += 1

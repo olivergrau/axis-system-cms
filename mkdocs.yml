@@ -45,6 +45,7 @@ nav:
       - "System A+W": cheat-sheets/system-aw.md
       - "System C": cheat-sheets/system-c.md
       - "System C+W": cheat-sheets/system-cw.md
+      - "Behavior Metrics": cheat-sheets/behavior-metrics.md
 
   - Tutorials:
       - tutorials/index.md

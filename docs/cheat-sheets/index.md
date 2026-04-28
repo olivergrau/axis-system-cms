@@ -20,6 +20,7 @@ re-reading the full formal specification.
 | [System A+W](system-aw.md) | Hunger + curiosity, arbitration, world model update, one worked step |
 | [System C](system-c.md) | Predictive modulation, signed prediction error, trace updates, one worked step |
 | [System C+W](system-cw.md) | Shared prediction, separate hunger/curiosity traces, dual modulation, arbitration, one worked step |
+| [Behavioral Metrics](behavior-metrics.md) | Framework and system-specific run metrics, formulas, interpretation |
 
 ## Relationship to the Full Docs
 
