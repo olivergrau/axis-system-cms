@@ -39,6 +39,7 @@ def execute_workspace(
     workspace_path: Path,
     run_filter: str | None = None,
     *,
+    config_overrides_by_role: dict[str, str] | None = None,
     progress: object | None = None,
 ) -> list[WorkspaceExecutionResult]:
     """Execute all run targets in a workspace (workspace-owned mode).
@@ -91,7 +92,10 @@ def execute_workspace(
     results: list[WorkspaceExecutionResult] = []
 
     for target in plan.targets:
-        config_path = ws / target.config_path
+        override_path = None
+        if config_overrides_by_role is not None:
+            override_path = config_overrides_by_role.get(target.role)
+        config_path = Path(override_path) if override_path else (ws / target.config_path)
         config = _load_config_file(config_path)
         experiment_result = executor.execute(
             config,

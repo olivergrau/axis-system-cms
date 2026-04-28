@@ -125,6 +125,22 @@ def test_parser_accepts_workspace_measure_arguments():
     assert args.notes == "measurement note"
 
 
+def test_parser_accepts_workspace_run_series_arguments():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "run-series", "/tmp/ws",
+        "--allow-world-changes",
+        "--override-guard",
+        "--update-notes",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "run-series"
+    assert args.workspace_path == "/tmp/ws"
+    assert args.allow_world_changes is True
+    assert args.override_guard is True
+    assert args.update_notes is True
+
+
 def test_parser_accepts_workspace_run_summary_arguments():
     parser = build_parser()
     args = parser.parse_args([

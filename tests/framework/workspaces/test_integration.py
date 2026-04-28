@@ -71,6 +71,100 @@ def _scaffold_comparison(tmp_path: Path) -> Path:
     return ws
 
 
+def _write_experiment_series(workspace_path: Path) -> None:
+    data = {
+        "version": 1,
+        "workflow_type": "experiment_series",
+        "workspace_type": "system_comparison",
+        "title": "Integration Series",
+        "defaults": {
+            "labels": {"measurement_label_pattern": "{experiment_id}"},
+            "notes": {"scaffold_notes": True},
+        },
+        "experiments": [
+            {
+                "id": "exp_01",
+                "title": "Weak candidate tweak",
+                "enabled": True,
+                "hypothesis": [
+                    "Prediction should have a small effect.",
+                ],
+                "candidate_config_delta": {
+                    "num_episodes_per_run": 4,
+                },
+            },
+            {
+                "id": "exp_02",
+                "title": "Stronger candidate tweak",
+                "enabled": True,
+                "hypothesis": [
+                    "Prediction should have a larger effect.",
+                ],
+                "candidate_config_delta": {
+                    "num_episodes_per_run": 6,
+                    "system": {
+                        "policy": {
+                            "temperature": 0.9,
+                        },
+                    },
+                },
+            },
+            {
+                "id": "exp_03",
+                "title": "Disabled experiment",
+                "enabled": False,
+                "candidate_config_delta": {
+                    "num_episodes_per_run": 8,
+                },
+            },
+        ],
+    }
+    (workspace_path / "experiment.yaml").write_text(
+        yaml.dump(data, default_flow_style=False, sort_keys=False)
+    )
+
+
+def _write_single_system_experiment_series(workspace_path: Path) -> None:
+    data = {
+        "version": 1,
+        "workflow_type": "experiment_series",
+        "workspace_type": "single_system",
+        "title": "Single-System Series",
+        "defaults": {
+            "labels": {"measurement_label_pattern": "{experiment_id}"},
+            "notes": {"scaffold_notes": True},
+        },
+        "experiments": [
+            {
+                "id": "exp_01",
+                "title": "Baseline run",
+                "enabled": True,
+                "hypothesis": ["Establish baseline behavior."],
+                "candidate_config_delta": {
+                    "num_episodes_per_run": 4,
+                },
+            },
+            {
+                "id": "exp_02",
+                "title": "Policy tweak",
+                "enabled": True,
+                "hypothesis": ["Behavior should shift relative to the baseline."],
+                "candidate_config_delta": {
+                    "num_episodes_per_run": 6,
+                    "system": {
+                        "policy": {
+                            "temperature": 0.9,
+                        },
+                    },
+                },
+            },
+        ],
+    }
+    (workspace_path / "experiment.yaml").write_text(
+        yaml.dump(data, default_flow_style=False, sort_keys=False)
+    )
+
+
 def _set_candidate_world_override(
     workspace_path: Path,
     *,
@@ -497,6 +591,91 @@ class TestCLIIntegration:
         assert payload["run_summary_log_path"] == (
             "measurements/experiment_1/hybrid-x-candidate.log"
         )
+
+    def test_run_series_rejects_unsupported_workspace_type(self, tmp_path, capsys):
+        ws = _scaffold_development(tmp_path)
+        code = cli_main(["workspaces", "run-series", str(ws)])
+        captured = capsys.readouterr()
+        assert code == 1
+        assert (
+            "only supported for system_comparison and single_system workspaces"
+            in captured.err
+        )
+
+    def test_run_series_executes_enabled_experiments_and_writes_aggregate_outputs(
+        self, tmp_path, capsys,
+    ):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+        original_notes = (
+            (ws / "notes.md").read_text(encoding="utf-8")
+            if (ws / "notes.md").exists()
+            else None
+        )
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        payload = json.loads(captured.out)
+        assert payload["executed_experiment_count"] == 2
+        assert payload["executed_experiment_ids"] == ["exp_01", "exp_02"]
+        assert (ws / payload["series_summary_markdown_path"]).is_file()
+        assert (ws / payload["series_summary_json_path"]).is_file()
+        assert (ws / payload["series_metrics_csv_path"]).is_file()
+        assert (ws / payload["series_manifest_json_path"]).is_file()
+        assert payload["notes_updated"] is False
+        if original_notes is not None:
+            assert (ws / "notes.md").read_text(encoding="utf-8") == original_notes
+
+        summary_text = (ws / payload["series_summary_markdown_path"]).read_text()
+        assert "Progression View" in summary_text
+        assert "Reference-System View" in summary_text
+
+    def test_run_series_update_notes_overwrites_notes_scaffold(
+        self, tmp_path, capsys,
+    ):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+        (ws / "notes.md").write_text("old notes\n", encoding="utf-8")
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--update-notes", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        payload = json.loads(captured.out)
+        assert payload["notes_updated"] is True
+        notes_text = (ws / "notes.md").read_text()
+        assert "Weak candidate tweak" in notes_text
+        assert "## Experiment folder: measurements/experiment_1" in notes_text
+
+    def test_run_series_supports_single_system_baseline_comparisons(
+        self, tmp_path, capsys,
+    ):
+        ws = _scaffold_single_system(tmp_path)
+        _write_single_system_experiment_series(ws)
+        original_notes = (ws / "notes.md").read_text(encoding="utf-8")
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        payload = json.loads(captured.out)
+        assert payload["executed_experiment_count"] == 2
+        assert payload["executed_experiment_ids"] == ["exp_01", "exp_02"]
+        assert (ws / payload["series_summary_markdown_path"]).is_file()
+        assert (ws / payload["series_metrics_csv_path"]).is_file()
+        assert (ws / payload["series_manifest_json_path"]).is_file()
+        assert (ws / "notes.md").read_text(encoding="utf-8") == original_notes
+
+        summary_text = (ws / payload["series_summary_markdown_path"]).read_text()
+        assert "Baseline Comparison View" in summary_text
 
     def test_show_json(self, tmp_path, capsys):
         ws = _scaffold_single_system(tmp_path)

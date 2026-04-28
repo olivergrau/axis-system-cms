@@ -17,10 +17,12 @@ class WorkspaceMeasurementServiceResult:
     measurement_dir: str
     label: str
     comparison_number: int
+    comparison_output_path: str
     comparison_log_path: str
     run_summary_log_path: str
     run_summary_role: str
     run_experiment_ids: list[str]
+    run_experiments_by_role: dict[str, str]
 
 
 class WorkspaceMeasurementService:
@@ -41,6 +43,7 @@ class WorkspaceMeasurementService:
         workspace_path: Path,
         *,
         label: str | None = None,
+        config_overrides_by_role: dict[str, str] | None = None,
         allow_world_changes: bool = False,
         override_guard: bool = False,
         run_notes: str | None = None,
@@ -84,6 +87,7 @@ class WorkspaceMeasurementService:
         measurement_dir.mkdir(parents=True, exist_ok=False)
 
         run_kwargs = {
+            "config_overrides_by_role": config_overrides_by_role,
             "allow_world_changes": allow_world_changes,
             "override_guard": override_guard,
             "run_notes": run_notes,
@@ -117,10 +121,14 @@ class WorkspaceMeasurementService:
             measurement_dir=str(measurement_dir.relative_to(ws)),
             label=effective_label,
             comparison_number=compare_result.comparison_number,
+            comparison_output_path=compare_result.output_path,
             comparison_log_path=str(comparison_log_path.relative_to(ws)),
             run_summary_log_path=str(run_summary_log_path.relative_to(ws)),
             run_summary_role=run_summary_role,
             run_experiment_ids=[result.experiment_id for result in run_results],
+            run_experiments_by_role={
+                result.role: result.experiment_id for result in run_results
+            },
         )
 
 

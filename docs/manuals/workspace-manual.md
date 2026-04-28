@@ -159,6 +159,46 @@ With that configuration, a run such as measurement 4 produces:
 - `measurements/experiment_4/config4-comparison.log`
 - `measurements/experiment_4/config4-candidate-run-summary.log`
 
+### Run an experiment series
+
+```bash
+axis workspaces run-series workspaces/my-workspace
+```
+
+This command executes a declarative experiment sequence defined in a
+workspace-local `experiment.yaml`.
+
+Current support:
+
+- `investigation / system_comparison` only
+
+For each enabled experiment, AXIS:
+
+1. resolves a temporary candidate config from the declared delta
+2. runs the workspace
+3. runs the workspace comparison
+4. exports the per-experiment logs
+5. updates final aggregate series outputs
+
+By default, `notes.md` is left untouched.
+
+If you want AXIS to regenerate a notes scaffold after the series completes,
+pass:
+
+```bash
+axis workspaces run-series workspaces/my-workspace --update-notes
+```
+
+The command writes aggregate outputs such as:
+
+- `measurements/series-summary.md`
+- `measurements/series-summary.json`
+- `measurements/series-metrics.csv`
+
+See the dedicated manual for the full schema and workflow:
+
+- [Experiment Series](experiment-series-manual.md)
+
 ### Run a workspace comparison
 
 ```bash

@@ -126,6 +126,7 @@ examples:
   axis workspaces show <workspace-path>         Inspect workspace state
   axis workspaces run-metrics <workspace-path>  Inspect metrics for one resolved run
   axis workspaces compare <workspace-path>      Run a workspace comparison
+  axis workspaces run-series <workspace-path>   Run a declarative experiment series
 
   Use --output json on any command for machine-readable output.
   Use --root <path> to point to a non-default repository location.
@@ -275,7 +276,7 @@ examples:
         "workspaces",
         help=(
             "Manage experiment workspaces "
-            "(scaffold, close, check, show, run, compare, compare-configs)"
+            "(scaffold, close, check, show, run, compare, measure, run-series, compare-configs)"
         ),
     )
     ws_action = ws_parser.add_subparsers(dest="action", title="actions")
@@ -400,6 +401,37 @@ examples:
         help=(
             "Optional run note to store with each resulting primary_results "
             "entry created by the measurement workflow."
+        ),
+    )
+
+    ws_series_p = ws_action.add_parser(
+        "run-series", parents=[common],
+        help="Run a declarative experiment series for a system_comparison workspace",
+    )
+    ws_series_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_series_p.add_argument(
+        "--allow-world-changes",
+        action="store_true",
+        default=False,
+        help=(
+            "Treat world-only config changes as intentional during series execution."
+        ),
+    )
+    ws_series_p.add_argument(
+        "--override-guard",
+        action="store_true",
+        default=False,
+        help=(
+            "Bypass the duplicate-run guard while executing the experiment series."
+        ),
+    )
+    ws_series_p.add_argument(
+        "--update-notes",
+        action="store_true",
+        default=False,
+        help=(
+            "Overwrite notes.md with a regenerated scaffold after the series completes."
         ),
     )
 

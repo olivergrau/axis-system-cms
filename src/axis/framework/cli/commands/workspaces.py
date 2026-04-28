@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import redirect_stdout
 import json
 from datetime import datetime
 from pathlib import Path
@@ -478,7 +477,11 @@ def cmd_workspaces_measure(
             progress=progress,
         )
 
-    _export_measurement_reports(
+    from axis.framework.workspaces.measurement_reports import (
+        export_measurement_reports,
+    )
+
+    export_measurement_reports(
         ws,
         comparison_number=result.comparison_number,
         comparison_log_path=result.comparison_log_path,
@@ -494,10 +497,12 @@ def cmd_workspaces_measure(
             "measurement_dir": result.measurement_dir,
             "label": result.label,
             "comparison_number": result.comparison_number,
+            "comparison_output_path": result.comparison_output_path,
             "comparison_log_path": result.comparison_log_path,
             "run_summary_log_path": result.run_summary_log_path,
             "run_summary_role": result.run_summary_role,
             "run_experiment_ids": result.run_experiment_ids,
+            "run_experiments_by_role": result.run_experiments_by_role,
         }, indent=2))
     else:
         out = stdout_output()
@@ -505,6 +510,53 @@ def cmd_workspaces_measure(
         out.kv("Directory", ws / result.measurement_dir)
         out.kv("Comparison log", ws / result.comparison_log_path)
         out.kv("Run-summary log", ws / result.run_summary_log_path)
+
+
+def cmd_workspaces_run_series(
+    workspace_path: str,
+    output: str,
+    *,
+    allow_world_changes: bool = False,
+    override_guard: bool = False,
+    update_notes: bool = False,
+    experiment_series_service: object = None,
+    catalogs: dict | None = None,
+) -> None:
+    """Run a declarative workspace experiment series."""
+    from axis.framework.progress import create_progress_reporter
+
+    ws = Path(workspace_path)
+    with create_progress_reporter(output != "json") as progress:
+        result = experiment_series_service.run_series(
+            ws,
+            allow_world_changes=allow_world_changes,
+            override_guard=override_guard,
+            update_notes=update_notes,
+            catalogs=catalogs,
+            progress=progress,
+        )
+
+    if output == "json":
+        print(json.dumps({
+            "series_title": result.series_title,
+            "executed_experiment_count": result.executed_experiment_count,
+            "executed_experiment_ids": result.executed_experiment_ids,
+            "measurement_directories": result.measurement_directories,
+            "series_summary_markdown_path": result.series_summary_markdown_path,
+            "series_summary_json_path": result.series_summary_json_path,
+            "series_metrics_csv_path": result.series_metrics_csv_path,
+            "series_manifest_json_path": result.series_manifest_json_path,
+            "notes_updated": result.notes_updated,
+        }, indent=2))
+    else:
+        out = stdout_output()
+        out.success("workspace experiment series completed")
+        out.kv("Experiments executed", result.executed_experiment_count)
+        out.kv("Series summary", ws / result.series_summary_markdown_path)
+        out.kv("Series JSON", ws / result.series_summary_json_path)
+        out.kv("Series CSV", ws / result.series_metrics_csv_path)
+        out.kv("Series manifest", ws / result.series_manifest_json_path)
+        out.kv("Notes updated", "yes" if result.notes_updated else "no")
 
 
 def cmd_workspaces_compare_configs(
@@ -673,46 +725,6 @@ def _print_comparison_targets(ws: Path, comparison_path: str, *, out=None) -> No
         out.kv("Candidate used", cand_eid, indent=4)
     except Exception:
         pass
-
-
-def _export_measurement_reports(
-    ws: Path,
-    *,
-    comparison_number: int,
-    comparison_log_path: str,
-    run_summary_role: str,
-    run_summary_log_path: str,
-    allow_world_changes: bool,
-    catalogs: dict | None = None,
-) -> None:
-    """Export comparison-summary and run-summary text reports to files."""
-    from axis.framework.cli.commands.runs import cmd_runs_show
-    from axis.framework.persistence import ExperimentRepository
-    from axis.framework.workspaces.run_summary import (
-        resolve_run_summary_target,
-    )
-
-    comparison_path = ws / comparison_log_path
-    comparison_path.parent.mkdir(parents=True, exist_ok=True)
-    with comparison_path.open("w", encoding="utf-8") as stream:
-        with redirect_stdout(stream):
-            cmd_workspaces_comparison_result(
-                str(ws),
-                "text",
-                comparison_number=comparison_number,
-                allow_world_changes=allow_world_changes,
-                catalogs=catalogs,
-            )
-
-    run_summary_path = ws / run_summary_log_path
-    run_summary_path.parent.mkdir(parents=True, exist_ok=True)
-    target = resolve_run_summary_target(ws, role=run_summary_role)
-    repo = ExperimentRepository(ws / "results")
-    with run_summary_path.open("w", encoding="utf-8") as stream:
-        with redirect_stdout(stream):
-            if getattr(target, "run_notes", None):
-                stdout_output().kv("Run notes", target.run_notes)
-            cmd_runs_show(repo, target.experiment_id, target.run_id, "text")
 
 
 def _resolve_comparison_result(

@@ -66,6 +66,7 @@ nav:
       - "Configuration Reference": manuals/config-manual.md
       - "Visualization": manuals/visualization-manual.md
       - "Paired Trace Comparison": manuals/comparison-manual.md
+      - "Experiment Series": manuals/experiment-series-manual.md
       - "System Development": manuals/system-dev-manual.md
       - "System A+W": manuals/system-aw-manual.md
       - "World Development": manuals/world-dev-manual.md

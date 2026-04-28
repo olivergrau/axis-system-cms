@@ -43,6 +43,7 @@ class WorkspaceRunService:
         workspace_path: Path,
         run_filter: str | None = None,
         *,
+        config_overrides_by_role: dict[str, str] | None = None,
         allow_world_changes: bool = False,
         override_guard: bool = False,
         run_notes: str | None = None,
@@ -71,7 +72,10 @@ class WorkspaceRunService:
         unchanged_targets: list[str] = []
         if not override_guard:
             for target in plan.targets:
-                config_path = ws / target.config_path
+                override_path = None
+                if config_overrides_by_role is not None:
+                    override_path = config_overrides_by_role.get(target.role)
+                config_path = Path(override_path) if override_path else (ws / target.config_path)
                 config = _load_config_file(config_path)
                 current_config = config.model_dump(mode="json")
                 if has_same_config_as_previous_result(
@@ -96,14 +100,12 @@ class WorkspaceRunService:
                 f"{paths} compared to their previous comparable results."
             )
 
-        if progress is None:
-            exec_results = self._execute_fn(ws, run_filter=run_filter)
-        else:
-            exec_results = self._execute_fn(
-                ws,
-                run_filter=run_filter,
-                progress=progress,
-            )
+        execute_kwargs: dict[str, Any] = {"run_filter": run_filter}
+        if config_overrides_by_role is not None:
+            execute_kwargs["config_overrides_by_role"] = config_overrides_by_role
+        if progress is not None:
+            execute_kwargs["progress"] = progress
+        exec_results = self._execute_fn(ws, **execute_kwargs)
 
         summaries: list[RunServiceResult] = []
         for er in exec_results:

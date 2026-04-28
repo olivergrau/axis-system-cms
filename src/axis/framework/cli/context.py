@@ -37,6 +37,9 @@ class CLIContext:
     measurement_service: object = field(default=None)
     """``WorkspaceMeasurementService`` instance."""
 
+    experiment_series_service: object = field(default=None)
+    """``WorkspaceExperimentSeriesService`` instance."""
+
     inspection_service: object = field(default=None)
     """``WorkspaceInspectionService`` instance."""
 
@@ -59,8 +62,17 @@ def build_context(root: Path) -> CLIContext:
         close_workspace,
         set_candidate_config,
     )
+    from axis.framework.workspaces.measurement_reports import (
+        export_measurement_reports,
+    )
+    from axis.framework.workspaces.experiment_series import (
+        load_experiment_series,
+    )
     from axis.framework.workspaces.services.measurement_service import (
         WorkspaceMeasurementService,
+    )
+    from axis.framework.workspaces.services.experiment_series_service import (
+        WorkspaceExperimentSeriesService,
     )
     from axis.framework.workspaces.services.compare_service import (
         WorkspaceCompareService,
@@ -101,16 +113,23 @@ def build_context(root: Path) -> CLIContext:
         compare_fn=compare_workspace,
         sync_fn=sync_manifest_after_compare,
     )
+    measurement_service = WorkspaceMeasurementService(
+        run_service=run_service,
+        compare_service=compare_service,
+        load_manifest_fn=load_manifest,
+    )
     return CLIContext(
         repo=repo,
         root=root,
         catalogs=catalogs,
         run_service=run_service,
         compare_service=compare_service,
-        measurement_service=WorkspaceMeasurementService(
-            run_service=run_service,
-            compare_service=compare_service,
+        measurement_service=measurement_service,
+        experiment_series_service=WorkspaceExperimentSeriesService(
+            measurement_service=measurement_service,
             load_manifest_fn=load_manifest,
+            load_experiment_series_fn=load_experiment_series,
+            export_measurement_reports_fn=export_measurement_reports,
         ),
         inspection_service=WorkspaceInspectionService(
             summarize_fn=summarize_workspace,
