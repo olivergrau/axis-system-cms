@@ -25,6 +25,7 @@ from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_compare_configs,
     cmd_workspaces_comparison_result,
     cmd_workspaces_measure,
+    cmd_workspaces_reset,
     cmd_workspaces_run_series,
     cmd_workspaces_run,
     cmd_workspaces_run_metrics,
@@ -97,6 +98,10 @@ def dispatch(
                 cmd_workspaces_scaffold(output)
             elif args.action == "close":
                 cmd_workspaces_close(
+                    args.workspace_path, output,
+                    workflow_service=ctx.workflow_service)
+            elif args.action == "reset":
+                cmd_workspaces_reset(
                     args.workspace_path, output,
                     workflow_service=ctx.workflow_service)
             elif args.action == "check":

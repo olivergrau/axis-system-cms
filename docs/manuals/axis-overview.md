@@ -369,6 +369,7 @@ my-workspace/
   configs/                # Executable config files
   results/                # Execution result artifacts
   comparisons/            # Comparison outputs (self-contained JSON envelopes)
+  measurements/           # Measurement workflow outputs and summaries
   exports/                # Curated export artifacts
   concept/                # Conceptual modeling (development only)
   engineering/            # Engineering planning (development only)
@@ -379,6 +380,7 @@ my-workspace/
 ```
 axis workspaces scaffold                       Interactive workspace creation
 axis workspaces close <path>                  Close a workspace
+axis workspaces reset <path>                  Clear generated workspace artifacts
 axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments
@@ -408,6 +410,12 @@ The framework automatically updates the manifest after each run and
 comparison. Comparison files are sequentially numbered
 (``comparison-001.json``, ``comparison-002.json``, ...) and embed full
 config copies, making each comparison self-contained and reproducible.
+
+When you need to restart a workspace from a clean artifact state,
+``axis workspaces reset <path>`` deletes generated contents from
+``results/``, ``comparisons/``, and ``measurements/`` and clears the
+manifest's tracked primary result/comparison lists without removing the
+workspace's configs or notes.
 
 ### Investigation Workflows
 

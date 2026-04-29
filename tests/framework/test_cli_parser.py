@@ -43,6 +43,14 @@ def test_parser_accepts_workspaces_close_subcommand():
     assert args.workspace_path == "/tmp/ws"
 
 
+def test_parser_accepts_workspaces_reset_subcommand():
+    parser = build_parser()
+    args = parser.parse_args(["workspaces", "reset", "/tmp/ws"])
+    assert args.entity == "workspaces"
+    assert args.action == "reset"
+    assert args.workspace_path == "/tmp/ws"
+
+
 def test_parser_accepts_compare_allow_world_changes():
     parser = build_parser()
     args = parser.parse_args([

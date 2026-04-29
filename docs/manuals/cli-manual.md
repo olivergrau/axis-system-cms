@@ -27,8 +27,14 @@ axis <global-flags> <entity> <action> [arguments]
 |---------------|---------------------------------|
 | `experiments` | `list`, `run`, `resume`, `show` |
 | `runs`        | `list`, `show`, `metrics`       |
+| `workspaces`  | `scaffold`, `check`, `show`, `run`, `measure`, `run-series`, `compare`, `comparison-summary`, `run-summary`, `run-metrics`, `sweep-result`, `set-candidate`, `reset`, `close` |
 | `compare`     | *(no sub-action -- runs paired trace comparison)* |
 | `visualize`   | *(no sub-action -- launches viewer)* |
+
+Workspace commands are documented in detail in the
+[Experiment Workspaces](workspace-manual.md) manual. In short, they add a
+workspace-local layer for managing `results/`, `comparisons/`, and
+`measurements/` around the normal experiment engine.
 
 ### Global flags
 
@@ -924,6 +930,9 @@ axis --output json experiments show <experiment-id>
 
 # Use a custom repository directory
 axis --root /data/results experiments list
+
+# Reset one workspace's generated artifacts
+axis workspaces reset workspaces/my-workspace
 
 # Read raw summary file directly
 cat experiments/results/<experiment-id>/runs/run-0000/run_summary.json | python -m json.tool

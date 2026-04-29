@@ -202,6 +202,29 @@ def cmd_workspaces_close(
         out.kv("Lifecycle", result.lifecycle_stage)
 
 
+def cmd_workspaces_reset(
+    workspace_path: str,
+    output: str,
+    workflow_service: object = None,
+) -> None:
+    """Reset generated workspace artifacts and clear manifest tracking."""
+    result = workflow_service.reset(Path(workspace_path))
+
+    if output == "json":
+        print(json.dumps({
+            "workspace_path": result.workspace_path,
+            "cleared_results": result.cleared_results,
+            "cleared_comparisons": result.cleared_comparisons,
+            "cleared_measurements": result.cleared_measurements,
+        }, indent=2))
+    else:
+        out = stdout_output()
+        out.success(f"workspace reset: {Path(workspace_path).name}")
+        out.kv("Cleared results entries", result.cleared_results)
+        out.kv("Cleared comparison entries", result.cleared_comparisons)
+        out.kv("Cleared measurement entries", result.cleared_measurements)
+
+
 def cmd_workspaces_show(
     workspace_path: str, output: str,
     inspection_service: object = None,

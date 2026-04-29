@@ -62,11 +62,15 @@ def _make_inspection_service(
 
 def _make_workflow_service(
     close_workspace_fn=None,
+    reset_workspace_artifacts_fn=None,
     load_yaml_roundtrip_fn=None,
     save_yaml_roundtrip_fn=None,
 ):
     return WorkspaceWorkflowService(
         close_workspace_fn=close_workspace_fn or MagicMock(),
+        reset_workspace_artifacts_fn=(
+            reset_workspace_artifacts_fn or MagicMock()
+        ),
         load_yaml_roundtrip_fn=load_yaml_roundtrip_fn or MagicMock(),
         save_yaml_roundtrip_fn=save_yaml_roundtrip_fn or MagicMock(),
     )
@@ -754,6 +758,58 @@ class TestWorkflowServiceInjection:
         assert result.status == "closed"
         assert result.lifecycle_stage == "final"
 
+    def test_reset_clears_artifacts_and_manifest_tracking(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        (ws / "results" / "exp-001").mkdir(parents=True)
+        (ws / "comparisons").mkdir(parents=True)
+        (ws / "measurements" / "experiment_001").mkdir(parents=True)
+        (ws / "comparisons" / "comparison-001.json").write_text("{}")
+        (ws / "results" / "exp-001" / "file.json").write_text("{}")
+        (ws / "measurements" / "experiment_001" / "summary.log").write_text("")
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "active",
+            "lifecycle_stage": "analysis",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_aw",
+            "primary_results": [{"path": "results/exp-001"}],
+            "primary_comparisons": ["comparisons/comparison-001.json"],
+        }))
+
+        from axis.framework.workspaces.manifest_mutator import (
+            reset_workspace_artifacts,
+        )
+        from axis.framework.workspaces.sync import (
+            _load_yaml_roundtrip,
+            _save_yaml_roundtrip,
+        )
+
+        svc = WorkspaceWorkflowService(
+            close_workspace_fn=MagicMock(),
+            reset_workspace_artifacts_fn=reset_workspace_artifacts,
+            load_yaml_roundtrip_fn=_load_yaml_roundtrip,
+            save_yaml_roundtrip_fn=_save_yaml_roundtrip,
+        )
+
+        result = svc.reset(ws)
+
+        assert result.cleared_results == 1
+        assert result.cleared_comparisons == 1
+        assert result.cleared_measurements == 1
+        assert list((ws / "results").iterdir()) == []
+        assert list((ws / "comparisons").iterdir()) == []
+        assert list((ws / "measurements").iterdir()) == []
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        assert data["primary_results"] == []
+        assert data["primary_comparisons"] == []
+
 
 # ---------------------------------------------------------------------------
 # set_candidate
@@ -909,5 +965,6 @@ class TestContextIncludesServices:
         assert ctx.inspection_service._drift_fn is not None
         assert ctx.inspection_service._sweep_result_fn is not None
         assert ctx.workflow_service._close_workspace_fn is not None
+        assert ctx.workflow_service._reset_workspace_artifacts_fn is not None
         assert ctx.workflow_service._load_yaml_roundtrip_fn is not None
         assert ctx.workflow_service._save_yaml_roundtrip_fn is not None

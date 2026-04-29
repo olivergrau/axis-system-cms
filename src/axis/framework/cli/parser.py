@@ -124,6 +124,7 @@ examples:
                --candidate-experiment <eid2> --candidate-run <rid2> --candidate-episode 0
 
   axis workspaces show <workspace-path>         Inspect workspace state
+  axis workspaces reset <workspace-path>        Clear workspace results and comparisons
   axis workspaces run-metrics <workspace-path>  Inspect metrics for one resolved run
   axis workspaces compare <workspace-path>      Run a workspace comparison
   axis workspaces run-series <workspace-path>   Run a declarative experiment series
@@ -276,7 +277,7 @@ examples:
         "workspaces",
         help=(
             "Manage experiment workspaces "
-            "(scaffold, close, check, show, run, compare, measure, run-series, compare-configs)"
+            "(scaffold, close, reset, check, show, run, compare, measure, run-series, compare-configs)"
         ),
     )
     ws_action = ws_parser.add_subparsers(dest="action", title="actions")
@@ -290,6 +291,13 @@ examples:
         "close", parents=[common], help="Close a workspace",
     )
     ws_close_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+
+    ws_reset_p = ws_action.add_parser(
+        "reset", parents=[common],
+        help="Delete workspace results/comparisons and clear manifest tracking",
+    )
+    ws_reset_p.add_argument(
         "workspace_path", help="Path to workspace directory")
 
     ws_check_p = ws_action.add_parser(

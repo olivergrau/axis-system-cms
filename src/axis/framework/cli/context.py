@@ -60,6 +60,7 @@ def build_context(root: Path) -> CLIContext:
     from axis.framework.workspaces.execute import execute_workspace
     from axis.framework.workspaces.manifest_mutator import (
         close_workspace,
+        reset_workspace_artifacts,
         set_candidate_config,
     )
     from axis.framework.workspaces.measurement_reports import (
@@ -140,6 +141,7 @@ def build_context(root: Path) -> CLIContext:
         ),
         workflow_service=WorkspaceWorkflowService(
             close_workspace_fn=close_workspace,
+            reset_workspace_artifacts_fn=reset_workspace_artifacts,
             load_yaml_roundtrip_fn=_load_yaml_roundtrip,
             save_yaml_roundtrip_fn=_save_yaml_roundtrip,
         ),

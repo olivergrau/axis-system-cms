@@ -186,6 +186,22 @@ def close_workspace(data: dict) -> None:
     data["lifecycle_stage"] = "final"
 
 
+def reset_workspace_artifacts(data: dict) -> None:
+    """Clear manifest fields that track generated workspace artifacts.
+
+    This resets the workspace to a clean execution state without touching
+    identity, purpose, configs, notes, or other authored metadata.
+    """
+    data["primary_results"] = []
+    data["primary_comparisons"] = []
+
+    if data.get("workspace_type") in ("system_development",):
+        data["baseline_results"] = []
+        data["candidate_results"] = []
+        data["current_candidate_result"] = None
+        data["current_validation_comparison"] = None
+
+
 # -----------------------------------------------------------------------
 # Scaffold mutations
 # -----------------------------------------------------------------------

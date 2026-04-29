@@ -242,6 +242,44 @@ class TestExperimentsShow:
         assert "not found" in err.lower()
 
 
+class TestWorkspaceReset:
+    def test_reset_clears_results_comparisons_measurements_and_manifest(self, tmp_path, capsys):
+        ws = tmp_path / "workspace"
+        (ws / "results" / "exp-001").mkdir(parents=True)
+        (ws / "comparisons").mkdir(parents=True)
+        (ws / "measurements" / "experiment_001").mkdir(parents=True)
+        (ws / "results" / "exp-001" / "run.json").write_text("{}")
+        (ws / "comparisons" / "comparison-001.json").write_text("{}")
+        (ws / "measurements" / "experiment_001" / "summary.log").write_text("")
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "workspace",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "active",
+            "lifecycle_stage": "analysis",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_aw",
+            "primary_results": [{"path": "results/exp-001"}],
+            "primary_comparisons": ["comparisons/comparison-001.json"],
+        }))
+
+        code, out, _ = _run_cli(capsys, [
+            "workspaces", "reset", str(ws),
+        ])
+
+        assert code == 0
+        assert "workspace reset" in out.lower()
+        assert list((ws / "results").iterdir()) == []
+        assert list((ws / "comparisons").iterdir()) == []
+        assert list((ws / "measurements").iterdir()) == []
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        assert data["primary_results"] == []
+        assert data["primary_comparisons"] == []
+
+
 # ---------------------------------------------------------------------------
 # runs list
 # ---------------------------------------------------------------------------

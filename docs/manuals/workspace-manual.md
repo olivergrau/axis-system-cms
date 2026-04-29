@@ -304,6 +304,29 @@ workspaces:
 - `axis workspaces compare`
 - `axis workspaces set-candidate`
 
+### Reset generated workspace artifacts
+
+```bash
+axis workspaces reset workspaces/my-workspace
+```
+
+Resets a workspace's generated artifact state without changing its identity,
+question, configs, notes, or other authored metadata.
+
+The command:
+
+- deletes all contents under `results/`
+- deletes all contents under `comparisons/`
+- deletes all contents under `measurements/`
+- clears `primary_results` in `workspace.yaml`
+- clears `primary_comparisons` in `workspace.yaml`
+
+This is useful when you want to rerun or re-measure a workspace from a clean
+artifact state while keeping the workspace scaffold itself intact.
+
+`reset` does not close the workspace and does not remove config files,
+`notes.md`, `README.md`, `experiment.yaml`, or other authored documents.
+
 ### Inspect comparison results
 
 ```bash
@@ -930,6 +953,7 @@ my-workspace/
   configs/                # Executable config files
   results/                # Execution result artifacts
   comparisons/            # Comparison outputs
+  measurements/           # Measurement workflow outputs and exports
   exports/                # Curated export artifacts
   concept/                # Conceptual modeling (development only)
   engineering/            # Engineering planning (development only)
@@ -939,7 +963,7 @@ my-workspace/
 
 ## Result Placement
 
-Workspaces use **workspace-owned mode**: all execution artifacts are written directly into the workspace's `results/` directory, and comparison outputs go into `comparisons/`. The workspace manifest is updated with references to the produced artifacts after each operation.
+Workspaces use **workspace-owned mode**: all execution artifacts are written directly into the workspace's `results/` directory, comparison outputs go into `comparisons/`, and measurement workflow exports go into `measurements/`. The workspace manifest is updated with references to the produced artifacts after each operation.
 
 This is distinct from the direct `axis experiments run <config>` mode, which writes artifacts to the repository root (`experiments/results/` by default). The two modes are independent — workspace commands always write into the workspace, direct commands always write to the repository root.
 
@@ -992,6 +1016,7 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 |---|---|
 | `axis workspaces scaffold` | Interactive workspace creation |
 | `axis workspaces close <path>` | Close a workspace and finalize its workflow state |
+| `axis workspaces reset <path>` | Delete generated workspace artifacts and clear manifest tracking |
 | `axis workspaces check <path>` | Validate workspace structure and manifest |
 | `axis workspaces show <path>` | Display workspace summary with artifact existence checks |
 | `axis workspaces run <path>` | Execute all workspace configs |
