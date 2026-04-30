@@ -39,7 +39,8 @@ axis workspaces run-series workspaces/my-workspace --update-notes
 Important:
 
 - by default, `notes.md` is left untouched
-- `notes.md` is overwritten only when `--update-notes` is specified
+- `notes.md` is overwritten only when `--update-notes` is specified and
+  `defaults.notes.scaffold_notes` is `true`
 
 ## Required Files
 
@@ -84,6 +85,96 @@ experiments:
             positive_sensitivity: 0.7
             negative_sensitivity: 0.9
 ```
+
+## `defaults` Block
+
+`experiment.yaml` may include an optional `defaults` block for series-wide
+settings:
+
+```yaml
+defaults:
+  export:
+    comparison_summary: true
+    candidate_run_summary: true
+    reference_run_summary: false
+  notes:
+    scaffold_notes: true
+  labels:
+    measurement_label_pattern: "{experiment_id}"
+```
+
+### `defaults.labels.measurement_label_pattern`
+
+Controls the fallback measurement label for experiments that do not declare
+their own `label`.
+
+Current behavior:
+
+- the pattern must include `{experiment_id}`
+- AXIS substitutes `{experiment_id}` with the experiment's `id`
+- this fallback is used only when the experiment entry omits `label`
+- if `label` is present on the experiment, that explicit label wins
+
+Example:
+
+```yaml
+defaults:
+  labels:
+    measurement_label_pattern: "series-{experiment_id}"
+```
+
+With `id: exp_03`, the generated measurement label becomes
+`series-exp_03`.
+
+### `defaults.notes.scaffold_notes`
+
+Controls whether `axis workspaces run-series --update-notes` is allowed to
+regenerate `notes.md`.
+
+Current behavior:
+
+- `scaffold_notes: true` does not update notes by itself
+- `--update-notes` is still required on the CLI
+- if `--update-notes` is omitted, AXIS leaves `notes.md` untouched
+- if `--update-notes` is provided and `scaffold_notes: true`, AXIS overwrites
+  `notes.md` with a fresh scaffold
+- if `--update-notes` is provided and `scaffold_notes: false`, AXIS does not
+  regenerate `notes.md`
+
+In other words:
+
+- `--update-notes` is the active user request
+- `scaffold_notes` is the manifest-side permission switch
+
+The generated scaffold includes:
+
+- one section per executed experiment
+- the mapped measurement folder
+- copied hypotheses
+- placeholders for observations, interpretation, and conclusion
+
+### `defaults.export.*`
+
+The schema currently exposes three export toggles:
+
+- `comparison_summary`
+- `candidate_run_summary`
+- `reference_run_summary`
+
+Current implementation status:
+
+- these fields are parsed from `experiment.yaml`
+- they are not currently used to change `run-series` output behavior
+
+At present, `run-series` still exports the standard per-experiment text
+artifacts produced by the measurement workflow:
+
+- a comparison summary log
+- one run-summary log
+
+For `system_comparison`, that run-summary log is for the candidate side.
+
+For `single_system`, that run-summary log is for the `system_under_test` run.
 
 ## Resolution Model
 
@@ -228,7 +319,8 @@ The report stays at pure reporting level:
 
 ## Notes Scaffolding
 
-If you pass `--update-notes`, AXIS regenerates `notes.md` as a scaffold.
+If you pass `--update-notes`, AXIS regenerates `notes.md` as a scaffold only
+when `defaults.notes.scaffold_notes` is `true`.
 
 The scaffold includes:
 
@@ -237,7 +329,8 @@ The scaffold includes:
 - copied hypotheses
 - placeholders for observations, interpretation, and conclusion
 
-Without `--update-notes`, AXIS leaves the existing `notes.md` untouched.
+Without `--update-notes`, AXIS leaves the existing `notes.md` untouched,
+regardless of the `scaffold_notes` setting.
 
 ## Relationship To `measure`
 

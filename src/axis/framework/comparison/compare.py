@@ -119,6 +119,7 @@ def compare_runs(
     allow_world_changes: bool = False,
     extension_catalog: object | None = None,
     progress: object | None = None,
+    progress_description: str | None = None,
 ) -> RunComparisonResult:
     """Compare all matched episodes across two runs.
 
@@ -150,7 +151,10 @@ def compare_runs(
     cand_episodes = repo.list_episode_files(candidate_experiment_id, candidate_run_id)
     n_pairs = min(len(ref_episodes), len(cand_episodes))
     reporter = progress or NullProgressReporter()
-    task_id = reporter.add_task("Episode comparisons", total=n_pairs)
+    task_id = reporter.add_task(
+        progress_description or "Episode comparisons",
+        total=n_pairs,
+    )
 
     results: list[PairedTraceComparisonResult] = []
     ref_system_type = ""

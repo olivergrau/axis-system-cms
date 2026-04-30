@@ -634,6 +634,23 @@ class TestCLIIntegration:
         assert "Progression View" in summary_text
         assert "Reference-System View" in summary_text
 
+    def test_run_series_text_output_prefixes_progress_with_experiment_context(
+        self, tmp_path, capsys,
+    ):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main(["workspaces", "run-series", str(ws)])
+        captured = capsys.readouterr()
+        assert code == 0
+        assert "1/2 exp_01 | Experiment runs" in captured.out
+        assert "1/2 exp_01 | run-0000: episodes" in captured.out
+        assert "1/2 exp_01 | Episode comparisons" in captured.out
+        assert "2/2 exp_02 | Experiment runs" in captured.out
+        assert "2/2 exp_02 | run-0000: episodes" in captured.out
+        assert "2/2 exp_02 | Episode comparisons" in captured.out
+        assert "Workspace configs" not in captured.out
+
     def test_run_series_update_notes_overwrites_notes_scaffold(
         self, tmp_path, capsys,
     ):

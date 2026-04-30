@@ -50,6 +50,7 @@ def compare_workspace(
     allow_world_changes: bool = False,
     extension_catalog: object | None = None,
     progress: object | None = None,
+    progress_description: str | None = None,
 ) -> tuple[WorkspaceComparisonEnvelope, str]:
     """Run a comparison for a workspace and save results.
 
@@ -107,6 +108,7 @@ def compare_workspace(
         allow_world_changes=allow_world_changes,
         extension_catalog=extension_catalog,
         progress=progress,
+        progress_description=progress_description,
     )
 
     # Load full config copies from the workspace results.

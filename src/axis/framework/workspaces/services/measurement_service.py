@@ -49,6 +49,8 @@ class WorkspaceMeasurementService:
         run_notes: str | None = None,
         extension_catalog: object | None = None,
         progress: object | None = None,
+        progress_description_prefix: str | None = None,
+        show_workspace_progress: bool = True,
     ) -> WorkspaceMeasurementServiceResult:
         """Execute run + compare and plan the exported measurement logs."""
         from axis.framework.workspaces.types import (
@@ -94,6 +96,9 @@ class WorkspaceMeasurementService:
         }
         if progress is not None:
             run_kwargs["progress"] = progress
+        if progress_description_prefix is not None:
+            run_kwargs["progress_description_prefix"] = progress_description_prefix
+        run_kwargs["show_workspace_progress"] = show_workspace_progress
         run_results = self._run_service.execute(ws, **run_kwargs)
 
         compare_kwargs = {
@@ -102,6 +107,10 @@ class WorkspaceMeasurementService:
         }
         if progress is not None:
             compare_kwargs["progress"] = progress
+        if progress_description_prefix is not None:
+            compare_kwargs["progress_description"] = (
+                f"{progress_description_prefix} | Episode comparisons"
+            )
         compare_result = self._compare_service.compare(ws, **compare_kwargs)
 
         tokens = {

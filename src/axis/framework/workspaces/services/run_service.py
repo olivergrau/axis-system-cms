@@ -48,6 +48,8 @@ class WorkspaceRunService:
         override_guard: bool = False,
         run_notes: str | None = None,
         progress: object | None = None,
+        progress_description_prefix: str | None = None,
+        show_workspace_progress: bool = True,
     ) -> list[RunServiceResult]:
         """Execute all run targets and sync the manifest.
 
@@ -105,6 +107,9 @@ class WorkspaceRunService:
             execute_kwargs["config_overrides_by_role"] = config_overrides_by_role
         if progress is not None:
             execute_kwargs["progress"] = progress
+        if progress_description_prefix is not None:
+            execute_kwargs["progress_description_prefix"] = progress_description_prefix
+        execute_kwargs["show_workspace_progress"] = show_workspace_progress
         exec_results = self._execute_fn(ws, **execute_kwargs)
 
         summaries: list[RunServiceResult] = []

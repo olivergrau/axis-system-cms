@@ -115,16 +115,19 @@ class WorkspaceExperimentSeriesService:
         executed_ids: list[str] = []
         measurement_directories: list[str] = []
         notes_experiments: list[SeriesNotesExperiment] = []
+        enabled_experiments = [
+            experiment for experiment in series.experiments if experiment.enabled
+        ]
 
-        for experiment in series.experiments:
-            if not experiment.enabled:
-                continue
-
+        for experiment_index, experiment in enumerate(enabled_experiments, start=1):
             label_template = series.defaults.labels.measurement_label_pattern
             label = (
                 experiment.label
                 if experiment.label is not None
                 else label_template.format(experiment_id=experiment.id)
+            )
+            progress_prefix = (
+                f"{experiment_index}/{len(enabled_experiments)} {experiment.id}"
             )
             if manifest.workspace_type == WorkspaceType.SYSTEM_COMPARISON:
                 materialized = materialize_candidate_config(
@@ -145,6 +148,8 @@ class WorkspaceExperimentSeriesService:
                         catalogs.get("comparison_extensions") if catalogs else None
                     ),
                     progress=progress,
+                    progress_description_prefix=progress_prefix,
+                    show_workspace_progress=False,
                 )
                 self._export_measurement_reports_fn(
                     ws,
@@ -197,6 +202,8 @@ class WorkspaceExperimentSeriesService:
                     override_guard=override_guard,
                     run_notes=experiment.notes or experiment.title,
                     progress=progress,
+                    progress_description_prefix=progress_prefix,
+                    show_workspace_progress=False,
                 )
                 current_experiment_id = run_results[0].experiment_id
                 baseline_experiment_id = current_experiment_id if not executed_ids else aggregate_entries[0].candidate_experiment_id
@@ -209,6 +216,7 @@ class WorkspaceExperimentSeriesService:
                         catalogs.get("comparison_extensions") if catalogs else None
                     ),
                     progress=progress,
+                    progress_description=f"{progress_prefix} | Episode comparisons",
                 )
                 comparison_output_path = compare_result.output_path
                 tokens = {

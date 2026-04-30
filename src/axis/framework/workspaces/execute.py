@@ -41,6 +41,8 @@ def execute_workspace(
     *,
     config_overrides_by_role: dict[str, str] | None = None,
     progress: object | None = None,
+    progress_description_prefix: str | None = None,
+    show_workspace_progress: bool = True,
 ) -> list[WorkspaceExecutionResult]:
     """Execute all run targets in a workspace (workspace-owned mode).
 
@@ -83,7 +85,7 @@ def execute_workspace(
     repo = ExperimentRepository(results_dir)
     executor = ExperimentExecutor(repository=repo)
     workspace_task_id = None
-    if progress is not None:
+    if progress is not None and show_workspace_progress and len(plan.targets) > 1:
         workspace_task_id = progress.add_task(
             "Workspace configs",
             total=len(plan.targets),
@@ -100,6 +102,7 @@ def execute_workspace(
         experiment_result = executor.execute(
             config,
             progress=progress,
+            progress_description_prefix=progress_description_prefix,
         )
         results.append(WorkspaceExecutionResult(
             experiment_result=experiment_result,

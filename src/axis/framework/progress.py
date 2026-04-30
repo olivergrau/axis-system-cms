@@ -30,6 +30,9 @@ class NullProgressReporter:
     ) -> None:
         return None
 
+    def print(self, message: str = "") -> None:
+        return None
+
 
 class RichProgressReporter:
     """Thin wrapper around ``rich.progress.Progress``."""
@@ -87,6 +90,9 @@ class RichProgressReporter:
             kwargs["total"] = total
         if kwargs:
             self._progress.update(task_id, **kwargs)
+
+    def print(self, message: str = "") -> None:
+        self._progress.console.print(message)
 
 
 def create_progress_reporter(enabled: bool) -> NullProgressReporter | RichProgressReporter:
