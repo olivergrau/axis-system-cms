@@ -19,6 +19,8 @@ workspaces/*
 !workspaces/system_a_vs_system_aw/
 !workspaces/system_a_vs_system_aw/**
 workspaces/system_a_vs_system_aw/results/
+workspaces/system_a_vs_system_aw/series/system-parameter-variations/results/
+workspaces/system_a_vs_system_aw/series/world-variations/results/
 
 !workspaces/system_a_vs_system_c/
 !workspaces/system_a_vs_system_c/**

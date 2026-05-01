@@ -96,6 +96,7 @@ class ExperimentSeriesExperiment(BaseModel):
     enabled: bool = True
     notes: str | None = None
     hypothesis: list[str] | None = None
+    reference_config_delta: dict[str, Any] | None = None
     candidate_config_delta: dict[str, Any]
 
     @field_validator("id", "title")
@@ -121,6 +122,17 @@ class ExperimentSeriesExperiment(BaseModel):
     def _require_mapping(cls, value: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(value, dict) or not value:
             raise ValueError("candidate_config_delta must be a non-empty mapping")
+        return value
+
+    @field_validator("reference_config_delta")
+    @classmethod
+    def _validate_optional_reference_mapping(
+        cls, value: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        if value is None:
+            return value
+        if not isinstance(value, dict) or not value:
+            raise ValueError("reference_config_delta must be a non-empty mapping")
         return value
 
 

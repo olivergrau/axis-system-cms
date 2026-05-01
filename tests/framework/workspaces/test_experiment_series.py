@@ -62,6 +62,34 @@ def test_load_experiment_series_success(tmp_path: Path) -> None:
     assert series.experiments[0].id == "exp_01"
 
 
+def test_load_experiment_series_accepts_optional_reference_delta(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    _write_registered_series(ws, {
+        "version": 1,
+        "workflow_type": "experiment_series",
+        "workspace_type": "system_comparison",
+        "experiments": [
+            {
+                "id": "exp_01",
+                "title": "Shared world change",
+                "enabled": True,
+                "reference_config_delta": {
+                    "world": {"grid_width": 24},
+                },
+                "candidate_config_delta": {
+                    "world": {"grid_width": 24},
+                },
+            },
+        ],
+    })
+
+    series = load_experiment_series(ws, series_id="series-a")
+    assert series.experiments[0].reference_config_delta == {
+        "world": {"grid_width": 24},
+    }
+
+
 def test_load_experiment_series_rejects_duplicate_ids(tmp_path: Path) -> None:
     ws = tmp_path / "ws"
     ws.mkdir()

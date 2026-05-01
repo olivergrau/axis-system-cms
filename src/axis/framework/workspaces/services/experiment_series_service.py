@@ -138,12 +138,28 @@ class WorkspaceExperimentSeriesService:
                 f"{experiment_index}/{len(enabled_experiments)} {experiment.id}"
             )
             if manifest.workspace_type == WorkspaceType.SYSTEM_COMPARISON:
-                materialized = materialize_candidate_config(
+                config_overrides_by_role: dict[str, str] = {}
+                if experiment.reference_config_delta is not None:
+                    materialized_reference = materialize_role_config(
+                        ws,
+                        role="reference",
+                        source_config_path=base_configs["reference"],
+                        config_delta=experiment.reference_config_delta,
+                        temp_dir=temp_root,
+                        experiment_id=experiment.id,
+                    )
+                    config_overrides_by_role["reference"] = (
+                        materialized_reference.temp_config_path
+                    )
+                materialized_candidate = materialize_candidate_config(
                     ws,
                     source_config_path=base_configs["candidate"],
                     candidate_config_delta=experiment.candidate_config_delta,
                     temp_dir=temp_root,
                     experiment_id=experiment.id,
+                )
+                config_overrides_by_role["candidate"] = (
+                    materialized_candidate.temp_config_path
                 )
                 measurement_number = _next_measurement_number(
                     _ensure_measurement_root(series_paths.measurements_root),
@@ -160,7 +176,7 @@ class WorkspaceExperimentSeriesService:
                 measurement_dir_path.mkdir(parents=True, exist_ok=False)
                 exec_results = execute_workspace(
                     ws,
-                    config_overrides_by_role={"candidate": materialized.temp_config_path},
+                    config_overrides_by_role=config_overrides_by_role,
                     progress=progress,
                     progress_description_prefix=progress_prefix,
                     show_workspace_progress=False,

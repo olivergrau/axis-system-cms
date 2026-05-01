@@ -56,7 +56,8 @@ component library available within the System layer:
 The **System Construction Kit** (`systems/construction_kit/`) provides
 tested, reusable implementations of common system-internal mechanisms:
 sensors, drives, policies, arbitration, energy utilities, and memory
-structures. Concrete systems compose these components via plain Python
+structures, predictive memory, trace dynamics, and action modulation.
+Concrete systems compose these components via plain Python
 construction -- no inheritance hierarchies. Systems may also implement
 their own components from scratch where the kit does not cover their
 needs (e.g., System B implements its own policy and action handler).
@@ -86,7 +87,7 @@ contracts at runtime.
 
 ## Agent Systems
 
-AXIS ships with three agent systems that demonstrate increasing levels
+AXIS ships with five agent systems that demonstrate increasing levels
 of cognitive complexity.
 
 ### System A -- Energy-Driven Forager
@@ -176,6 +177,26 @@ composes components from the Construction Kit.
 - **Reduction property:** When prediction sensitivities are zeroed
   (λ+ = λ- = 0), System C produces identical behavior to System A.
   This is verified by automated tests.
+
+### System C+W -- Predictive Dual-Drive Agent
+
+System C+W extends System A+W with a shared predictive layer and
+drive-specific learning dynamics. It reuses the Construction Kit's
+observation, drive, arbitration, prediction, trace, modulation, and
+world-model components in a new composition pattern.
+
+- **Everything from System A+W**, plus:
+- **Shared predictive memory:** one predictive model is updated from the
+  agent's local experience and used by both drives.
+- **Separate drive-specific traces:** hunger and curiosity maintain their
+  own confidence/frustration traces over the shared predictive signal.
+- **Dual modulation passes:** hunger and curiosity can interpret the same
+  experience differently before arbitration combines them.
+- **System-specific extensions:** System C+W ships with its own
+  visualization adapter, behavioral metrics extension, and comparison
+  extension.
+- **Reduction property:** When predictive sensitivities are neutralized,
+  System C+W can be configured to collapse behaviorally toward A+W.
 
 ### Building Custom Systems
 
@@ -320,6 +341,12 @@ domain-specific analysis to the standard comparison output. Extensions
 implement ``ComparisonExtensionProtocol`` and are discovered through
 the plugin system.
 
+AXIS also supports system-specific behavioral metric extensions. These
+augment run summaries with richer system-level signals such as A+W
+arbitration/curiosity metrics or C/C+W prediction, trace, and modulation
+metrics. Metric extensions are loaded through the same plugin-friendly
+registration flow as comparison extensions.
+
 ---
 
 ## Experiment Workspaces
@@ -381,10 +408,12 @@ my-workspace/
 axis workspaces scaffold                       Interactive workspace creation
 axis workspaces close <path>                  Close a workspace
 axis workspaces reset <path>                  Clear generated workspace artifacts
+axis workspaces measure <path>                Run the measurement workflow
 axis workspaces run-series <path> --series <id>  Run one registered experiment series
 axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments
+axis workspaces compare-configs <path>         Show reference/candidate config deltas
 axis workspaces comparison-summary <path>       Display comparison results
 axis workspaces sweep-result <path>            Display sweep (OFAT) results
 axis workspaces check <path>                   Validate workspace structure
@@ -426,6 +455,42 @@ uses manifest ordering (first result = reference, most recent = candidate).
 **System comparison** workspaces run two systems under identical
 conditions (same seed, same world). Auto-resolution maps experiments
 by system type to reference and candidate roles.
+
+### Measurement Workflow
+
+For ``system_comparison`` workspaces, AXIS provides a higher-level
+measurement workflow:
+
+1. execute the workspace configs
+2. compare the latest reference and candidate runs
+3. export a comparison summary log
+4. export a run-summary log for the configured role
+
+Measurement outputs are written into numbered directories under the
+workspace-local ``measurements/`` root. Filename patterns and the default
+run-summary role are controlled by the optional
+``measurement_workflow`` block in ``workspace.yaml``.
+
+### Declarative Experiment Series
+
+Registered experiment series add a declarative orchestration layer on top
+of the workspace workflow. Instead of manually editing configs and
+repeating run/compare/export loops, a series declares a bounded set of
+experiments in ``series/<series-id>/experiment.yaml``.
+
+For each enabled experiment, AXIS materializes temporary configs,
+executes the workspace, runs the comparison, exports logs, and updates
+series-local aggregate outputs such as:
+
+- ``series/<series-id>/measurements/series-summary.md``
+- ``series/<series-id>/measurements/series-summary.json``
+- ``series/<series-id>/measurements/series-metrics.csv``
+
+In ``system_comparison`` series, the common case is candidate-side
+variation via ``candidate_config_delta``. When a manipulated condition
+must stay symmetric across both sides, for example a world-only change,
+AXIS also supports ``reference_config_delta`` so the reference and
+candidate runs stay aligned under the same modified environment.
 
 ### Development Workflows
 
@@ -525,6 +590,10 @@ weight arrows and scan result circle).
 modulation and predictive update sections) and 5 overlay types (adding
 modulated score bar chart and modulation factor display).
 
+**System C+W** contributes C+W-specific predictive and arbitration views,
+including shared-prediction summaries, per-drive trace/modulation
+interpretation, and dual-drive decision overlays.
+
 ### Overlays
 
 Overlays are semi-transparent graphical indicators drawn on top of the
@@ -576,12 +645,19 @@ Both sources feed registry-based factories with protocol validation:
 | System visualization | ``register_system_visualization()`` | ``SystemVisualizationAdapter`` |
 | World visualization | ``register_world_visualization()`` | ``WorldVisualizationAdapter`` |
 | Comparison extension | ``register_extension()`` | ``ComparisonExtensionProtocol`` |
+| Metrics extension | ``register_metric_extension()`` | metrics extension callback |
 | Custom actions | ``action_handlers()`` | Handler function |
 
 Each plugin package provides a `register()` function in its `__init__.py`.
 The framework calls this function during startup to populate all registries.
 Idempotency guards prevent conflicts when both discovery sources list the
 same plugin.
+
+Internally, AXIS now layers **injectable catalogs** on top of the legacy
+global registries. This lets plugin-provided systems, worlds,
+visualization adapters, metrics extensions, and comparison extensions be
+resolved through composition-friendly lookup tables while preserving
+backward compatibility with the older registry model.
 
 ### Packaging an External Plugin
 
@@ -631,7 +707,7 @@ covering all layers:
 
 ## Included Experiment Configurations
 
-Eight ready-to-run configurations ship with the framework:
+Ten ready-to-run configurations ship with the framework:
 
 | Config File | Description |
 |-------------|-------------|
@@ -643,6 +719,8 @@ Eight ready-to-run configurations ship with the framework:
 | ``system-aw-exploration-demo.yaml`` | 20x20 exploration demo (high curiosity) |
 | ``system-b-sdk-demo.yaml`` | System B scout on signal landscape |
 | ``system-c-baseline.yaml`` | System C predictive modulation baseline |
+| ``system-c-prediction-demo.yaml`` | System C prediction-focused demo configuration |
+| ``system-cw-baseline.yaml`` | System C+W predictive dual-drive baseline |
 
 ---
 
@@ -678,4 +756,4 @@ research. It supports the full experimental lifecycle:
 8. **Iterate** by adding new systems, worlds, or visualization adapters
    without touching framework code.
 
-The framework is at version 0.2.3 and under active development.
+The framework is in the 0.2.x line and under active development.

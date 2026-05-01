@@ -111,6 +111,21 @@ def _write_experiment_series(workspace_path: Path) -> None:
                 },
             },
             {
+                "id": "exp_025",
+                "title": "Shared world tweak",
+                "enabled": False,
+                "reference_config_delta": {
+                    "world": {
+                        "grid_width": 24,
+                    },
+                },
+                "candidate_config_delta": {
+                    "world": {
+                        "grid_width": 24,
+                    },
+                },
+            },
+            {
                 "id": "exp_03",
                 "title": "Disabled experiment",
                 "enabled": False,

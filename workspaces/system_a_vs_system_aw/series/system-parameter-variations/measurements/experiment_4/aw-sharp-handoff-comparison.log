@@ -1,0 +1,179 @@
+  1/6 exp_01 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:33[0m [36m0:00:00[0m
+  1/6 exp_01 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:15[0m [36m0:00:00[0m
+  1/6 exp_01 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:40[0m [36m0:00:00[0m
+  1/6 exp_01 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:17[0m [36m0:00:00[0m
+  1/6 exp_01 | Episode comparisons [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:10[0m [36m0:00:00[0m
+  2/6 exp_02 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:34[0m [36m0:00:00[0m
+  2/6 exp_02 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:17[0m [36m0:00:00[0m
+  2/6 exp_02 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:50[0m [36m0:00:00[0m
+  2/6 exp_02 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:22[0m [36m0:00:00[0m
+  2/6 exp_02 | Episode comparisons [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:12[0m [36m0:00:00[0m
+  3/6 exp_03 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:39[0m [36m0:00:00[0m
+  3/6 exp_03 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:19[0m [36m0:00:00[0m
+  3/6 exp_03 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:54[0m [36m0:00:00[0m
+  3/6 exp_03 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:23[0m [36m0:00:00[0m
+  3/6 exp_03 | Episode comparisons [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:17[0m [36m0:00:00[0m
+  4/6 exp_04 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:34[0m [36m0:00:00[0m
+  4/6 exp_04 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:15[0m [36m0:00:00[0m
+  4/6 exp_04 | Experiment runs     [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m1/1  [0m [33m0:00:54[0m [36m0:00:00[0m
+  4/6 exp_04 | run-0000: episodes  [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:22[0m [36m0:00:00[0m
+  4/6 exp_04 | Episode comparisons [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [35m100%[0m [32m50/50[0m [33m0:00:12[0m [36m0:00:00[0mComparison #4
+  Timestamp: 2026-05-01T09:45:59.521062+00:00
+Run Comparison
+  Reference: system_a  experiment=2b0040fd2aed4093b5d1204b4fc1abe5  run=run-0000
+  Candidate: system_aw  experiment=ff47b455b3b94bbe960d478aecdfd476  run=run-0000
+  Episodes: 50 compared, 50 valid, 0 invalid
+
+Per-episode Results
+                      Per-episode Results                       
+┏━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┓
+┃ Episode ┃ Mismatch ┃ Pos div ┃ Steps r/c ┃ Survivor  ┃ Notes ┃
+┡━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━┩
+│ 1       │    80.5% │    8.24 │   200/200 │ equal     │       │
+│ 2       │    78.5% │   11.09 │   200/200 │ equal     │       │
+│ 3       │    75.0% │    8.29 │   100/200 │ candidate │       │
+│ 4       │    77.5% │    9.94 │   200/200 │ equal     │       │
+│ 5       │    82.5% │   15.21 │   200/200 │ equal     │       │
+│ 6       │    80.9% │    9.69 │   115/200 │ candidate │       │
+│ 7       │    76.4% │   12.50 │   191/200 │ candidate │       │
+│ 8       │    63.0% │    8.82 │   200/100 │ reference │       │
+│ 9       │    73.3% │    7.34 │   101/125 │ candidate │       │
+│ 10      │    81.9% │    6.39 │   200/138 │ reference │       │
+│ 11      │    78.9% │   12.47 │   128/200 │ candidate │       │
+│ 12      │    74.3% │   10.88 │   101/200 │ candidate │       │
+│ 13      │    75.1% │   11.41 │   200/169 │ reference │       │
+│ 14      │    81.2% │   11.96 │   200/186 │ reference │       │
+│ 15      │    81.5% │    7.80 │   200/200 │ equal     │       │
+│ 16      │    78.0% │   16.18 │   200/100 │ reference │       │
+│ 17      │    75.5% │    8.59 │   200/200 │ equal     │       │
+│ 18      │    79.0% │    7.21 │   200/200 │ equal     │       │
+│ 19      │    78.6% │   10.05 │   103/114 │ candidate │       │
+│ 20      │    83.3% │   12.01 │   200/114 │ reference │       │
+│ 21      │    79.0% │   11.35 │   200/200 │ equal     │       │
+│ 22      │    74.0% │    7.17 │   100/200 │ candidate │       │
+│ 23      │    75.0% │    8.35 │   100/167 │ candidate │       │
+│ 24      │    70.0% │    9.89 │   115/100 │ reference │       │
+│ 25      │    76.2% │   14.68 │   101/200 │ candidate │       │
+│ 26      │    78.0% │   10.85 │   200/200 │ equal     │       │
+│ 27      │    93.0% │   16.79 │   200/100 │ reference │       │
+│ 28      │    86.5% │    8.34 │   200/200 │ equal     │       │
+│ 29      │    80.5% │   11.36 │   200/200 │ equal     │       │
+│ 30      │    80.5% │    7.91 │   200/200 │ equal     │       │
+│ 31      │    77.0% │   13.11 │   200/100 │ reference │       │
+│ 32      │    80.2% │   15.08 │   101/200 │ candidate │       │
+│ 33      │    67.0% │   13.84 │   200/100 │ reference │       │
+│ 34      │    83.0% │   13.97 │   100/131 │ candidate │       │
+│ 35      │    77.8% │   14.31 │   189/200 │ candidate │       │
+│ 36      │    81.0% │   13.80 │   200/200 │ equal     │       │
+│ 37      │    80.3% │   12.38 │   200/193 │ reference │       │
+│ 38      │    71.1% │   18.60 │   194/200 │ candidate │       │
+│ 39      │    71.3% │    7.45 │   101/200 │ candidate │       │
+│ 40      │    82.0% │   11.66 │   200/100 │ reference │       │
+│ 41      │    81.5% │    7.24 │   200/200 │ equal     │       │
+│ 42      │    81.5% │   13.86 │   168/200 │ candidate │       │
+│ 43      │    84.0% │   12.55 │   200/200 │ equal     │       │
+│ 44      │    76.5% │   13.52 │   200/200 │ equal     │       │
+│ 45      │    81.5% │   11.66 │   200/200 │ equal     │       │
+│ 46      │    81.5% │   11.84 │   200/200 │ equal     │       │
+│ 47      │    81.0% │   10.76 │   200/200 │ equal     │       │
+│ 48      │    76.2% │   18.83 │   101/198 │ candidate │       │
+│ 49      │    81.0% │   11.88 │   200/200 │ equal     │       │
+│ 50      │    79.1% │   11.04 │   182/200 │ candidate │       │
+└─────────┴──────────┴─────────┴───────────┴───────────┴───────┘
+   Aligned run-level comparison across matched episode pairs.   
+
+Statistical Summary
+                             Statistical Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━┓
+┃ Metric                   ┃    Mean ┃     Std ┃       Min ┃       Max ┃  N ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━┩
+│ Action mismatch rate     │  0.7845 │  0.0488 │    0.6300 │    0.9300 │ 50 │
+│ Mean trajectory distance │ 11.4023 │  3.0048 │    6.3913 │   18.8317 │ 50 │
+│ Mean vitality difference │  0.2182 │  0.1081 │    0.0060 │    0.4827 │ 50 │
+│ Final vitality delta     │ -0.0334 │  0.6095 │   -0.9940 │   +0.8885 │ 50 │
+│ Total steps delta        │ +4.8800 │ 57.1849 │ -100.0000 │ +100.0000 │ 50 │
+└──────────────────────────┴─────────┴─────────┴───────────┴───────────┴────┘
+             Descriptive statistics across valid episode pairs.              
+  Hint: How often the two agents chose different actions at the same timestep.
+  Hint: Average Manhattan distance between the two agents per episode.
+  Hint: Average absolute difference in vitality between the two agents.
+  Hint: Candidate final vitality minus reference final vitality.
+  Hint: Candidate episode length minus reference episode length.
+  Survival rates: reference=62%  candidate=66%
+  Longer survivor: candidate=18  reference=12  equal=20
+
+Configurations
+  Hint: Differing config values are highlighted when terminal styling is enabled.
+  Reference config: system_type=system_a
+    system_type: system_a
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 200
+    execution.trace_mode: delta
+    execution.parallelism_mode: episodes
+    execution.max_workers: 4
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: clustered
+    world.num_clusters: 3
+    world.regen_eligible_ratio: 0.1
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 30
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 10.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.5
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    num_episodes_per_run: 50
+    agent_start_position.x: 10
+    agent_start_position.y: 10
+  Candidate config: system_type=system_aw
+    system_type: system_aw
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 200
+    execution.trace_mode: delta
+    execution.parallelism_mode: episodes
+    execution.max_workers: 4
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: clustered
+    world.num_clusters: 3
+    world.regen_eligible_ratio: 0.1
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 30
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 10.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.5
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    system.curiosity.base_curiosity: 0.52
+    system.curiosity.spatial_sensory_balance: 0.55
+    system.curiosity.explore_suppression: 0.24
+    system.curiosity.novelty_sharpness: 1.6
+    system.arbitration.hunger_weight_base: 0.45
+    system.arbitration.curiosity_weight_base: 0.95
+    system.arbitration.gating_sharpness: 4.0
+    num_episodes_per_run: 50
+    agent_start_position.x: 10
+    agent_start_position.y: 10

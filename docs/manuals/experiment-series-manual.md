@@ -197,11 +197,137 @@ For `system_comparison` this means:
 - the candidate config starts from the manifest-declared candidate config
 - `candidate_config_delta` is deep-merged onto that candidate baseline
 
+Optionally, a `system_comparison` experiment may also declare
+`reference_config_delta`.
+
+Use this when the experimental change must stay symmetric across both sides,
+for example when you want to vary the world while keeping the comparison fair:
+
+```yaml
+experiments:
+  - id: exp_world_01
+    title: Shared Sparse World
+    enabled: true
+    reference_config_delta:
+      world:
+        regeneration_mode: sparse_fixed_ratio
+        regen_eligible_ratio: 0.06
+    candidate_config_delta:
+      world:
+        regeneration_mode: sparse_fixed_ratio
+        regen_eligible_ratio: 0.06
+```
+
+Practical rule:
+
+- use only `candidate_config_delta` when you are testing a candidate-side
+  system change
+- add matching `reference_config_delta` when the manipulated condition should
+  apply equally to the reference and candidate runs
+
+Why this matters:
+
+- in a `system_comparison` workspace, AXIS is comparing two different roles:
+  `reference` and `candidate`
+- if only `candidate_config_delta` is provided, AXIS changes only the
+  candidate-side temporary config for that one experiment
+- the reference side then continues to run with its unchanged baseline config
+
+That behavior is exactly what you want for many comparison-series questions.
+Example:
+
+- reference = `system_a`
+- candidate = `system_aw`
+- experiment goal = "change curiosity strength in `system_aw`"
+
+In that case, the changed condition belongs only to the candidate system, so
+`candidate_config_delta` alone is the correct model.
+
+However, the same default becomes problematic when the manipulated condition is
+supposed to be shared by both sides.
+
+Typical example:
+
+- reference = `system_a`
+- candidate = `system_aw`
+- experiment goal = "compare both systems in a sparser world"
+
+If you write only:
+
+```yaml
+candidate_config_delta:
+  world:
+    regeneration_mode: sparse_fixed_ratio
+    regen_eligible_ratio: 0.06
+```
+
+then AXIS will run:
+
+- `system_a` in the original baseline world
+- `system_aw` in the modified sparse world
+
+That is no longer a fair side-by-side system comparison. You would be changing
+two things at once:
+
+1. the system architecture
+2. the world condition
+
+As a result, any observed difference becomes harder to interpret:
+
+- did the outcome change because `system_aw` differs from `system_a`?
+- or because the candidate side was evaluated in a different world?
+
+`reference_config_delta` exists to solve exactly this problem. It lets one
+series experiment declare a shared environmental or execution change while
+still preserving the `reference` vs `candidate` role structure.
+
+The usual pattern for a fair world-variation experiment inside
+`system_comparison` is therefore:
+
+```yaml
+experiments:
+  - id: exp_world_sparse
+    title: Shared Sparse World
+    enabled: true
+    reference_config_delta:
+      world:
+        regeneration_mode: sparse_fixed_ratio
+        regen_eligible_ratio: 0.06
+    candidate_config_delta:
+      world:
+        regeneration_mode: sparse_fixed_ratio
+        regen_eligible_ratio: 0.06
+```
+
+This produces:
+
+- `system_a` in the sparse world
+- `system_aw` in the same sparse world
+
+which preserves the intended scientific question:
+
+- how do the two systems differ under the same changed environment?
+
 For `single_system`:
 
 - the system-under-test config is the baseline
 - each experiment delta is applied to that same fixed baseline config
 - AXIS does not inherit config state from the previous experiment
+
+This asymmetry issue does not arise in `single_system`.
+
+Why not:
+
+- there is only one active role: `system_under_test`
+- every experiment already means "take this one baseline config and apply the
+  declared delta"
+- if you change `world`, `execution`, or `system`, there is no second side that
+  could remain out of sync
+
+So for `single_system`, one `candidate_config_delta` remains sufficient even
+for world-only series. The fairness problem is specific to
+`system_comparison`, where two roles must remain aligned unless the experiment
+intentionally studies an asymmetric candidate-side change.
 
 AXIS does not inherit experiment configs from the previous experiment.
 

@@ -2,7 +2,7 @@
 
 # 1. **System C – Predictive Drive System**
 
-## Idee (Umgesetzt)
+## Idee **(Umgesetzt)**
 
 Drives reagieren nicht mehr nur auf *aktuellen Zustand*, sondern auf:
 

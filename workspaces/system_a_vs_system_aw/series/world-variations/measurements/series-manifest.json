@@ -1,0 +1,36 @@
+{
+  "series_title": "System A vs System A+W World Variations",
+  "series_description": "Shared-world comparison series for System A versus System A+W. Both sides keep their system parameters fixed while the environment is varied symmetrically across reference and candidate configs.\n",
+  "experiment_order": [
+    "exp_01",
+    "exp_02",
+    "exp_03",
+    "exp_04",
+    "exp_05",
+    "exp_06",
+    "exp_07"
+  ],
+  "measurement_directories": [
+    "series/world-variations/measurements/experiment_1",
+    "series/world-variations/measurements/experiment_2",
+    "series/world-variations/measurements/experiment_3",
+    "series/world-variations/measurements/experiment_4",
+    "series/world-variations/measurements/experiment_5",
+    "series/world-variations/measurements/experiment_6",
+    "series/world-variations/measurements/experiment_7"
+  ],
+  "comparison_outputs": [
+    "series/world-variations/comparisons/comparison-001.json",
+    "series/world-variations/comparisons/comparison-002.json",
+    "series/world-variations/comparisons/comparison-003.json",
+    "series/world-variations/comparisons/comparison-004.json",
+    "series/world-variations/comparisons/comparison-005.json",
+    "series/world-variations/comparisons/comparison-006.json",
+    "series/world-variations/comparisons/comparison-007.json"
+  ],
+  "aggregate_outputs": {
+    "markdown": "series/world-variations/measurements/series-summary.md",
+    "json": "series/world-variations/measurements/series-summary.json",
+    "csv": "series/world-variations/measurements/series-metrics.csv"
+  }
+}

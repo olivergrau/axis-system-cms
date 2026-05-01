@@ -2,17 +2,394 @@ workspace_id: system_a_vs_system_aw
 title: System A vs. System AW
 workspace_class: investigation
 workspace_type: system_comparison
-status: closed
-lifecycle_stage: final
+status: active
+lifecycle_stage: analysis
 created_at: '2026-04-22'
 question: How both Systems differ from behavior? Does System A+W has an 
   advantage over System A?
+measurement_workflow:
+  root_dir: measurements
+  experiment_dir_pattern: experiment_{number}
+  label_pattern: config{number}
+  comparison_log_pattern: '{label}-comparison.log'
+  run_summary_log_pattern: '{label}-{role}-run-summary.log'
+  default_run_summary_role: candidate
 reference_system: system_a
 candidate_system: system_aw
 primary_configs:
 - path: configs/reference-system_a.yaml
   role: reference
-- path: configs/candidate-system_aw.yaml
+- path: configs/candidate-system_aw-world-baseline.yaml
   role: candidate
 primary_results: []
 primary_comparisons: []
+experiment_series:
+  entries:
+  - id: system-parameter-variations
+    path: series/system-parameter-variations/experiment.yaml
+    generated:
+      results:
+      - path: 
+          series/system-parameter-variations/results/3f44f07741254c748497604f5820e191
+        timestamp: '2026-05-01T09:40:17'
+        config: 
+          series/system-parameter-variations/results/3f44f07741254c748497604f5820e191/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Collapse curiosity and arbitration so the candidate approaches
+          the hunger-only System A regime. This is the structural control for the
+          whole series.\n"
+      - path: 
+          series/system-parameter-variations/results/89b64425e60a4efd8dedbf19ac1ad996
+        timestamp: '2026-05-01T09:40:17'
+        config: 
+          series/system-parameter-variations/results/89b64425e60a4efd8dedbf19ac1ad996/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Collapse curiosity and arbitration so the candidate approaches
+          the hunger-only System A regime. This is the structural control for the
+          whole series.\n"
+      - path: 
+          series/system-parameter-variations/results/9cef8d0ca55e4f2491e2d2e234d5ae5a
+        timestamp: '2026-05-01T09:41:58'
+        config: 
+          series/system-parameter-variations/results/9cef8d0ca55e4f2491e2d2e234d5ae5a/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Re-run the current workspace candidate configuration as the anchor
+          for all later parameter comparisons.\n"
+      - path: 
+          series/system-parameter-variations/results/eb51351f642547aa9a02194ae33734f5
+        timestamp: '2026-05-01T09:41:58'
+        config: 
+          series/system-parameter-variations/results/eb51351f642547aa9a02194ae33734f5/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Re-run the current workspace candidate configuration as the anchor
+          for all later parameter comparisons.\n"
+      - path: 
+          series/system-parameter-variations/results/e8418178e7504e0eb4501249abe0d335
+        timestamp: '2026-05-01T09:43:52'
+        config: 
+          series/system-parameter-variations/results/e8418178e7504e0eb4501249abe0d335/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Keep curiosity present, but lower its overall pressure and give
+          hunger a firmer floor so the candidate remains closer to local foraging
+          when resources are nearby.\n"
+      - path: 
+          series/system-parameter-variations/results/2fe59fa7675c42cf9e8fe1332a0da56e
+        timestamp: '2026-05-01T09:43:52'
+        config: 
+          series/system-parameter-variations/results/2fe59fa7675c42cf9e8fe1332a0da56e/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Keep curiosity present, but lower its overall pressure and give
+          hunger a firmer floor so the candidate remains closer to local foraging
+          when resources are nearby.\n"
+      - path: 
+          series/system-parameter-variations/results/2b0040fd2aed4093b5d1204b4fc1abe5
+        timestamp: '2026-05-01T09:45:46'
+        config: 
+          series/system-parameter-variations/results/2b0040fd2aed4093b5d1204b4fc1abe5/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Increase both curiosity headroom and gating sharpness so the candidate
+          explores clearly while satiated, then switches more abruptly into hunger-led
+          foraging.\n"
+      - path: 
+          series/system-parameter-variations/results/ff47b455b3b94bbe960d478aecdfd476
+        timestamp: '2026-05-01T09:45:46'
+        config: 
+          series/system-parameter-variations/results/ff47b455b3b94bbe960d478aecdfd476/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Increase both curiosity headroom and gating sharpness so the candidate
+          explores clearly while satiated, then switches more abruptly into hunger-led
+          foraging.\n"
+      - path: 
+          series/system-parameter-variations/results/5455f40a108243ecb73733b1b6f999ee
+        timestamp: '2026-05-01T09:47:48'
+        config: 
+          series/system-parameter-variations/results/5455f40a108243ecb73733b1b6f999ee/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Bias curiosity toward visit-count novelty so the candidate behaves
+          more like a coverage-seeking mapper than a local stimulus chaser.\n"
+      - path: 
+          series/system-parameter-variations/results/143d80fe332046e39fb6d99806aabaee
+        timestamp: '2026-05-01T09:47:48'
+        config: 
+          series/system-parameter-variations/results/143d80fe332046e39fb6d99806aabaee/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Bias curiosity toward visit-count novelty so the candidate behaves
+          more like a coverage-seeking mapper than a local stimulus chaser.\n"
+      - path: 
+          series/system-parameter-variations/results/7b79e388b18547adba9ec59e09d14454
+        timestamp: '2026-05-01T09:50:06'
+        config: 
+          series/system-parameter-variations/results/7b79e388b18547adba9ec59e09d14454/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Tilt curiosity toward sensory contrast so the candidate reacts
+          more to changing local resource patterns than to unvisited geometry.\n"
+      - path: 
+          series/system-parameter-variations/results/1b65e165385349afbcd0198074ba8eff
+        timestamp: '2026-05-01T09:50:06'
+        config: 
+          series/system-parameter-variations/results/1b65e165385349afbcd0198074ba8eff/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Tilt curiosity toward sensory contrast so the candidate reacts
+          more to changing local resource patterns than to unvisited geometry.\n"
+      measurement_runs:
+      - path: series/system-parameter-variations/measurements/experiment_1
+        timestamp: '2026-05-01T09:40:17'
+        label: aw-reduction-check
+      - path: series/system-parameter-variations/measurements/experiment_2
+        timestamp: '2026-05-01T09:41:58'
+        label: aw-current-anchor
+      - path: series/system-parameter-variations/measurements/experiment_3
+        timestamp: '2026-05-01T09:43:52'
+        label: aw-conservative-forager
+      - path: series/system-parameter-variations/measurements/experiment_4
+        timestamp: '2026-05-01T09:45:46'
+        label: aw-sharp-handoff
+      - path: series/system-parameter-variations/measurements/experiment_5
+        timestamp: '2026-05-01T09:47:48'
+        label: aw-spatial-explorer
+      - path: series/system-parameter-variations/measurements/experiment_6
+        timestamp: '2026-05-01T09:50:06'
+        label: aw-sensory-opportunist
+      comparisons:
+      - series/system-parameter-variations/comparisons/comparison-001.json
+      - series/system-parameter-variations/comparisons/comparison-002.json
+      - series/system-parameter-variations/comparisons/comparison-003.json
+      - series/system-parameter-variations/comparisons/comparison-004.json
+      - series/system-parameter-variations/comparisons/comparison-005.json
+      - series/system-parameter-variations/comparisons/comparison-006.json
+  - id: world-variations
+    path: series/world-variations/experiment.yaml
+    generated:
+      results:
+      - path: series/world-variations/results/f0bd896e9a8e4341af7d10b6cee888b8
+        timestamp: '2026-05-01T10:04:50'
+        config: 
+          series/world-variations/results/f0bd896e9a8e4341af7d10b6cee888b8/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Re-run the existing shared workspace world unchanged so the series
+          has a clean common anchor.\n"
+      - path: series/world-variations/results/e6c3d617e01f46b6bd4bceb522bf598f
+        timestamp: '2026-05-01T10:04:50'
+        config: 
+          series/world-variations/results/e6c3d617e01f46b6bd4bceb522bf598f/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Re-run the existing shared workspace world unchanged so the series
+          has a clean common anchor.\n"
+      - path: series/world-variations/results/f7a863957a3348aa9e6f24ff1fa433b0
+        timestamp: '2026-05-01T10:07:32'
+        config: 
+          series/world-variations/results/f7a863957a3348aa9e6f24ff1fa433b0/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Reduce obstacles and speed up regeneration to test whether A+W's
+          exploratory bias becomes more beneficial in a fluid, information-rich environment.\n"
+      - path: series/world-variations/results/09b8ca55f1f24ca4ab1f52a06b47e664
+        timestamp: '2026-05-01T10:07:32'
+        config: 
+          series/world-variations/results/09b8ca55f1f24ca4ab1f52a06b47e664/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Reduce obstacles and speed up regeneration to test whether A+W's
+          exploratory bias becomes more beneficial in a fluid, information-rich environment.\n"
+      - path: series/world-variations/results/11c24efa89d94af48f6b710e91c0e4ba
+        timestamp: '2026-05-01T10:09:16'
+        config: 
+          series/world-variations/results/11c24efa89d94af48f6b710e91c0e4ba/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Make rewards rarer and slower so that inefficient wandering is
+          punished more strongly and rediscovery matters more.\n"
+      - path: series/world-variations/results/b8f460c96f2f469d8cd9d6bf59e649ad
+        timestamp: '2026-05-01T10:09:16'
+        config: 
+          series/world-variations/results/b8f460c96f2f469d8cd9d6bf59e649ad/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Make rewards rarer and slower so that inefficient wandering is
+          punished more strongly and rediscovery matters more.\n"
+      - path: series/world-variations/results/63690d0c34144bd1b535bb02ef8bd61e
+        timestamp: '2026-05-01T10:10:42'
+        config: 
+          series/world-variations/results/63690d0c34144bd1b535bb02ef8bd61e/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Concentrate recovery into fewer richer regions so the systems
+          are tested on repeated discovery and return to dynamic hotspots.\n"
+      - path: series/world-variations/results/26fe4e48c64e4f138765206e948edb8f
+        timestamp: '2026-05-01T10:10:43'
+        config: 
+          series/world-variations/results/26fe4e48c64e4f138765206e948edb8f/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Concentrate recovery into fewer richer regions so the systems
+          are tested on repeated discovery and return to dynamic hotspots.\n"
+      - path: series/world-variations/results/c3e2e09bf2ef417f9759011118f91722
+        timestamp: '2026-05-01T10:13:13'
+        config: 
+          series/world-variations/results/c3e2e09bf2ef417f9759011118f91722/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Remove hard borders while keeping the general resource structure
+          close to baseline.\n"
+      - path: series/world-variations/results/ee73ccc98893486a9a883cf05fd22a88
+        timestamp: '2026-05-01T10:13:13'
+        config: 
+          series/world-variations/results/ee73ccc98893486a9a883cf05fd22a88/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Remove hard borders while keeping the general resource structure
+          close to baseline.\n"
+      - path: series/world-variations/results/c71cb2d7bdaf490bbacde5697c869be6
+        timestamp: '2026-05-01T10:17:11'
+        config: 
+          series/world-variations/results/c71cb2d7bdaf490bbacde5697c869be6/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Shrink the map and increase local change frequency so both systems
+          cycle through the same cells more often.\n"
+      - path: series/world-variations/results/383646731bea431dac9ce2750ff91685
+        timestamp: '2026-05-01T10:17:11'
+        config: 
+          series/world-variations/results/383646731bea431dac9ce2750ff91685/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Shrink the map and increase local change frequency so both systems
+          cycle through the same cells more often.\n"
+      - path: series/world-variations/results/13a9d67f3b99408f9d200c2a2d9e8468
+        timestamp: '2026-05-01T10:22:00'
+        config: 
+          series/world-variations/results/13a9d67f3b99408f9d200c2a2d9e8468/experiment_config.json
+        role: reference
+        output_form: point
+        trace_mode: delta
+        system_type: system_a
+        primary_run_id: run-0000
+        run_notes: "Expand the world and open it slightly to test whether A+W's broader
+          exploration becomes more valuable in a larger search space.\n"
+      - path: series/world-variations/results/284dade3e7b041068f3e6417535519fc
+        timestamp: '2026-05-01T10:22:00'
+        config: 
+          series/world-variations/results/284dade3e7b041068f3e6417535519fc/experiment_config.json
+        role: candidate
+        output_form: point
+        trace_mode: delta
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Expand the world and open it slightly to test whether A+W's broader
+          exploration becomes more valuable in a larger search space.\n"
+      measurement_runs:
+      - path: series/world-variations/measurements/experiment_1
+        timestamp: '2026-05-01T10:04:50'
+        label: world-baseline-anchor
+      - path: series/world-variations/measurements/experiment_2
+        timestamp: '2026-05-01T10:07:32'
+        label: world-open-fast-regen
+      - path: series/world-variations/measurements/experiment_3
+        timestamp: '2026-05-01T10:09:16'
+        label: world-sparse-scarcity
+      - path: series/world-variations/measurements/experiment_4
+        timestamp: '2026-05-01T10:10:42'
+        label: world-rich-cluster-islands
+      - path: series/world-variations/measurements/experiment_5
+        timestamp: '2026-05-01T10:13:13'
+        label: world-toroidal-wrap
+      - path: series/world-variations/measurements/experiment_6
+        timestamp: '2026-05-01T10:17:11'
+        label: world-compact-dense-feedback
+      - path: series/world-variations/measurements/experiment_7
+        timestamp: '2026-05-01T10:22:00'
+        label: world-large-open-field
+      comparisons:
+      - series/world-variations/comparisons/comparison-001.json
+      - series/world-variations/comparisons/comparison-002.json
+      - series/world-variations/comparisons/comparison-003.json
+      - series/world-variations/comparisons/comparison-004.json
+      - series/world-variations/comparisons/comparison-005.json
+      - series/world-variations/comparisons/comparison-006.json
+      - series/world-variations/comparisons/comparison-007.json

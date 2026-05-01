@@ -1,0 +1,1116 @@
+{
+  "series_title": "System A vs System A+W Parameter Variations",
+  "series_description": "Candidate-side series for comparing the System A baseline against targeted System A+W parameter regimes while keeping the world, seed, and execution budget fixed.\n",
+  "experiments": [
+    {
+      "experiment_id": "exp_01",
+      "label": "aw-reduction-check",
+      "title": "A+W Reduction Check",
+      "hypothesis": [
+        "Action mismatch against System A should shrink relative to the more exploratory A+W settings.",
+        "Coverage should contract and revisit rate should rise toward the System A baseline.",
+        "Any residual differences should mainly reflect implementation details rather than active curiosity."
+      ],
+      "measurement_dir": "series/system-parameter-variations/measurements/experiment_1",
+      "comparison_output_path": "series/system-parameter-variations/comparisons/comparison-001.json",
+      "comparison_log_path": "series/system-parameter-variations/measurements/experiment_1/aw-reduction-check-comparison.log",
+      "run_summary_log_path": "series/system-parameter-variations/measurements/experiment_1/aw-reduction-check-candidate-run-summary.log",
+      "reference_experiment_id": "3f44f07741254c748497604f5820e191",
+      "candidate_experiment_id": "89b64425e60a4efd8dedbf19ac1ad996",
+      "run_summary": {
+        "num_episodes": 50,
+        "mean_steps": 171.82,
+        "std_steps": 42.36257310409743,
+        "mean_final_vitality": 0.46237000000000017,
+        "std_final_vitality": 0.42080958651152434,
+        "death_rate": 0.38
+      },
+      "behavior_metrics": {
+        "artifact_type": "behavior_metrics",
+        "experiment_id": "89b64425e60a4efd8dedbf19ac1ad996",
+        "run_id": "run-0000",
+        "system_type": "system_aw",
+        "trace_mode": "delta",
+        "num_episodes": 50,
+        "standard_metrics": {
+          "mean_steps": 171.82,
+          "death_rate": 0.38,
+          "mean_final_vitality": 0.46237000000000017,
+          "resource_gain_per_step": {
+            "mean": 0.7384888975691477,
+            "std": 0.585618162281046,
+            "min": 0.0,
+            "max": 1.9859999999999998,
+            "n": 50
+          },
+          "net_energy_efficiency": {
+            "mean": 0.84004961399623,
+            "std": 0.6835908988952925,
+            "min": 0.0,
+            "max": 2.26891495601173,
+            "n": 50
+          },
+          "successful_consume_rate": {
+            "mean": 0.8,
+            "std": 0.4000000000000001,
+            "min": 0.0,
+            "max": 1.0,
+            "n": 50
+          },
+          "consume_on_empty_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "failed_movement_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "action_entropy": {
+            "mean": 1.5710685493656897,
+            "std": 0.10376605467511522,
+            "min": 1.3767082239116553,
+            "max": 1.707645880806911,
+            "n": 50
+          },
+          "policy_sharpness": {
+            "mean": 0.2568394007290076,
+            "std": 0.025908535970462724,
+            "min": 0.21041463417558354,
+            "max": 0.3267556230610196,
+            "n": 50
+          },
+          "action_inertia": {
+            "mean": 0.16429072771142972,
+            "std": 0.046373208278173435,
+            "min": 0.07035175879396985,
+            "max": 0.27,
+            "n": 50
+          },
+          "unique_cells_visited": {
+            "mean": 47.7,
+            "std": 12.040348832155985,
+            "min": 22.0,
+            "max": 72.0,
+            "n": 50
+          },
+          "coverage_efficiency": {
+            "mean": 0.31002514624306693,
+            "std": 0.06548775662539139,
+            "min": 0.15499070055796652,
+            "max": 0.5084745762711864,
+            "n": 50
+          },
+          "revisit_rate": {
+            "mean": 0.6637711261533036,
+            "std": 0.06559402741564088,
+            "min": 0.5,
+            "max": 0.8048780487804879,
+            "n": 50
+          }
+        },
+        "system_specific_metrics": {
+          "system_aw_arbitration": {
+            "curiosity_dominance_rate": 0.0,
+            "mean_curiosity_weight": 0.614000200616926,
+            "mean_hunger_weight": 1.0,
+            "arbitrated_step_count": 8591
+          },
+          "system_aw_curiosity": {
+            "mean_curiosity_activation": 0.0,
+            "mean_spatial_novelty": 0.617290017109158,
+            "mean_sensory_novelty": 0.04602789006908121,
+            "mean_composite_novelty": 0.3316589535891178,
+            "curiosity_pressure_rate": 0.0
+          },
+          "system_aw_behavior": {
+            "curiosity_led_move_rate": 0.0,
+            "consume_under_curiosity_pressure_rate": null,
+            "movement_step_rate": 0.8201606332208125,
+            "consume_step_rate": 0.1676172738912816
+          },
+          "system_aw_world_model": {
+            "world_model_unique_cells": 47.7,
+            "mean_visit_count_at_current": 3.9210802002095217,
+            "world_model_revisit_ratio": 0.7155328589324008
+          }
+        }
+      },
+      "comparison_summary": {
+        "num_episodes_compared": 50,
+        "num_valid_pairs": 50,
+        "num_invalid_pairs": 0,
+        "action_mismatch_rate": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "n": 50
+        },
+        "mean_trajectory_distance": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "n": 50
+        },
+        "mean_vitality_difference": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "n": 50
+        },
+        "final_vitality_delta": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "n": 50
+        },
+        "total_steps_delta": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "n": 50
+        },
+        "reference_survival_rate": 0.62,
+        "candidate_survival_rate": 0.62,
+        "candidate_longer_count": 0,
+        "reference_longer_count": 0,
+        "equal_count": 50
+      }
+    },
+    {
+      "experiment_id": "exp_02",
+      "label": "aw-current-anchor",
+      "title": "Current Workspace Anchor",
+      "hypothesis": [
+        "The run should preserve the current moderate-exploration A+W profile.",
+        "It should outperform the more aggressive explorer on survival while remaining more exploratory than System A.",
+        "This serves as the local baseline for interpreting the other A+W variants."
+      ],
+      "measurement_dir": "series/system-parameter-variations/measurements/experiment_2",
+      "comparison_output_path": "series/system-parameter-variations/comparisons/comparison-002.json",
+      "comparison_log_path": "series/system-parameter-variations/measurements/experiment_2/aw-current-anchor-comparison.log",
+      "run_summary_log_path": "series/system-parameter-variations/measurements/experiment_2/aw-current-anchor-candidate-run-summary.log",
+      "reference_experiment_id": "9cef8d0ca55e4f2491e2d2e234d5ae5a",
+      "candidate_experiment_id": "eb51351f642547aa9a02194ae33734f5",
+      "run_summary": {
+        "num_episodes": 50,
+        "mean_steps": 180.6,
+        "std_steps": 35.28569115094673,
+        "mean_final_vitality": 0.5397600000000002,
+        "std_final_vitality": 0.36617403294062245,
+        "death_rate": 0.28
+      },
+      "behavior_metrics": {
+        "artifact_type": "behavior_metrics",
+        "experiment_id": "eb51351f642547aa9a02194ae33734f5",
+        "run_id": "run-0000",
+        "system_type": "system_aw",
+        "trace_mode": "delta",
+        "num_episodes": 50,
+        "standard_metrics": {
+          "mean_steps": 180.6,
+          "death_rate": 0.28,
+          "mean_final_vitality": 0.5397600000000002,
+          "resource_gain_per_step": {
+            "mean": 0.6546552608315206,
+            "std": 0.31830677517735895,
+            "min": 0.0,
+            "max": 0.9345000000000002,
+            "n": 50
+          },
+          "net_energy_efficiency": {
+            "mean": 0.6778647890622926,
+            "std": 0.3313595113210822,
+            "min": 0.0,
+            "max": 0.970909090909091,
+            "n": 50
+          },
+          "successful_consume_rate": {
+            "mean": 0.88,
+            "std": 0.3249615361854385,
+            "min": 0.0,
+            "max": 1.0,
+            "n": 50
+          },
+          "consume_on_empty_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "failed_movement_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "action_entropy": {
+            "mean": 1.50419233838593,
+            "std": 0.05721421505460541,
+            "min": 1.369239415549998,
+            "max": 1.5528356425010674,
+            "n": 50
+          },
+          "policy_sharpness": {
+            "mean": 0.31626696083591094,
+            "std": 0.016945024429859575,
+            "min": 0.2791194241883154,
+            "max": 0.36496533053844976,
+            "n": 50
+          },
+          "action_inertia": {
+            "mean": 0.3123940750263961,
+            "std": 0.06072197884267084,
+            "min": 0.15577889447236182,
+            "max": 0.45161290322580644,
+            "n": 50
+          },
+          "unique_cells_visited": {
+            "mean": 108.92,
+            "std": 20.42923395529064,
+            "min": 35.0,
+            "max": 141.0,
+            "n": 50
+          },
+          "coverage_efficiency": {
+            "mean": 0.6400082129664223,
+            "std": 0.13673726433717662,
+            "min": 0.18276762402088773,
+            "max": 0.92,
+            "n": 50
+          },
+          "revisit_rate": {
+            "mean": 0.3469724070542046,
+            "std": 0.1326639497964765,
+            "min": 0.08999999999999997,
+            "max": 0.8142076502732241,
+            "n": 50
+          }
+        },
+        "system_specific_metrics": {
+          "system_aw_arbitration": {
+            "curiosity_dominance_rate": 0.08095238095238096,
+            "mean_curiosity_weight": 0.32150410457643896,
+            "mean_hunger_weight": 0.5773969134159259,
+            "arbitrated_step_count": 9030
+          },
+          "system_aw_curiosity": {
+            "mean_curiosity_activation": 0.3335069022371972,
+            "mean_spatial_novelty": 0.6750722798353889,
+            "mean_sensory_novelty": 0.1343843816203634,
+            "mean_composite_novelty": 0.3776939358171168,
+            "curiosity_pressure_rate": 0.3796234772978959
+          },
+          "system_aw_behavior": {
+            "curiosity_led_move_rate": 0.3753045404208195,
+            "consume_under_curiosity_pressure_rate": 0.011376896149358226,
+            "movement_step_rate": 0.9389811738648948,
+            "consume_step_rate": 0.0610188261351052
+          },
+          "system_aw_world_model": {
+            "world_model_unique_cells": 108.92,
+            "mean_visit_count_at_current": 2.225249169435216,
+            "world_model_revisit_ratio": 0.3803713903428131
+          }
+        }
+      },
+      "comparison_summary": {
+        "num_episodes_compared": 50,
+        "num_valid_pairs": 50,
+        "num_invalid_pairs": 0,
+        "action_mismatch_rate": {
+          "mean": 0.7797460091392273,
+          "std": 0.04698548699892796,
+          "min": 0.63,
+          "max": 0.93,
+          "n": 50
+        },
+        "mean_trajectory_distance": {
+          "mean": 10.654305953696742,
+          "std": 3.285529726759653,
+          "min": 6.315,
+          "max": 18.524752475247524,
+          "n": 50
+        },
+        "mean_vitality_difference": {
+          "mean": 0.21068538555247307,
+          "std": 0.10666138188565849,
+          "min": 0.0060200000000000045,
+          "max": 0.48272999999999977,
+          "n": 50
+        },
+        "final_vitality_delta": {
+          "mean": 0.07739000000000024,
+          "std": 0.5758670772967368,
+          "min": -0.99,
+          "max": 0.9440000000000001,
+          "n": 50
+        },
+        "total_steps_delta": {
+          "mean": 8.78,
+          "std": 58.301569972209926,
+          "min": -100.0,
+          "max": 100.0,
+          "n": 50
+        },
+        "reference_survival_rate": 0.62,
+        "candidate_survival_rate": 0.72,
+        "candidate_longer_count": 19,
+        "reference_longer_count": 9,
+        "equal_count": 22
+      }
+    },
+    {
+      "experiment_id": "exp_03",
+      "label": "aw-conservative-forager",
+      "title": "Conservative Foraging Explorer",
+      "hypothesis": [
+        "Death rate and final vitality should improve relative to the anchor if the current candidate still over-explores.",
+        "Coverage should remain above System A, but below the more exploratory variants.",
+        "Consume frequency and resource efficiency should improve if curiosity becomes less disruptive."
+      ],
+      "measurement_dir": "series/system-parameter-variations/measurements/experiment_3",
+      "comparison_output_path": "series/system-parameter-variations/comparisons/comparison-003.json",
+      "comparison_log_path": "series/system-parameter-variations/measurements/experiment_3/aw-conservative-forager-comparison.log",
+      "run_summary_log_path": "series/system-parameter-variations/measurements/experiment_3/aw-conservative-forager-candidate-run-summary.log",
+      "reference_experiment_id": "e8418178e7504e0eb4501249abe0d335",
+      "candidate_experiment_id": "2fe59fa7675c42cf9e8fe1332a0da56e",
+      "run_summary": {
+        "num_episodes": 50,
+        "mean_steps": 177.78,
+        "std_steps": 37.04931308405055,
+        "mean_final_vitality": 0.53974,
+        "std_final_vitality": 0.3953257168462482,
+        "death_rate": 0.3
+      },
+      "behavior_metrics": {
+        "artifact_type": "behavior_metrics",
+        "experiment_id": "2fe59fa7675c42cf9e8fe1332a0da56e",
+        "run_id": "run-0000",
+        "system_type": "system_aw",
+        "trace_mode": "delta",
+        "num_episodes": 50,
+        "standard_metrics": {
+          "mean_steps": 177.78,
+          "death_rate": 0.3,
+          "mean_final_vitality": 0.53974,
+          "resource_gain_per_step": {
+            "mean": 0.6430249577216166,
+            "std": 0.33897408781096894,
+            "min": 0.0,
+            "max": 0.9577500000000003,
+            "n": 50
+          },
+          "net_energy_efficiency": {
+            "mean": 0.6678660421762178,
+            "std": 0.3542874625282501,
+            "min": 0.0,
+            "max": 0.9955613577023501,
+            "n": 50
+          },
+          "successful_consume_rate": {
+            "mean": 0.88,
+            "std": 0.3249615361854385,
+            "min": 0.0,
+            "max": 1.0,
+            "n": 50
+          },
+          "consume_on_empty_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "failed_movement_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "action_entropy": {
+            "mean": 1.5089357081140204,
+            "std": 0.057716899994819305,
+            "min": 1.369239415549998,
+            "max": 1.5699670300237498,
+            "n": 50
+          },
+          "policy_sharpness": {
+            "mean": 0.28871011651911727,
+            "std": 0.016091199484753016,
+            "min": 0.2551644481468321,
+            "max": 0.3510568548571697,
+            "n": 50
+          },
+          "action_inertia": {
+            "mean": 0.3274369516549143,
+            "std": 0.06188241932126007,
+            "min": 0.1457286432160804,
+            "max": 0.45161290322580644,
+            "n": 50
+          },
+          "unique_cells_visited": {
+            "mean": 109.46,
+            "std": 22.847503145858195,
+            "min": 59.0,
+            "max": 160.0,
+            "n": 50
+          },
+          "coverage_efficiency": {
+            "mean": 0.6566570177510207,
+            "std": 0.15099566863500893,
+            "min": 0.3105263157894737,
+            "max": 0.9317269076305221,
+            "n": 50
+          },
+          "revisit_rate": {
+            "mean": 0.3299572717490098,
+            "std": 0.1466150186712279,
+            "min": 0.06504065040650409,
+            "max": 0.6777777777777778,
+            "n": 50
+          }
+        },
+        "system_specific_metrics": {
+          "system_aw_arbitration": {
+            "curiosity_dominance_rate": 0.0,
+            "mean_curiosity_weight": 0.23249863087578548,
+            "mean_hunger_weight": 0.6540903201669056,
+            "arbitrated_step_count": 8889
+          },
+          "system_aw_curiosity": {
+            "mean_curiosity_activation": 0.2122253668454226,
+            "mean_spatial_novelty": 0.679950399849649,
+            "mean_sensory_novelty": 0.12619177459700895,
+            "mean_composite_novelty": 0.4030710872233306,
+            "curiosity_pressure_rate": 0.2163347958150523
+          },
+          "system_aw_behavior": {
+            "curiosity_led_move_rate": 0.2163347958150523,
+            "consume_under_curiosity_pressure_rate": 0.0,
+            "movement_step_rate": 0.9348633142085724,
+            "consume_step_rate": 0.0651366857914276
+          },
+          "system_aw_world_model": {
+            "world_model_unique_cells": 109.46,
+            "mean_visit_count_at_current": 1.9830127123410957,
+            "world_model_revisit_ratio": 0.36511092332935474
+          }
+        }
+      },
+      "comparison_summary": {
+        "num_episodes_compared": 50,
+        "num_valid_pairs": 50,
+        "num_invalid_pairs": 0,
+        "action_mismatch_rate": {
+          "mean": 0.7840077687960813,
+          "std": 0.04664673950282265,
+          "min": 0.63,
+          "max": 0.93,
+          "n": 50
+        },
+        "mean_trajectory_distance": {
+          "mean": 10.780681596993544,
+          "std": 3.19606838233277,
+          "min": 5.4,
+          "max": 18.72680412371134,
+          "n": 50
+        },
+        "mean_vitality_difference": {
+          "mean": 0.23254554982573103,
+          "std": 0.10910131502058261,
+          "min": 0.0060200000000000045,
+          "max": 0.48272999999999977,
+          "n": 50
+        },
+        "final_vitality_delta": {
+          "mean": 0.07737000000000015,
+          "std": 0.6044560787372801,
+          "min": -0.9939999999999999,
+          "max": 0.945,
+          "n": 50
+        },
+        "total_steps_delta": {
+          "mean": 5.96,
+          "std": 58.258032642262634,
+          "min": -100.0,
+          "max": 100.0,
+          "n": 50
+        },
+        "reference_survival_rate": 0.62,
+        "candidate_survival_rate": 0.7,
+        "candidate_longer_count": 19,
+        "reference_longer_count": 10,
+        "equal_count": 21
+      }
+    },
+    {
+      "experiment_id": "exp_04",
+      "label": "aw-sharp-handoff",
+      "title": "Sharp Hunger Curiosity Handoff",
+      "hypothesis": [
+        "Behavioral phases should separate more clearly than in the anchor.",
+        "Early-episode coverage should rise without necessarily increasing late-episode waste.",
+        "If the switch happens at the right time, survival may improve despite stronger early exploration."
+      ],
+      "measurement_dir": "series/system-parameter-variations/measurements/experiment_4",
+      "comparison_output_path": "series/system-parameter-variations/comparisons/comparison-004.json",
+      "comparison_log_path": "series/system-parameter-variations/measurements/experiment_4/aw-sharp-handoff-comparison.log",
+      "run_summary_log_path": "series/system-parameter-variations/measurements/experiment_4/aw-sharp-handoff-candidate-run-summary.log",
+      "reference_experiment_id": "2b0040fd2aed4093b5d1204b4fc1abe5",
+      "candidate_experiment_id": "ff47b455b3b94bbe960d478aecdfd476",
+      "run_summary": {
+        "num_episodes": 50,
+        "mean_steps": 176.7,
+        "std_steps": 38.51661978938442,
+        "mean_final_vitality": 0.4289700000000002,
+        "std_final_vitality": 0.34648981817652313,
+        "death_rate": 0.34
+      },
+      "behavior_metrics": {
+        "artifact_type": "behavior_metrics",
+        "experiment_id": "ff47b455b3b94bbe960d478aecdfd476",
+        "run_id": "run-0000",
+        "system_type": "system_aw",
+        "trace_mode": "delta",
+        "num_episodes": 50,
+        "standard_metrics": {
+          "mean_steps": 176.7,
+          "death_rate": 0.34,
+          "mean_final_vitality": 0.4289700000000002,
+          "resource_gain_per_step": {
+            "mean": 0.5832523942478431,
+            "std": 0.31954923779229943,
+            "min": 0.0,
+            "max": 0.9060000000000001,
+            "n": 50
+          },
+          "net_energy_efficiency": {
+            "mean": 0.6020848205120662,
+            "std": 0.33145340907815257,
+            "min": 0.0,
+            "max": 0.9437500000000001,
+            "n": 50
+          },
+          "successful_consume_rate": {
+            "mean": 0.86,
+            "std": 0.3469870314579493,
+            "min": 0.0,
+            "max": 1.0,
+            "n": 50
+          },
+          "consume_on_empty_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "failed_movement_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "action_entropy": {
+            "mean": 1.4905670056372904,
+            "std": 0.054520495227294234,
+            "min": 1.366029761501777,
+            "max": 1.542960845314421,
+            "n": 50
+          },
+          "policy_sharpness": {
+            "mean": 0.33742132258157626,
+            "std": 0.01584231133657091,
+            "min": 0.30252769073336955,
+            "max": 0.3673152113302325,
+            "n": 50
+          },
+          "action_inertia": {
+            "mean": 0.34778735451735726,
+            "std": 0.051638839750964456,
+            "min": 0.21608040201005024,
+            "max": 0.45454545454545453,
+            "n": 50
+          },
+          "unique_cells_visited": {
+            "mean": 120.8,
+            "std": 22.25758297749331,
+            "min": 80.0,
+            "max": 152.0,
+            "n": 50
+          },
+          "coverage_efficiency": {
+            "mean": 0.7180782914339144,
+            "std": 0.10985490363810063,
+            "min": 0.4155844155844156,
+            "max": 0.95,
+            "n": 50
+          },
+          "revisit_rate": {
+            "mean": 0.26944706541198427,
+            "std": 0.10476369756965107,
+            "min": 0.06000000000000005,
+            "max": 0.5729729729729729,
+            "n": 50
+          }
+        },
+        "system_specific_metrics": {
+          "system_aw_arbitration": {
+            "curiosity_dominance_rate": 0.155631013016412,
+            "mean_curiosity_weight": 0.25204758679065115,
+            "mean_hunger_weight": 0.489343892151417,
+            "arbitrated_step_count": 8835
+          },
+          "system_aw_curiosity": {
+            "mean_curiosity_activation": 0.46350117112031497,
+            "mean_spatial_novelty": 0.6803007117587501,
+            "mean_sensory_novelty": 0.11868345465836021,
+            "mean_composite_novelty": 0.42757294606358276,
+            "curiosity_pressure_rate": 0.37758913412563666
+          },
+          "system_aw_behavior": {
+            "curiosity_led_move_rate": 0.3750990379173741,
+            "consume_under_curiosity_pressure_rate": 0.006594724220623501,
+            "movement_step_rate": 0.9455574419920769,
+            "consume_step_rate": 0.05444255800792303
+          },
+          "system_aw_world_model": {
+            "world_model_unique_cells": 120.8,
+            "mean_visit_count_at_current": 1.7076400679117147,
+            "world_model_revisit_ratio": 0.30307751668542154
+          }
+        }
+      },
+      "comparison_summary": {
+        "num_episodes_compared": 50,
+        "num_valid_pairs": 50,
+        "num_invalid_pairs": 0,
+        "action_mismatch_rate": {
+          "mean": 0.7844561648796784,
+          "std": 0.048820805500412075,
+          "min": 0.63,
+          "max": 0.93,
+          "n": 50
+        },
+        "mean_trajectory_distance": {
+          "mean": 11.402283767742206,
+          "std": 3.0048115308179915,
+          "min": 6.391304347826087,
+          "max": 18.831683168316832,
+          "n": 50
+        },
+        "mean_vitality_difference": {
+          "mean": 0.21817910457059705,
+          "std": 0.10809126915133074,
+          "min": 0.0060200000000000045,
+          "max": 0.48272999999999977,
+          "n": 50
+        },
+        "final_vitality_delta": {
+          "mean": -0.03339999999999981,
+          "std": 0.6094911477484095,
+          "min": -0.9940000000000007,
+          "max": 0.8885000000000002,
+          "n": 50
+        },
+        "total_steps_delta": {
+          "mean": 4.88,
+          "std": 57.18485599441552,
+          "min": -100.0,
+          "max": 100.0,
+          "n": 50
+        },
+        "reference_survival_rate": 0.62,
+        "candidate_survival_rate": 0.66,
+        "candidate_longer_count": 18,
+        "reference_longer_count": 12,
+        "equal_count": 20
+      }
+    },
+    {
+      "experiment_id": "exp_05",
+      "label": "aw-spatial-explorer",
+      "title": "Spatial Novelty Explorer",
+      "hypothesis": [
+        "Unique cells visited should increase and revisit rate should fall.",
+        "Performance may suffer if the agent is pulled away from productive clusters too aggressively.",
+        "Comparison traces should show larger trajectory divergence from System A than the conservative settings."
+      ],
+      "measurement_dir": "series/system-parameter-variations/measurements/experiment_5",
+      "comparison_output_path": "series/system-parameter-variations/comparisons/comparison-005.json",
+      "comparison_log_path": "series/system-parameter-variations/measurements/experiment_5/aw-spatial-explorer-comparison.log",
+      "run_summary_log_path": "series/system-parameter-variations/measurements/experiment_5/aw-spatial-explorer-candidate-run-summary.log",
+      "reference_experiment_id": "5455f40a108243ecb73733b1b6f999ee",
+      "candidate_experiment_id": "143d80fe332046e39fb6d99806aabaee",
+      "run_summary": {
+        "num_episodes": 50,
+        "mean_steps": 166.1,
+        "std_steps": 41.42571665040933,
+        "mean_final_vitality": 0.2958900000000002,
+        "std_final_vitality": 0.3243726913598002,
+        "death_rate": 0.5
+      },
+      "behavior_metrics": {
+        "artifact_type": "behavior_metrics",
+        "experiment_id": "143d80fe332046e39fb6d99806aabaee",
+        "run_id": "run-0000",
+        "system_type": "system_aw",
+        "trace_mode": "delta",
+        "num_episodes": 50,
+        "standard_metrics": {
+          "mean_steps": 166.1,
+          "death_rate": 0.5,
+          "mean_final_vitality": 0.2958900000000002,
+          "resource_gain_per_step": {
+            "mean": 0.47573119973135414,
+            "std": 0.3216814975870965,
+            "min": 0.0,
+            "max": 0.8917500000000002,
+            "n": 50
+          },
+          "net_energy_efficiency": {
+            "mean": 0.48932020796470027,
+            "std": 0.3327617742786377,
+            "min": 0.0,
+            "max": 0.9240932642487047,
+            "n": 50
+          },
+          "successful_consume_rate": {
+            "mean": 0.84,
+            "std": 0.36660605559646714,
+            "min": 0.0,
+            "max": 1.0,
+            "n": 50
+          },
+          "consume_on_empty_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "failed_movement_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "action_entropy": {
+            "mean": 1.4770166766474484,
+            "std": 0.057879477182047154,
+            "min": 1.369239415549998,
+            "max": 1.5413322744276006,
+            "n": 50
+          },
+          "policy_sharpness": {
+            "mean": 0.38743555760487736,
+            "std": 0.01931323934801583,
+            "min": 0.35163596724350965,
+            "max": 0.4312742708058008,
+            "n": 50
+          },
+          "action_inertia": {
+            "mean": 0.3834183733562119,
+            "std": 0.04826595520351862,
+            "min": 0.3015075376884422,
+            "max": 0.494949494949495,
+            "n": 50
+          },
+          "unique_cells_visited": {
+            "mean": 121.7,
+            "std": 26.582136859176693,
+            "min": 62.0,
+            "max": 174.0,
+            "n": 50
+          },
+          "coverage_efficiency": {
+            "mean": 0.7622177134932181,
+            "std": 0.1007263657314417,
+            "min": 0.5854922279792746,
+            "max": 0.95,
+            "n": 50
+          },
+          "revisit_rate": {
+            "mean": 0.2287618877177225,
+            "std": 0.09676279196576812,
+            "min": 0.0482758620689655,
+            "max": 0.3978494623655914,
+            "n": 50
+          }
+        },
+        "system_specific_metrics": {
+          "system_aw_arbitration": {
+            "curiosity_dominance_rate": 0.2217940999397953,
+            "mean_curiosity_weight": 0.323120535729758,
+            "mean_hunger_weight": 0.5510356209607105,
+            "arbitrated_step_count": 8305
+          },
+          "system_aw_curiosity": {
+            "mean_curiosity_activation": 0.41467944271378754,
+            "mean_spatial_novelty": 0.6675968711790896,
+            "mean_sensory_novelty": 0.1057535599744655,
+            "mean_composite_novelty": 0.6114125400586525,
+            "curiosity_pressure_rate": 0.3567730282962071
+          },
+          "system_aw_behavior": {
+            "curiosity_led_move_rate": 0.35448524984948826,
+            "consume_under_curiosity_pressure_rate": 0.00641241984475194,
+            "movement_step_rate": 0.954846478025286,
+            "consume_step_rate": 0.04515352197471403
+          },
+          "system_aw_world_model": {
+            "world_model_unique_cells": 121.7,
+            "mean_visit_count_at_current": 1.4065021071643589,
+            "world_model_revisit_ratio": 0.2570540307776408
+          }
+        }
+      },
+      "comparison_summary": {
+        "num_episodes_compared": 50,
+        "num_valid_pairs": 50,
+        "num_invalid_pairs": 0,
+        "action_mismatch_rate": {
+          "mean": 0.7885373689907834,
+          "std": 0.05182461703321944,
+          "min": 0.63,
+          "max": 0.93,
+          "n": 50
+        },
+        "mean_trajectory_distance": {
+          "mean": 11.036570542443652,
+          "std": 3.411000096163811,
+          "min": 5.695,
+          "max": 19.335051546391753,
+          "n": 50
+        },
+        "mean_vitality_difference": {
+          "mean": 0.24726670538785128,
+          "std": 0.12022329293432486,
+          "min": 0.0060200000000000045,
+          "max": 0.48272999999999977,
+          "n": 50
+        },
+        "final_vitality_delta": {
+          "mean": -0.16647999999999985,
+          "std": 0.6088895124465088,
+          "min": -1.0,
+          "max": 0.8365000000000008,
+          "n": 50
+        },
+        "total_steps_delta": {
+          "mean": -5.72,
+          "std": 68.97590232857281,
+          "min": -100.0,
+          "max": 100.0,
+          "n": 50
+        },
+        "reference_survival_rate": 0.62,
+        "candidate_survival_rate": 0.5,
+        "candidate_longer_count": 16,
+        "reference_longer_count": 22,
+        "equal_count": 12
+      }
+    },
+    {
+      "experiment_id": "exp_06",
+      "label": "aw-sensory-opportunist",
+      "title": "Sensory Opportunist",
+      "hypothesis": [
+        "Revisit behavior may increase if regenerated cells stay behaviorally interesting.",
+        "Resource gain can improve relative to the spatial explorer when local change correlates with food availability.",
+        "Coverage should remain above System A but below the strongest spatial-novelty variant."
+      ],
+      "measurement_dir": "series/system-parameter-variations/measurements/experiment_6",
+      "comparison_output_path": "series/system-parameter-variations/comparisons/comparison-006.json",
+      "comparison_log_path": "series/system-parameter-variations/measurements/experiment_6/aw-sensory-opportunist-comparison.log",
+      "run_summary_log_path": "series/system-parameter-variations/measurements/experiment_6/aw-sensory-opportunist-candidate-run-summary.log",
+      "reference_experiment_id": "7b79e388b18547adba9ec59e09d14454",
+      "candidate_experiment_id": "1b65e165385349afbcd0198074ba8eff",
+      "run_summary": {
+        "num_episodes": 50,
+        "mean_steps": 183.54,
+        "std_steps": 34.59896530244801,
+        "mean_final_vitality": 0.5677800000000004,
+        "std_final_vitality": 0.3351771197441737,
+        "death_rate": 0.22
+      },
+      "behavior_metrics": {
+        "artifact_type": "behavior_metrics",
+        "experiment_id": "1b65e165385349afbcd0198074ba8eff",
+        "run_id": "run-0000",
+        "system_type": "system_aw",
+        "trace_mode": "delta",
+        "num_episodes": 50,
+        "standard_metrics": {
+          "mean_steps": 183.54,
+          "death_rate": 0.22,
+          "mean_final_vitality": 0.5677800000000004,
+          "resource_gain_per_step": {
+            "mean": 0.6774676369301063,
+            "std": 0.3012156986161082,
+            "min": 0.0,
+            "max": 0.9015000000000003,
+            "n": 50
+          },
+          "net_energy_efficiency": {
+            "mean": 0.7026081079969947,
+            "std": 0.3137085465564565,
+            "min": 0.0,
+            "max": 0.9375000000000004,
+            "n": 50
+          },
+          "successful_consume_rate": {
+            "mean": 0.92,
+            "std": 0.27129319932501084,
+            "min": 0.0,
+            "max": 1.0,
+            "n": 50
+          },
+          "consume_on_empty_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "failed_movement_rate": {
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "n": 50
+          },
+          "action_entropy": {
+            "mean": 1.5042601613498718,
+            "std": 0.04825387263433264,
+            "min": 1.37140642516395,
+            "max": 1.5549488072245485,
+            "n": 50
+          },
+          "policy_sharpness": {
+            "mean": 0.3085438646517637,
+            "std": 0.020230909326646625,
+            "min": 0.2618561592579434,
+            "max": 0.3558198687145495,
+            "n": 50
+          },
+          "action_inertia": {
+            "mean": 0.24750979641287518,
+            "std": 0.08755759548056569,
+            "min": 0.07537688442211055,
+            "max": 0.45161290322580644,
+            "n": 50
+          },
+          "unique_cells_visited": {
+            "mean": 80.28,
+            "std": 22.51314282813486,
+            "min": 26.0,
+            "max": 130.0,
+            "n": 50
+          },
+          "coverage_efficiency": {
+            "mean": 0.4772708523842752,
+            "std": 0.18415140730674504,
+            "min": 0.13471502590673576,
+            "max": 0.8663967611336032,
+            "n": 50
+          },
+          "revisit_rate": {
+            "mean": 0.5146206834766267,
+            "std": 0.1823733832764214,
+            "min": 0.1311475409836066,
+            "max": 0.8655913978494624,
+            "n": 50
+          }
+        },
+        "system_specific_metrics": {
+          "system_aw_arbitration": {
+            "curiosity_dominance_rate": 0.18350223384548328,
+            "mean_curiosity_weight": 0.3859298887414166,
+            "mean_hunger_weight": 0.5589282467173362,
+            "arbitrated_step_count": 9177
+          },
+          "system_aw_curiosity": {
+            "mean_curiosity_activation": 0.3585366193928892,
+            "mean_spatial_novelty": 0.6372626947903887,
+            "mean_sensory_novelty": 0.16391524849380776,
+            "mean_composite_novelty": 0.25858473775312496,
+            "curiosity_pressure_rate": 0.4864334749918274
+          },
+          "system_aw_behavior": {
+            "curiosity_led_move_rate": 0.47793396534815297,
+            "consume_under_curiosity_pressure_rate": 0.01747311827956989,
+            "movement_step_rate": 0.93461915658712,
+            "consume_step_rate": 0.06538084341288003
+          },
+          "system_aw_world_model": {
+            "world_model_unique_cells": 80.28,
+            "mean_visit_count_at_current": 3.896044458973521,
+            "world_model_revisit_ratio": 0.5382495088396971
+          }
+        }
+      },
+      "comparison_summary": {
+        "num_episodes_compared": 50,
+        "num_valid_pairs": 50,
+        "num_invalid_pairs": 0,
+        "action_mismatch_rate": {
+          "mean": 0.7810036114693036,
+          "std": 0.05132016385626539,
+          "min": 0.63,
+          "max": 0.93,
+          "n": 50
+        },
+        "mean_trajectory_distance": {
+          "mean": 10.297772725914287,
+          "std": 3.884779672565527,
+          "min": 4.005,
+          "max": 19.448453608247423,
+          "n": 50
+        },
+        "mean_vitality_difference": {
+          "mean": 0.22281396002733217,
+          "std": 0.09488564390857934,
+          "min": 0.0060200000000000045,
+          "max": 0.48272999999999977,
+          "n": 50
+        },
+        "final_vitality_delta": {
+          "mean": 0.10541000000000036,
+          "std": 0.5619424283279402,
+          "min": -1.0,
+          "max": 0.8560000000000006,
+          "n": 50
+        },
+        "total_steps_delta": {
+          "mean": 11.72,
+          "std": 58.26191390818618,
+          "min": -100.0,
+          "max": 100.0,
+          "n": 50
+        },
+        "reference_survival_rate": 0.62,
+        "candidate_survival_rate": 0.78,
+        "candidate_longer_count": 19,
+        "reference_longer_count": 8,
+        "equal_count": 23
+      }
+    }
+  ]
+}
