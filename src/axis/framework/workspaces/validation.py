@@ -122,6 +122,8 @@ def check_workspace(workspace_path: Path) -> WorkspaceCheckResult:
                           "primary_results", issues)
     _check_declared_paths(ws, manifest.primary_comparisons,
                           "primary_comparisons", issues)
+    if manifest.experiment_series is not None:
+        _check_experiment_series_registry(ws, manifest, issues)
 
     # --- Config experiment_type guardrail ---
     issues.extend(check_config_experiment_types(
@@ -242,3 +244,30 @@ def check_config_experiment_types(
                     path=str(config_file),
                 ))
     return issues
+
+
+def _check_experiment_series_registry(
+    ws: Path,
+    manifest: WorkspaceManifest,
+    issues: list[WorkspaceCheckIssue],
+) -> None:
+    from axis.framework.workspaces.experiment_series import load_experiment_series
+
+    assert manifest.experiment_series is not None
+    for entry in manifest.experiment_series.entries:
+        full = ws / entry.path
+        if not full.exists():
+            issues.append(WorkspaceCheckIssue(
+                severity=WorkspaceCheckSeverity.ERROR,
+                message=f"Registered experiment series file does not exist: {entry.path}",
+                path=str(full),
+            ))
+            continue
+        try:
+            load_experiment_series(ws, series_id=entry.id)
+        except Exception as exc:
+            issues.append(WorkspaceCheckIssue(
+                severity=WorkspaceCheckSeverity.ERROR,
+                message=f"Invalid registered experiment series '{entry.id}': {exc}",
+                path=str(full),
+            ))

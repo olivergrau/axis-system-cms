@@ -51,40 +51,6 @@ def test_parser_accepts_workspaces_reset_subcommand():
     assert args.workspace_path == "/tmp/ws"
 
 
-def test_parser_accepts_compare_allow_world_changes():
-    parser = build_parser()
-    args = parser.parse_args([
-        "compare",
-        "--reference-experiment", "ref-exp",
-        "--reference-run", "run-1",
-        "--candidate-experiment", "cand-exp",
-        "--candidate-run", "run-1",
-        "--allow-world-changes",
-    ])
-    assert args.entity == "compare"
-    assert args.allow_world_changes is True
-
-
-def test_parser_accepts_workspace_comparison_result_allow_world_changes():
-    parser = build_parser()
-    args = parser.parse_args([
-        "workspaces", "comparison-summary", "/tmp/ws", "--allow-world-changes",
-    ])
-    assert args.entity == "workspaces"
-    assert args.action == "comparison-summary"
-    assert args.allow_world_changes is True
-
-
-def test_parser_accepts_workspace_run_allow_world_changes():
-    parser = build_parser()
-    args = parser.parse_args([
-        "workspaces", "run", "/tmp/ws", "--allow-world-changes",
-    ])
-    assert args.entity == "workspaces"
-    assert args.action == "run"
-    assert args.allow_world_changes is True
-
-
 def test_parser_accepts_workspace_run_override_guard():
     parser = build_parser()
     args = parser.parse_args([
@@ -120,7 +86,6 @@ def test_parser_accepts_workspace_measure_arguments():
     args = parser.parse_args([
         "workspaces", "measure", "/tmp/ws",
         "--label", "manual-tag",
-        "--allow-world-changes",
         "--override-guard",
         "--notes", "measurement note",
     ])
@@ -128,7 +93,6 @@ def test_parser_accepts_workspace_measure_arguments():
     assert args.action == "measure"
     assert args.workspace_path == "/tmp/ws"
     assert args.label == "manual-tag"
-    assert args.allow_world_changes is True
     assert args.override_guard is True
     assert args.notes == "measurement note"
 
@@ -137,14 +101,14 @@ def test_parser_accepts_workspace_run_series_arguments():
     parser = build_parser()
     args = parser.parse_args([
         "workspaces", "run-series", "/tmp/ws",
-        "--allow-world-changes",
+        "--series", "series-a",
         "--override-guard",
         "--update-notes",
     ])
     assert args.entity == "workspaces"
     assert args.action == "run-series"
     assert args.workspace_path == "/tmp/ws"
-    assert args.allow_world_changes is True
+    assert args.series == "series-a"
     assert args.override_guard is True
     assert args.update_notes is True
 

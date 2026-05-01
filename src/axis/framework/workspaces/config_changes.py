@@ -111,8 +111,6 @@ def has_same_config_as_previous_result(
     current_config: dict[str, Any],
     manifest_results: list[object],
     role: str | None,
-    *,
-    ignore_world: bool = False,
 ) -> bool:
     """Return True if *current_config* matches the previous comparable result."""
     previous_entry = find_previous_comparable_entry(manifest_results, role)
@@ -126,13 +124,5 @@ def has_same_config_as_previous_result(
     previous_config = load_json_dict(workspace_path / previous_config_path)
     if previous_config is None:
         return False
-
-    if ignore_world:
-        current_config = {
-            key: value for key, value in current_config.items() if key != "world"
-        }
-        previous_config = {
-            key: value for key, value in previous_config.items() if key != "world"
-        }
 
     return previous_config == current_config

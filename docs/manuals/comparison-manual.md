@@ -63,11 +63,6 @@ If any constraint is violated, the comparison returns a structured
 validation failure with specific error codes -- it never silently
 proceeds with mismatched data.
 
-One explicit exception exists for intentional world-manipulation
-studies: `--allow-world-changes` relaxes only the world-config
-equality check. It does not relax world type, start position, seed, or
-action-space validation.
-
 ### 1.3 Seed pairing
 
 Episode seeds ensure that the world layout and resource placement are
@@ -127,7 +122,7 @@ axis compare \
 axis compare \
   --reference-experiment <eid> --reference-run <rid> \
   --candidate-experiment <eid> --candidate-run <rid> \
-  [--allow-world-changes] [--output text|json] [--root <path>]
+  [--output text|json] [--root <path>]
 ```
 
 | Flag                       | Required | Description |
@@ -138,7 +133,6 @@ axis compare \
 | `--candidate-experiment`   | yes      | Experiment ID for the candidate trace |
 | `--candidate-run`          | yes      | Run ID within the candidate experiment |
 | `--candidate-episode`      | no       | Episode index (omit for full-run comparison) |
-| `--allow-world-changes`    | no       | Allow comparison when only the world configuration differs |
 | `--output`                 | no       | `text` (default) or `json` |
 | `--root`                   | no       | Repository root (default: `./experiments/results`) |
 
@@ -266,13 +260,9 @@ Possible validation error codes:
 | Error code                   | Meaning |
 |------------------------------|---------|
 | `world_type_mismatch`        | Different world types (e.g. `grid_2d` vs `toroidal`) |
-| `world_config_mismatch`      | Different world settings (grid size, obstacle density, etc.) |
 | `start_position_mismatch`    | Agent started at different positions |
 | `episode_seed_mismatch`      | Episodes were seeded differently |
 | `action_space_no_shared_labels` | No actions in common between the two systems |
-
-Use `--allow-world-changes` if the world-config difference is
-intentional and is itself the subject of the comparison.
 
 ---
 

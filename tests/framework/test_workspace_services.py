@@ -443,7 +443,7 @@ class TestRunServiceInjection:
 
         execute_fn.assert_called_once()
 
-    def test_execute_blocks_world_only_change_without_allow_flag(
+    def test_execute_allows_world_only_change_as_normal_config_change(
         self, tmp_path: Path,
     ) -> None:
         import yaml
@@ -522,91 +522,7 @@ class TestRunServiceInjection:
             "axis.framework.workspaces.resolution.resolve_run_targets",
             return_value=MagicMock(targets=[fake_target]),
         ):
-            with pytest.raises(ValueError, match="no config changes detected"):
-                svc.execute(ws)
-
-        execute_fn.assert_not_called()
-
-    def test_execute_allows_world_only_change_with_allow_flag(
-        self, tmp_path: Path,
-    ) -> None:
-        import yaml
-
-        from axis.framework.cli import _load_config_file
-
-        ws = tmp_path / "ws"
-        ws.mkdir()
-        (ws / "configs").mkdir()
-        (ws / "results" / "exp-001").mkdir(parents=True)
-
-        config_data = {
-            "system_type": "system_a",
-            "experiment_type": "single_run",
-            "general": {"seed": 7},
-            "execution": {"max_steps": 100},
-            "world": {"world_type": "grid_2d", "grid_width": 7, "grid_height": 5},
-            "system": {
-                "agent": {
-                    "initial_energy": 50,
-                    "max_energy": 100,
-                    "buffer_capacity": 5,
-                },
-                "policy": {
-                    "selection_mode": "sample",
-                    "temperature": 1.0,
-                    "stay_suppression": 0.1,
-                    "consume_weight": 2.5,
-                },
-                "transition": {
-                    "move_cost": 0.5,
-                    "consume_cost": 0.5,
-                    "stay_cost": 0.3,
-                    "max_consume": 1.0,
-                    "energy_gain_factor": 15.0,
-                },
-            },
-            "num_episodes_per_run": 5,
-        }
-        (ws / "configs" / "baseline.yaml").write_text(yaml.dump(config_data))
-        normalized = _load_config_file(
-            ws / "configs" / "baseline.yaml"
-        ).model_dump(mode="json")
-        normalized["world"]["grid_width"] = 5
-        (ws / "results" / "exp-001" / "experiment_config.json").write_text(
-            json.dumps(normalized)
-        )
-        (ws / "workspace.yaml").write_text(yaml.dump({
-            "workspace_id": "ws",
-            "title": "Workspace",
-            "workspace_class": "investigation",
-            "workspace_type": "single_system",
-            "status": "draft",
-            "lifecycle_stage": "idea",
-            "created_at": "2026-04-22",
-            "question": "Q?",
-            "system_under_test": "system_a",
-            "primary_configs": ["configs/baseline.yaml"],
-            "primary_results": [
-                {
-                    "path": "results/exp-001",
-                    "role": "system_under_test",
-                    "config": "results/exp-001/experiment_config.json",
-                },
-            ],
-        }))
-
-        execute_fn = MagicMock(return_value=[])
-        svc = _make_run_service(execute_fn=execute_fn)
-
-        fake_target = MagicMock(
-            config_path="configs/baseline.yaml",
-            role="system_under_test",
-        )
-        with patch(
-            "axis.framework.workspaces.resolution.resolve_run_targets",
-            return_value=MagicMock(targets=[fake_target]),
-        ):
-            svc.execute(ws, allow_world_changes=True)
+            svc.execute(ws)
 
         execute_fn.assert_called_once()
 
@@ -809,6 +725,127 @@ class TestWorkflowServiceInjection:
         data = yaml.safe_load((ws / "workspace.yaml").read_text())
         assert data["primary_results"] == []
         assert data["primary_comparisons"] == []
+
+    def test_plan_reset_reports_counts_for_workspace_and_series_roots(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        (ws / "results" / "exp-001").mkdir(parents=True)
+        (ws / "results" / "exp-001" / "run.json").write_text("{}")
+        (ws / "comparisons" / "nested").mkdir(parents=True)
+        (ws / "comparisons" / "nested" / "comparison-001.json").write_text("{}")
+        (ws / "measurements" / "experiment_001").mkdir(parents=True)
+        (ws / "measurements" / "experiment_001" / "summary.log").write_text("")
+        (ws / "series" / "alpha" / "results" / "exp-101").mkdir(parents=True)
+        (ws / "series" / "alpha" / "results" / "exp-101" / "artifact.json").write_text("{}")
+        (ws / "series" / "alpha" / "comparisons").mkdir(parents=True)
+        (ws / "series" / "alpha" / "measurements" / "experiment_101").mkdir(parents=True)
+        (ws / "series" / "alpha" / "measurements" / "experiment_101" / "notes.log").write_text("")
+        (ws / "series" / "alpha" / "experiment.yaml").write_text(yaml.dump({
+            "base_config": "configs/base.yaml",
+            "experiments": [],
+        }))
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "active",
+            "lifecycle_stage": "analysis",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_aw",
+            "experiment_series": {
+                "entries": [
+                    {"id": "alpha", "path": "series/alpha/experiment.yaml"},
+                ],
+            },
+        }))
+
+        from axis.framework.workspaces.manifest_mutator import (
+            reset_workspace_artifacts,
+        )
+        from axis.framework.workspaces.sync import (
+            _load_yaml_roundtrip,
+            _save_yaml_roundtrip,
+        )
+
+        svc = WorkspaceWorkflowService(
+            close_workspace_fn=MagicMock(),
+            reset_workspace_artifacts_fn=reset_workspace_artifacts,
+            load_yaml_roundtrip_fn=_load_yaml_roundtrip,
+            save_yaml_roundtrip_fn=_save_yaml_roundtrip,
+        )
+
+        plan = svc.plan_reset(ws)
+
+        assert plan.workspace_global_counts["results"] == 1
+        assert plan.workspace_global_counts["comparisons"] == 1
+        assert plan.workspace_global_counts["measurements"] == 1
+        assert plan.series_counts_by_id["alpha"]["series/alpha/results"] == 1
+        assert plan.series_counts_by_id["alpha"]["series/alpha/comparisons"] == 0
+        assert plan.series_counts_by_id["alpha"]["series/alpha/measurements"] == 1
+        assert plan.total_paths == 6
+        assert plan.total_entries == 5
+        assert plan.total_files == 5
+        assert plan.total_directories == 5
+
+    def test_reset_removes_series_generated_tracking_blocks(self, tmp_path: Path) -> None:
+        import yaml
+
+        ws = tmp_path / "ws"
+        (ws / "series" / "alpha").mkdir(parents=True)
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "ws",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "active",
+            "lifecycle_stage": "analysis",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_aw",
+            "experiment_series": {
+                "entries": [
+                    {
+                        "id": "alpha",
+                        "path": "series/alpha/experiment.yaml",
+                        "generated": {
+                            "results": [{"path": "series/alpha/results/exp-001"}],
+                            "comparisons": ["series/alpha/comparisons/comparison-001.json"],
+                            "measurement_runs": [
+                                {"path": "series/alpha/measurements/experiment_1"},
+                            ],
+                        },
+                    },
+                ],
+            },
+        }))
+        (ws / "series" / "alpha" / "experiment.yaml").write_text(yaml.dump({
+            "base_config": "configs/base.yaml",
+            "experiments": [],
+        }))
+
+        from axis.framework.workspaces.manifest_mutator import (
+            reset_workspace_artifacts,
+        )
+        from axis.framework.workspaces.sync import (
+            _load_yaml_roundtrip,
+            _save_yaml_roundtrip,
+        )
+
+        svc = WorkspaceWorkflowService(
+            close_workspace_fn=MagicMock(),
+            reset_workspace_artifacts_fn=reset_workspace_artifacts,
+            load_yaml_roundtrip_fn=_load_yaml_roundtrip,
+            save_yaml_roundtrip_fn=_save_yaml_roundtrip,
+        )
+
+        svc.reset(ws)
+
+        data = yaml.safe_load((ws / "workspace.yaml").read_text())
+        entry = data["experiment_series"]["entries"][0]
+        assert "generated" not in entry
 
 
 # ---------------------------------------------------------------------------

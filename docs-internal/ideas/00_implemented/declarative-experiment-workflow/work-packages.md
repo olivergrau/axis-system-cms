@@ -217,7 +217,6 @@ Expose the experiment series workflow through the workspace CLI.
 - update `src/axis/framework/cli/commands/workspaces.py`
 - add:
   - `axis workspaces run-series <workspace>`
-  - `--allow-world-changes`
   - `--override-guard`
   - `--update-notes`
   - standard output mode support

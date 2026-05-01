@@ -73,7 +73,6 @@ def _cmd_compare_episode(args: argparse.Namespace, repo, output: str, catalogs: 
     result = compare_episode_traces(
         ref_trace,
         cand_trace,
-        allow_world_changes=getattr(args, "allow_world_changes", False),
         reference_run_config=ref_config,
         candidate_run_config=cand_config,
         reference_run_metadata=ref_meta,
@@ -104,7 +103,6 @@ def _cmd_compare_runs(
         repo,
         args.reference_experiment, args.reference_run,
         args.candidate_experiment, args.candidate_run,
-        allow_world_changes=getattr(args, "allow_world_changes", False),
         extension_catalog=catalogs.get("comparison_extensions") if catalogs else None,
         progress=progress,
     )

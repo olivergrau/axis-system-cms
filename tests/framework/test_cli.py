@@ -243,6 +243,40 @@ class TestExperimentsShow:
 
 
 class TestWorkspaceReset:
+    def test_reset_preview_json_includes_counts(self, tmp_path, capsys):
+        ws = tmp_path / "workspace"
+        (ws / "results" / "exp-001").mkdir(parents=True)
+        (ws / "results" / "exp-001" / "run.json").write_text("{}")
+        (ws / "comparisons").mkdir(parents=True)
+        (ws / "measurements" / "experiment_001").mkdir(parents=True)
+        (ws / "measurements" / "experiment_001" / "summary.log").write_text("")
+        (ws / "workspace.yaml").write_text(yaml.dump({
+            "workspace_id": "workspace",
+            "title": "Workspace",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "active",
+            "lifecycle_stage": "analysis",
+            "created_at": "2026-04-22",
+            "question": "Q?",
+            "system_under_test": "system_aw",
+        }))
+
+        code, out, _ = _run_cli(capsys, [
+            "--output", "json", "workspaces", "reset", str(ws),
+        ])
+
+        assert code == 0
+        data = json.loads(out)
+        assert data["mode"] == "preview"
+        assert data["workspace_global_counts"]["results"] == 1
+        assert data["workspace_global_counts"]["comparisons"] == 0
+        assert data["workspace_global_counts"]["measurements"] == 1
+        assert data["total_paths"] == 3
+        assert data["total_entries"] == 2
+        assert data["total_files"] == 2
+        assert data["total_directories"] == 2
+
     def test_reset_clears_results_comparisons_measurements_and_manifest(self, tmp_path, capsys):
         ws = tmp_path / "workspace"
         (ws / "results" / "exp-001").mkdir(parents=True)
@@ -266,7 +300,7 @@ class TestWorkspaceReset:
         }))
 
         code, out, _ = _run_cli(capsys, [
-            "workspaces", "reset", str(ws),
+            "workspaces", "reset", str(ws), "--force",
         ])
 
         assert code == 0

@@ -8,6 +8,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from axis.framework.workspaces.series_paths import resolve_series_paths
 from axis.framework.workspaces.types import WorkspaceType
 
 
@@ -159,14 +160,20 @@ class ExperimentSeriesManifest(BaseModel):
         return self
 
 
-def load_experiment_series(workspace_path: Path | str) -> ExperimentSeriesManifest:
-    """Load and validate ``experiment.yaml`` from a workspace root."""
-    ws = Path(workspace_path)
-    series_path = ws / "experiment.yaml"
+def load_experiment_series(
+    workspace_path: Path | str,
+    *,
+    series_id: str,
+) -> ExperimentSeriesManifest:
+    """Load and validate one registered series manifest."""
+    series_path = resolve_series_paths(
+        workspace_path,
+        series_id=series_id,
+    ).experiment_manifest_path
     if not series_path.is_file():
         raise ValueError(
             f"Experiment series file not found: {series_path}. "
-            "Create 'experiment.yaml' in the workspace root first."
+            "Create the registered series manifest first."
         )
 
     data = yaml.safe_load(series_path.read_text())

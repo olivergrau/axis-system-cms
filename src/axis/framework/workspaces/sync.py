@@ -133,3 +133,69 @@ def sync_manifest_after_compare(
     update_current_validation_comparison(data, comparison_output_path)
 
     _save_yaml_roundtrip(manifest_path, yaml, data)
+
+
+def sync_manifest_after_series_run(
+    workspace_path: Path,
+    *,
+    series_id: str,
+    result_path: str,
+    role: str | None = None,
+    output_form: str | None = None,
+    trace_mode: str | None = None,
+    system_type: str | None = None,
+    primary_run_id: str | None = None,
+    baseline_run_id: str | None = None,
+    run_notes: str | None = None,
+    label: str | None = None,
+    measurement_path: str | None = None,
+) -> None:
+    """Update one registered series entry after one series execution step."""
+    from axis.framework.workspaces.manifest_mutator import (
+        append_series_measurement_run,
+        append_series_result,
+    )
+
+    ws = Path(workspace_path)
+    manifest_path = ws / "workspace.yaml"
+    yaml, data = _load_yaml_roundtrip(manifest_path)
+    append_series_result(
+        data,
+        series_id=series_id,
+        result_path=result_path,
+        role=role,
+        output_form=output_form,
+        trace_mode=trace_mode,
+        system_type=system_type,
+        primary_run_id=primary_run_id,
+        baseline_run_id=baseline_run_id,
+        run_notes=run_notes,
+    )
+    if measurement_path is not None:
+        append_series_measurement_run(
+            data,
+            series_id=series_id,
+            measurement_path=measurement_path,
+            label=label,
+        )
+    _save_yaml_roundtrip(manifest_path, yaml, data)
+
+
+def sync_manifest_after_series_compare(
+    workspace_path: Path,
+    *,
+    series_id: str,
+    comparison_output_path: str,
+) -> None:
+    """Update one registered series entry after one series comparison."""
+    from axis.framework.workspaces.manifest_mutator import append_series_comparison
+
+    ws = Path(workspace_path)
+    manifest_path = ws / "workspace.yaml"
+    yaml, data = _load_yaml_roundtrip(manifest_path)
+    append_series_comparison(
+        data,
+        series_id=series_id,
+        comparison_output_path=comparison_output_path,
+    )
+    _save_yaml_roundtrip(manifest_path, yaml, data)

@@ -13,6 +13,7 @@ from typing import Any
 class WorkspaceExperimentSeriesServiceResult:
     """Summary of one completed workspace experiment series execution."""
 
+    series_id: str
     series_title: str | None
     executed_experiment_count: int
     executed_experiment_ids: list[str]
@@ -43,15 +44,16 @@ class WorkspaceExperimentSeriesService:
         self,
         workspace_path: Path,
         *,
-        allow_world_changes: bool = False,
+        series_id: str,
         override_guard: bool = False,
         update_notes: bool = False,
         catalogs: dict | None = None,
         progress: object | None = None,
     ) -> WorkspaceExperimentSeriesServiceResult:
-        """Execute all enabled experiments declared in ``experiment.yaml``."""
-        from axis.framework.metrics import load_or_compute_run_behavior_metrics
+        """Execute all enabled experiments declared in one registered series."""
         from axis.framework.persistence import ExperimentRepository
+        from axis.framework.workspaces.compare import compare_workspace
+        from axis.framework.metrics import load_or_compute_run_behavior_metrics
         from axis.framework.workspaces.comparison_envelope import (
             WorkspaceComparisonEnvelope,
         )
@@ -59,6 +61,12 @@ class WorkspaceExperimentSeriesService:
             materialize_candidate_config,
             materialize_role_config,
             resolve_base_config_paths,
+        )
+        from axis.framework.workspaces.execute import execute_workspace
+        from axis.framework.workspaces.series_paths import resolve_series_paths
+        from axis.framework.workspaces.sync import (
+            sync_manifest_after_series_compare,
+            sync_manifest_after_series_run,
         )
         from axis.framework.workspaces.services.measurement_service import (
             _next_measurement_number,
@@ -86,7 +94,11 @@ class WorkspaceExperimentSeriesService:
                 f"'{manifest.workspace_type.value}'."
             )
 
-        series = self._load_experiment_series_fn(ws)
+        series_paths = resolve_series_paths(ws, series_id=series_id)
+        series_paths.results_root.mkdir(parents=True, exist_ok=True)
+        series_paths.measurements_root.mkdir(parents=True, exist_ok=True)
+        series_paths.comparisons_root.mkdir(parents=True, exist_ok=True)
+        series = self._load_experiment_series_fn(ws, series_id=series_id)
         series_workspace_type = getattr(
             series.workspace_type, "value", series.workspace_type
         )
@@ -102,14 +114,10 @@ class WorkspaceExperimentSeriesService:
                 base_configs["reference"] = series.base_configs.reference
             if series.base_configs.candidate is not None:
                 base_configs["candidate"] = series.base_configs.candidate
-        measurement_root_dir = (
-            manifest.measurement_workflow.root_dir
-            if manifest.measurement_workflow is not None
-            else "measurements"
-        )
+        measurement_root_dir = str(series_paths.measurements_root.relative_to(ws))
         workflow = manifest.measurement_workflow
-        temp_root = ws / ".axis_tmp" / "experiment_series" / _series_run_id()
-        repo = ExperimentRepository(ws / "results")
+        temp_root = ws / ".axis_tmp" / "experiment_series" / series_id / _series_run_id()
+        repo = ExperimentRepository(series_paths.results_root)
 
         aggregate_entries = []
         executed_ids: list[str] = []
@@ -137,35 +145,95 @@ class WorkspaceExperimentSeriesService:
                     temp_dir=temp_root,
                     experiment_id=experiment.id,
                 )
-                measurement_result = self._measurement_service.measure(
+                measurement_number = _next_measurement_number(
+                    _ensure_measurement_root(series_paths.measurements_root),
+                    workflow.experiment_dir_pattern if workflow else "experiment_{number}",
+                )
+                effective_workflow = workflow
+                if effective_workflow is None:
+                    from axis.framework.workspaces.types import MeasurementWorkflowConfig
+                    effective_workflow = MeasurementWorkflowConfig()
+                measurement_dir_path = (
+                    series_paths.measurements_root /
+                    effective_workflow.experiment_dir_pattern.format(number=measurement_number)
+                )
+                measurement_dir_path.mkdir(parents=True, exist_ok=False)
+                exec_results = execute_workspace(
                     ws,
-                    label=label,
                     config_overrides_by_role={"candidate": materialized.temp_config_path},
-                    allow_world_changes=allow_world_changes,
-                    override_guard=override_guard,
-                    run_notes=experiment.notes or experiment.title,
+                    progress=progress,
+                    progress_description_prefix=progress_prefix,
+                    show_workspace_progress=False,
+                    results_root=series_paths.results_root,
+                )
+                run_notes = experiment.notes or experiment.title
+                for er in exec_results:
+                    config = er.experiment_result.experiment_config
+                    execution = getattr(config, "execution", None)
+                    sync_manifest_after_series_run(
+                        ws,
+                        series_id=series_id,
+                        result_path=str(
+                            (series_paths.results_root / er.experiment_result.experiment_id).relative_to(ws)
+                        ),
+                        role=er.role,
+                        output_form="point" if config.experiment_type.value == "single_run" else "sweep",
+                        trace_mode=getattr(execution, "trace_mode", None),
+                        system_type=config.system_type,
+                        primary_run_id="run-0000" if config.experiment_type.value == "single_run" else None,
+                        baseline_run_id="run-0000" if config.experiment_type.value != "single_run" else None,
+                        run_notes=run_notes,
+                        label=label,
+                        measurement_path=str(measurement_dir_path.relative_to(ws)),
+                    )
+                by_role = {er.role: er.experiment_result.experiment_id for er in exec_results}
+                reference_experiment_id = by_role["reference"]
+                current_experiment_id = by_role["candidate"]
+                compare_result_envelope, comparison_output_path = compare_workspace(
+                    ws,
+                    reference_experiment=reference_experiment_id,
+                    candidate_experiment=current_experiment_id,
                     extension_catalog=(
                         catalogs.get("comparison_extensions") if catalogs else None
                     ),
                     progress=progress,
-                    progress_description_prefix=progress_prefix,
-                    show_workspace_progress=False,
+                    progress_description=f"{progress_prefix} | Episode comparisons",
+                    results_root=series_paths.results_root,
+                    comparisons_root=series_paths.comparisons_root,
                 )
+                sync_manifest_after_series_compare(
+                    ws,
+                    series_id=series_id,
+                    comparison_output_path=comparison_output_path,
+                )
+                comparison_number = compare_result_envelope.comparison_number
+                tokens = {
+                    "label": label,
+                    "number": measurement_number,
+                    "role": effective_workflow.default_run_summary_role,
+                }
+                comparison_log_path = str((
+                    measurement_dir_path /
+                    effective_workflow.comparison_log_pattern.format(**tokens)
+                ).relative_to(ws))
+                run_summary_log_path = str((
+                    measurement_dir_path /
+                    effective_workflow.run_summary_log_pattern.format(**tokens)
+                ).relative_to(ws))
                 self._export_measurement_reports_fn(
                     ws,
-                    comparison_number=measurement_result.comparison_number,
-                    comparison_log_path=measurement_result.comparison_log_path,
-                    run_summary_role=measurement_result.run_summary_role,
-                    run_summary_log_path=measurement_result.run_summary_log_path,
-                    allow_world_changes=allow_world_changes,
+                    comparison_number=comparison_number,
+                    comparison_log_path=comparison_log_path,
+                    run_summary_role=None,
+                    run_summary_log_path=run_summary_log_path,
+                    run_summary_experiment_id=current_experiment_id,
+                    run_summary_run_id="run-0000",
                     catalogs=catalogs,
+                    comparison_output_path=comparison_output_path,
+                    results_root=series_paths.results_root,
                 )
-                current_experiment_id = measurement_result.run_experiments_by_role["candidate"]
-                comparison_output_path = measurement_result.comparison_output_path
-                comparison_log_path = measurement_result.comparison_log_path
-                run_summary_log_path = measurement_result.run_summary_log_path
-                run_summary_role = measurement_result.run_summary_role
-                measurement_dir = measurement_result.measurement_dir
+                run_summary_role = effective_workflow.default_run_summary_role
+                measurement_dir = str(measurement_dir_path.relative_to(ws))
             else:
                 materialized = materialize_role_config(
                     ws,
@@ -181,7 +249,7 @@ class WorkspaceExperimentSeriesService:
                     experiment_id=experiment.id,
                 )
                 measurement_number = _next_measurement_number(
-                    _ensure_measurement_root(ws / measurement_root_dir),
+                    _ensure_measurement_root(series_paths.measurements_root),
                     workflow.experiment_dir_pattern if workflow else "experiment_{number}",
                 )
                 effective_workflow = workflow
@@ -189,36 +257,60 @@ class WorkspaceExperimentSeriesService:
                     from axis.framework.workspaces.types import MeasurementWorkflowConfig
                     effective_workflow = MeasurementWorkflowConfig()
                 measurement_dir_path = (
-                    ws / effective_workflow.root_dir /
+                    series_paths.measurements_root /
                     effective_workflow.experiment_dir_pattern.format(number=measurement_number)
                 )
                 measurement_dir_path.mkdir(parents=True, exist_ok=False)
-                run_results = self._measurement_service._run_service.execute(
+                exec_results = execute_workspace(
                     ws,
                     config_overrides_by_role={
                         "system_under_test": materialized.temp_config_path,
                     },
-                    allow_world_changes=allow_world_changes,
-                    override_guard=override_guard,
-                    run_notes=experiment.notes or experiment.title,
                     progress=progress,
                     progress_description_prefix=progress_prefix,
                     show_workspace_progress=False,
+                    results_root=series_paths.results_root,
                 )
-                current_experiment_id = run_results[0].experiment_id
+                run_notes = experiment.notes or experiment.title
+                for er in exec_results:
+                    config = er.experiment_result.experiment_config
+                    execution = getattr(config, "execution", None)
+                    sync_manifest_after_series_run(
+                        ws,
+                        series_id=series_id,
+                        result_path=str(
+                            (series_paths.results_root / er.experiment_result.experiment_id).relative_to(ws)
+                        ),
+                        role=er.role,
+                        output_form="point" if config.experiment_type.value == "single_run" else "sweep",
+                        trace_mode=getattr(execution, "trace_mode", None),
+                        system_type=config.system_type,
+                        primary_run_id="run-0000" if config.experiment_type.value == "single_run" else None,
+                        baseline_run_id="run-0000" if config.experiment_type.value != "single_run" else None,
+                        run_notes=run_notes,
+                        label=label,
+                        measurement_path=str(measurement_dir_path.relative_to(ws)),
+                    )
+                current_experiment_id = exec_results[0].experiment_result.experiment_id
                 baseline_experiment_id = current_experiment_id if not executed_ids else aggregate_entries[0].candidate_experiment_id
-                compare_result = self._measurement_service._compare_service.compare(
+                compare_result_envelope, comparison_output_path = compare_workspace(
                     ws,
                     reference_experiment=baseline_experiment_id,
                     candidate_experiment=current_experiment_id,
-                    allow_world_changes=allow_world_changes,
                     extension_catalog=(
                         catalogs.get("comparison_extensions") if catalogs else None
                     ),
                     progress=progress,
                     progress_description=f"{progress_prefix} | Episode comparisons",
+                    results_root=series_paths.results_root,
+                    comparisons_root=series_paths.comparisons_root,
                 )
-                comparison_output_path = compare_result.output_path
+                sync_manifest_after_series_compare(
+                    ws,
+                    series_id=series_id,
+                    comparison_output_path=comparison_output_path,
+                )
+                comparison_number = compare_result_envelope.comparison_number
                 tokens = {
                     "label": label,
                     "number": measurement_number,
@@ -234,14 +326,15 @@ class WorkspaceExperimentSeriesService:
                 ).relative_to(ws))
                 self._export_measurement_reports_fn(
                     ws,
-                    comparison_number=compare_result.comparison_number,
+                    comparison_number=comparison_number,
                     comparison_log_path=comparison_log_path,
                     run_summary_role=None,
                     run_summary_log_path=run_summary_log_path,
                     run_summary_experiment_id=current_experiment_id,
                     run_summary_run_id="run-0000",
-                    allow_world_changes=allow_world_changes,
                     catalogs=catalogs,
+                    comparison_output_path=comparison_output_path,
+                    results_root=series_paths.results_root,
                 )
                 run_summary_role = "system_under_test"
                 measurement_dir = str(measurement_dir_path.relative_to(ws))
@@ -292,7 +385,8 @@ class WorkspaceExperimentSeriesService:
 
         notes_updated = False
         if update_notes and series.defaults.notes.scaffold_notes:
-            notes_path = ws / "notes.md"
+            notes_path = series_paths.notes_path
+            notes_path.parent.mkdir(parents=True, exist_ok=True)
             notes_path.write_text(
                 render_notes_scaffold(
                     series_title=series.title,
@@ -303,6 +397,7 @@ class WorkspaceExperimentSeriesService:
             notes_updated = True
 
         return WorkspaceExperimentSeriesServiceResult(
+            series_id=series_id,
             series_title=series.title,
             executed_experiment_count=len(executed_ids),
             executed_experiment_ids=executed_ids,

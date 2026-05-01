@@ -127,7 +127,7 @@ examples:
   axis workspaces reset <workspace-path>        Clear workspace results and comparisons
   axis workspaces run-metrics <workspace-path>  Inspect metrics for one resolved run
   axis workspaces compare <workspace-path>      Run a workspace comparison
-  axis workspaces run-series <workspace-path>   Run a declarative experiment series
+  axis workspaces run-series <workspace-path> --series <id>   Run a declarative experiment series
 
   Use --output json on any command for machine-readable output.
   Use --root <path> to point to a non-default repository location.
@@ -225,17 +225,6 @@ examples:
     cmp_parser.add_argument(
         "--candidate-episode", type=int, default=None,
         help="Candidate episode index (omit for full-run comparison)")
-    cmp_parser.add_argument(
-        "--allow-world-changes",
-        action="store_true",
-        default=False,
-        help=(
-            "Allow comparisons when only the world configuration differs. "
-            "World type, start position, seed, and action-space validation "
-            "still remain strict."
-        ),
-    )
-
     # -- visualize -----------------------------------------------------------
     viz_parser = entity_sub.add_parser(
         "visualize", parents=[common],
@@ -299,6 +288,12 @@ examples:
     )
     ws_reset_p.add_argument(
         "workspace_path", help="Path to workspace directory")
+    ws_reset_p.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Skip reset confirmation and delete generated artifacts immediately.",
+    )
 
     ws_check_p = ws_action.add_parser(
         "check", parents=[common], help="Validate a workspace",
@@ -323,15 +318,6 @@ examples:
     ws_run_p.add_argument(
         "--candidate-only", action="store_true", default=False,
         help="Run only the candidate config (system_development)")
-    ws_run_p.add_argument(
-        "--allow-world-changes",
-        action="store_true",
-        default=False,
-        help=(
-            "Treat world-only config changes as intentional and allow the run. "
-            "Without this flag, world-only edits do not bypass duplicate-run protection."
-        ),
-    )
     ws_run_p.add_argument(
         "--override-guard",
         action="store_true",
@@ -361,16 +347,6 @@ examples:
     ws_cmp_p.add_argument(
         "--candidate-experiment", default=None,
         help="Experiment ID for candidate side (must exist in workspace results)")
-    ws_cmp_p.add_argument(
-        "--allow-world-changes",
-        action="store_true",
-        default=False,
-        help=(
-            "Allow comparisons when only the world configuration differs. "
-            "Useful for comparing world-state manipulations explicitly."
-        ),
-    )
-
     ws_measure_p = ws_action.add_parser(
         "measure", parents=[common],
         help="Run the system_comparison measurement workflow and export logs",
@@ -384,15 +360,6 @@ examples:
             "Optional filename label override for this measurement run. "
             "Overrides the manifest-derived label token but keeps the next "
             "measurement directory number."
-        ),
-    )
-    ws_measure_p.add_argument(
-        "--allow-world-changes",
-        action="store_true",
-        default=False,
-        help=(
-            "Treat world-only config changes as intentional for both run and "
-            "compare during the measurement workflow."
         ),
     )
     ws_measure_p.add_argument(
@@ -419,12 +386,9 @@ examples:
     ws_series_p.add_argument(
         "workspace_path", help="Path to workspace directory")
     ws_series_p.add_argument(
-        "--allow-world-changes",
-        action="store_true",
-        default=False,
-        help=(
-            "Treat world-only config changes as intentional during series execution."
-        ),
+        "--series",
+        required=True,
+        help="Registered series ID from workspace.yaml to execute.",
     )
     ws_series_p.add_argument(
         "--override-guard",
@@ -461,16 +425,6 @@ examples:
         "--number", type=int, default=None,
         help="Comparison number to display (e.g. 1, 2). "
              "If omitted, lists all or shows the only one.")
-    ws_cr_p.add_argument(
-        "--allow-world-changes",
-        action="store_true",
-        default=False,
-        help=(
-            "Recompute the stored comparison for display while allowing "
-            "world-configuration differences."
-        ),
-    )
-
     ws_sc_p = ws_action.add_parser(
         "set-candidate", parents=[common],
         help="Set the candidate config for a development workspace",

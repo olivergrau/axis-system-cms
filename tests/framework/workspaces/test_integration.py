@@ -72,6 +72,7 @@ def _scaffold_comparison(tmp_path: Path) -> Path:
 
 
 def _write_experiment_series(workspace_path: Path) -> None:
+    series_id = "integration-series"
     data = {
         "version": 1,
         "workflow_type": "experiment_series",
@@ -119,12 +120,28 @@ def _write_experiment_series(workspace_path: Path) -> None:
             },
         ],
     }
-    (workspace_path / "experiment.yaml").write_text(
+    series_dir = workspace_path / "series" / series_id
+    series_dir.mkdir(parents=True, exist_ok=True)
+    (series_dir / "experiment.yaml").write_text(
         yaml.dump(data, default_flow_style=False, sort_keys=False)
+    )
+    manifest = yaml.safe_load((workspace_path / "workspace.yaml").read_text())
+    manifest["experiment_series"] = {
+        "entries": [
+            {
+                "id": series_id,
+                "path": f"series/{series_id}/experiment.yaml",
+                "title": "Integration Series",
+            },
+        ],
+    }
+    (workspace_path / "workspace.yaml").write_text(
+        yaml.dump(manifest, default_flow_style=False, sort_keys=False)
     )
 
 
 def _write_single_system_experiment_series(workspace_path: Path) -> None:
+    series_id = "single-series"
     data = {
         "version": 1,
         "workflow_type": "experiment_series",
@@ -160,8 +177,23 @@ def _write_single_system_experiment_series(workspace_path: Path) -> None:
             },
         ],
     }
-    (workspace_path / "experiment.yaml").write_text(
+    series_dir = workspace_path / "series" / series_id
+    series_dir.mkdir(parents=True, exist_ok=True)
+    (series_dir / "experiment.yaml").write_text(
         yaml.dump(data, default_flow_style=False, sort_keys=False)
+    )
+    manifest = yaml.safe_load((workspace_path / "workspace.yaml").read_text())
+    manifest["experiment_series"] = {
+        "entries": [
+            {
+                "id": series_id,
+                "path": f"series/{series_id}/experiment.yaml",
+                "title": "Single-System Series",
+            },
+        ],
+    }
+    (workspace_path / "workspace.yaml").write_text(
+        yaml.dump(manifest, default_flow_style=False, sort_keys=False)
     )
 
 
@@ -594,7 +626,7 @@ class TestCLIIntegration:
 
     def test_run_series_rejects_unsupported_workspace_type(self, tmp_path, capsys):
         ws = _scaffold_development(tmp_path)
-        code = cli_main(["workspaces", "run-series", str(ws)])
+        code = cli_main(["workspaces", "run-series", str(ws), "--series", "any"])
         captured = capsys.readouterr()
         assert code == 1
         assert (
@@ -614,7 +646,7 @@ class TestCLIIntegration:
         )
 
         code = cli_main([
-            "workspaces", "run-series", str(ws), "--output", "json",
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
         ])
         captured = capsys.readouterr()
         assert code == 0
@@ -640,7 +672,7 @@ class TestCLIIntegration:
         ws = _scaffold_comparison(tmp_path)
         _write_experiment_series(ws)
 
-        code = cli_main(["workspaces", "run-series", str(ws)])
+        code = cli_main(["workspaces", "run-series", str(ws), "--series", "integration-series"])
         captured = capsys.readouterr()
         assert code == 0
         assert "1/2 exp_01 | Experiment runs" in captured.out
@@ -656,19 +688,19 @@ class TestCLIIntegration:
     ):
         ws = _scaffold_comparison(tmp_path)
         _write_experiment_series(ws)
-        (ws / "notes.md").write_text("old notes\n", encoding="utf-8")
+        (ws / "series" / "integration-series" / "notes.md").write_text("old notes\n", encoding="utf-8")
 
         code = cli_main([
-            "workspaces", "run-series", str(ws), "--update-notes", "--output", "json",
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--update-notes", "--output", "json",
         ])
         captured = capsys.readouterr()
         assert code == 0
 
         payload = json.loads(captured.out)
         assert payload["notes_updated"] is True
-        notes_text = (ws / "notes.md").read_text()
+        notes_text = (ws / "series" / "integration-series" / "notes.md").read_text()
         assert "Weak candidate tweak" in notes_text
-        assert "## Experiment folder: measurements/experiment_1" in notes_text
+        assert "## Experiment folder: series/integration-series/measurements/experiment_1" in notes_text
 
     def test_run_series_supports_single_system_baseline_comparisons(
         self, tmp_path, capsys,
@@ -678,7 +710,7 @@ class TestCLIIntegration:
         original_notes = (ws / "notes.md").read_text(encoding="utf-8")
 
         code = cli_main([
-            "workspaces", "run-series", str(ws), "--output", "json",
+            "workspaces", "run-series", str(ws), "--series", "single-series", "--output", "json",
         ])
         captured = capsys.readouterr()
         assert code == 0
@@ -808,7 +840,7 @@ class TestCLIIntegration:
         assert "Run notes" in out
         assert notes in out
 
-    def test_run_allows_world_only_change_with_allow_world_changes(
+    def test_run_treats_world_only_change_as_normal_config_change(
         self, tmp_path, capsys,
     ):
         ws = _scaffold_comparison(tmp_path)
@@ -821,13 +853,6 @@ class TestCLIIntegration:
         _set_candidate_world_override(ws, grid_width=7)
 
         code = cli_main(["workspaces", "run", str(ws)])
-        assert code == 1
-        err = capsys.readouterr().err
-        assert "no config changes detected" in err
-
-        code = cli_main([
-            "workspaces", "run", str(ws), "--allow-world-changes",
-        ])
         assert code == 0
 
 
@@ -1017,6 +1042,138 @@ class TestCLIIntegration:
         assert data["primary_comparisons"][0]["comparison_config_changes"] == {
             "execution": {"max_steps": 120},
         }
+
+    def test_show_displays_registered_experiment_series_artifacts(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        series_root = ws / "series" / "alpha"
+        (series_root / "results" / "exp-001" / "runs" / "run-0000").mkdir(parents=True)
+        (series_root / "measurements" / "experiment_1").mkdir(parents=True)
+        (series_root / "comparisons").mkdir(parents=True)
+        (series_root / "experiment.yaml").write_text(yaml.dump({
+            "version": 1,
+            "workflow_type": "experiment_series",
+            "workspace_type": "single_system",
+            "title": "Alpha Series",
+            "base_configs": {"system_under_test": "configs/system_a.yaml"},
+            "experiments": [
+                {
+                    "id": "exp_01",
+                    "title": "Experiment 1",
+                    "enabled": True,
+                    "candidate_config_delta": {"system": {"policy": {"temperature": 2.0}}},
+                },
+            ],
+        }))
+        comparison_data = {
+            "comparison_number": 1,
+            "timestamp": "2026-04-22T12:00:00",
+            "reference_config": {"system_type": "system_a", "execution": {"max_steps": 100}},
+            "candidate_config": {"system_type": "system_a", "execution": {"max_steps": 120}},
+            "comparison_result": {
+                "reference_experiment_id": "exp-ref",
+                "candidate_experiment_id": "exp-cand",
+            },
+        }
+        (series_root / "comparisons" / "comparison-001.json").write_text(json.dumps(comparison_data))
+        manifest = yaml.safe_load((ws / "workspace.yaml").read_text())
+        manifest["experiment_series"] = {
+            "entries": [
+                {
+                    "id": "alpha",
+                    "path": "series/alpha/experiment.yaml",
+                    "generated": {
+                        "results": [
+                            {
+                                "path": "series/alpha/results/exp-001",
+                                "output_form": "point",
+                                "system_type": "system_a",
+                                "role": "system_under_test",
+                                "timestamp": "2026-04-22T12:00:00",
+                            },
+                        ],
+                        "comparisons": ["series/alpha/comparisons/comparison-001.json"],
+                        "measurement_runs": [
+                            {
+                                "path": "series/alpha/measurements/experiment_1",
+                                "label": "alpha-1",
+                                "timestamp": "2026-04-22T12:05:00",
+                            },
+                        ],
+                    },
+                },
+            ],
+        }
+        (ws / "workspace.yaml").write_text(yaml.dump(manifest))
+
+        code = cli_main(["workspaces", "show", str(ws)])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Experiment Series" in out
+        assert "[OK] alpha" in out
+        assert "Series results:" in out
+        assert "series/alpha/results/exp-001" in out
+        assert "Series comparisons:" in out
+        assert "Compared experiments: exp-ref vs exp-cand" in out
+        assert "Series measurements:" in out
+        assert "label=alpha-1" in out
+
+    def test_show_json_includes_registered_experiment_series_artifacts(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        series_root = ws / "series" / "alpha"
+        (series_root / "results" / "exp-001").mkdir(parents=True)
+        (series_root / "measurements" / "experiment_1").mkdir(parents=True)
+        (series_root / "comparisons").mkdir(parents=True)
+        (series_root / "experiment.yaml").write_text(yaml.dump({
+            "version": 1,
+            "workflow_type": "experiment_series",
+            "workspace_type": "single_system",
+            "title": "Alpha Series",
+            "base_configs": {"system_under_test": "configs/system_a.yaml"},
+            "experiments": [
+                {
+                    "id": "exp_01",
+                    "title": "Experiment 1",
+                    "enabled": True,
+                    "candidate_config_delta": {"system": {"policy": {"temperature": 2.0}}},
+                },
+            ],
+        }))
+        (series_root / "comparisons" / "comparison-001.json").write_text(json.dumps({
+            "comparison_number": 1,
+            "timestamp": "2026-04-22T12:00:00",
+            "reference_config": {"system_type": "system_a", "execution": {"max_steps": 100}},
+            "candidate_config": {"system_type": "system_a", "execution": {"max_steps": 120}},
+            "comparison_result": {
+                "reference_experiment_id": "exp-ref",
+                "candidate_experiment_id": "exp-cand",
+            },
+        }))
+        manifest = yaml.safe_load((ws / "workspace.yaml").read_text())
+        manifest["experiment_series"] = {
+            "entries": [
+                {
+                    "id": "alpha",
+                    "path": "series/alpha/experiment.yaml",
+                    "generated": {
+                        "results": [{"path": "series/alpha/results/exp-001"}],
+                        "comparisons": ["series/alpha/comparisons/comparison-001.json"],
+                        "measurement_runs": [{"path": "series/alpha/measurements/experiment_1", "label": "alpha-1"}],
+                    },
+                },
+            ],
+        }
+        (ws / "workspace.yaml").write_text(yaml.dump(manifest))
+
+        code = cli_main(["workspaces", "show", str(ws), "--output", "json"])
+        assert code == 0
+        data = json.loads(capsys.readouterr().out)
+        assert len(data["experiment_series"]) == 1
+        assert data["experiment_series"][0]["id"] == "alpha"
+        assert data["experiment_series"][0]["exists"] is True
+        assert data["experiment_series"][0]["results"][0]["exists"] is True
+        assert data["experiment_series"][0]["comparisons"][0]["reference_experiment_id"] == "exp-ref"
+        assert data["experiment_series"][0]["comparisons"][0]["candidate_experiment_id"] == "exp-cand"
+        assert data["experiment_series"][0]["measurement_runs"][0]["label"] == "alpha-1"
 
     def test_config_changes_use_previous_result_with_same_role(self, tmp_path):
         ws = _scaffold_comparison(tmp_path)
@@ -1311,7 +1468,7 @@ class TestComparisonResultCLI:
         code = cli_main(["workspaces", "comparison-summary", str(ws)])
         assert code == 1
 
-    def test_comparison_result_can_recompute_with_allow_world_changes(
+    def test_comparison_result_accepts_world_config_differences_by_default(
         self, tmp_path, capsys,
     ):
         from axis.framework.workspaces.execute import execute_workspace
@@ -1333,17 +1490,14 @@ class TestComparisonResultCLI:
         _, ws_path = compare_workspace(ws)
         sync_manifest_after_compare(ws, ws_path)
 
-        code = cli_main([
-            "workspaces", "comparison-summary", str(ws), "--allow-world-changes",
-        ])
+        code = cli_main(["workspaces", "comparison-summary", str(ws)])
         assert code == 0
         out = capsys.readouterr().out
-        assert "World changes: ALLOWED" in out
         assert "No valid episode pairs to summarize" not in out
 
 
-class TestWorkspaceCompareAllowWorldChanges:
-    def test_compare_stores_allow_world_changes_in_envelope(self, tmp_path):
+class TestWorkspaceCompareWorldDifferences:
+    def test_compare_succeeds_with_world_differences_by_default(self, tmp_path):
         from axis.framework.workspaces.execute import execute_workspace
         from axis.framework.workspaces.compare import compare_workspace
         from axis.framework.workspaces.sync import (
@@ -1363,13 +1517,12 @@ class TestWorkspaceCompareAllowWorldChanges:
             sync_manifest_after_run(
                 ws, er.experiment_result.experiment_id, run_ids, er.role)
 
-        _, ws_path = compare_workspace(ws, allow_world_changes=True)
+        _, ws_path = compare_workspace(ws)
         sync_manifest_after_compare(ws, ws_path)
 
         loaded = WorkspaceComparisonEnvelope.model_validate(
             json.loads((ws / ws_path).read_text())
         )
-        assert loaded.allow_world_changes is True
         summary = loaded.comparison_result["summary"]
         assert summary["num_valid_pairs"] >= 1
 

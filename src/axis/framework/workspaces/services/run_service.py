@@ -44,7 +44,6 @@ class WorkspaceRunService:
         run_filter: str | None = None,
         *,
         config_overrides_by_role: dict[str, str] | None = None,
-        allow_world_changes: bool = False,
         override_guard: bool = False,
         run_notes: str | None = None,
         progress: object | None = None,
@@ -85,7 +84,6 @@ class WorkspaceRunService:
                     current_config,
                     manifest_results,
                     target.role,
-                    ignore_world=not allow_world_changes,
                 ):
                     unchanged_targets.append(target.config_path)
 

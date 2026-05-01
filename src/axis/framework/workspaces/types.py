@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class WorkspaceClass(StrEnum):
@@ -112,6 +112,70 @@ class MeasurementWorkflowConfig(BaseModel, frozen=True):
         return value
 
 
+class SeriesMeasurementRunEntry(BaseModel, frozen=True):
+    """Structured series-local measurement tracking entry."""
+
+    path: str
+    label: str | None = None
+    timestamp: str | None = None
+
+
+class ExperimentSeriesGeneratedArtifacts(BaseModel, frozen=True):
+    """Generated artifact tracking for one registered series."""
+
+    results: list[ResultEntry] = Field(default_factory=list)
+    comparisons: list[str] = Field(default_factory=list)
+    measurement_runs: list[SeriesMeasurementRunEntry] = Field(default_factory=list)
+
+
+class ExperimentSeriesEntry(BaseModel, frozen=True):
+    """Registered experiment series entry in workspace.yaml."""
+
+    id: str
+    path: str
+    title: str | None = None
+    generated: ExperimentSeriesGeneratedArtifacts = Field(
+        default_factory=ExperimentSeriesGeneratedArtifacts
+    )
+
+    @field_validator("id", "path")
+    @classmethod
+    def _require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("value must not be empty")
+        return value
+
+    @field_validator("path")
+    @classmethod
+    def _validate_series_path(cls, value: str) -> str:
+        if value.startswith("/"):
+            raise ValueError("series path must be workspace-relative")
+        normalized = value.replace("\\", "/")
+        if not normalized.startswith("series/"):
+            raise ValueError("series path must live under 'series/'")
+        if not normalized.endswith("experiment.yaml"):
+            raise ValueError("series path must end with 'experiment.yaml'")
+        return value
+
+
+class ExperimentSeriesRegistry(BaseModel, frozen=True):
+    """Workspace-level registry of available experiment series."""
+
+    entries: list[ExperimentSeriesEntry]
+
+    @model_validator(mode="after")
+    def _validate_entries(self) -> "ExperimentSeriesRegistry":
+        if not self.entries:
+            raise ValueError("experiment_series.entries must not be empty")
+        ids = [entry.id for entry in self.entries]
+        if len(ids) != len(set(ids)):
+            raise ValueError("experiment_series entry IDs must be unique")
+        paths = [entry.path for entry in self.entries]
+        if len(paths) != len(set(paths)):
+            raise ValueError("experiment_series entry paths must be unique")
+        return self
+
+
 class WorkspaceManifest(BaseModel, frozen=True):
     """Authoritative workspace manifest model.
 
@@ -147,6 +211,7 @@ class WorkspaceManifest(BaseModel, frozen=True):
     primary_configs: list[ConfigEntry | str] | None = None
     primary_results: list[ResultEntry] | None = None
     primary_comparisons: list[str] | None = None
+    experiment_series: ExperimentSeriesRegistry | None = None
     # --- Development workflow fields (system_development only) ---
     baseline_config: str | None = None
     candidate_config: str | None = None
@@ -172,6 +237,13 @@ class WorkspaceManifest(BaseModel, frozen=True):
                     f"supported. Use a dict with at least a 'path' key."
                 )
         return v
+
+    @field_validator("experiment_series", mode="before")
+    @classmethod
+    def _normalize_empty_series_block(cls, value: Any) -> Any:
+        if value in ({}, None):
+            return None
+        return value
 
     @model_validator(mode="after")
     def _validate_class_type_and_required_fields(self) -> WorkspaceManifest:
@@ -281,3 +353,19 @@ def config_entry_role(entry: ConfigEntry | str | dict) -> str | None:
         role = entry.get("role")
         return str(role) if role is not None else None
     return None
+
+
+def series_entry_by_id(
+    manifest: WorkspaceManifest,
+    series_id: str,
+) -> ExperimentSeriesEntry:
+    """Return one registered series entry by ID or raise ValueError."""
+    registry = manifest.experiment_series
+    if registry is None:
+        raise ValueError(
+            "Workspace manifest does not define an 'experiment_series' registry."
+        )
+    for entry in registry.entries:
+        if entry.id == series_id:
+            return entry
+    raise ValueError(f"Series '{series_id}' is not registered in workspace.yaml.")

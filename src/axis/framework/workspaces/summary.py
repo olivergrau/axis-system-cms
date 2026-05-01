@@ -39,6 +39,19 @@ class ArtifactEntry(BaseModel, frozen=True):
     reference_experiment_id: str | None = None
     candidate_experiment_id: str | None = None
     comparison_config_changes: dict[str, object] | None = None
+    label: str | None = None
+
+
+class ExperimentSeriesSummaryEntry(BaseModel, frozen=True):
+    """Structured summary of one registered experiment series."""
+
+    id: str
+    path: str
+    title: str | None = None
+    exists: bool
+    results: list[ArtifactEntry] = []
+    comparisons: list[ArtifactEntry] = []
+    measurement_runs: list[ArtifactEntry] = []
 
 
 class WorkspaceSummary(BaseModel, frozen=True):
@@ -66,6 +79,7 @@ class WorkspaceSummary(BaseModel, frozen=True):
     primary_configs: list[ArtifactEntry] = []
     primary_results: list[ArtifactEntry] = []
     primary_comparisons: list[ArtifactEntry] = []
+    experiment_series: list[ExperimentSeriesSummaryEntry] = []
     # Checker result
     check_result: WorkspaceCheckResult | None = None
 
@@ -91,7 +105,11 @@ def _resolve_artifacts(
     if not paths:
         return []
 
-    from axis.framework.workspaces.types import ConfigEntry, ResultEntry
+    from axis.framework.workspaces.types import (
+        ConfigEntry,
+        ResultEntry,
+        SeriesMeasurementRunEntry,
+    )
 
     entries: list[ArtifactEntry] = []
     for item in paths:
@@ -120,6 +138,13 @@ def _resolve_artifacts(
                 candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),
                 comparison_config_changes=comparison_meta.get("comparison_config_changes"),
             ))
+        elif isinstance(item, SeriesMeasurementRunEntry):
+            entries.append(ArtifactEntry(
+                path=item.path,
+                exists=(ws / item.path).exists(),
+                label=item.label,
+                timestamp=item.timestamp,
+            ))
         elif isinstance(item, dict):
             p = item["path"]
             comparison_meta = _load_comparison_metadata(ws, p)
@@ -139,6 +164,7 @@ def _resolve_artifacts(
                 reference_experiment_id=comparison_meta.get("reference_experiment_id"),
                 candidate_experiment_id=comparison_meta.get("candidate_experiment_id"),
                 comparison_config_changes=comparison_meta.get("comparison_config_changes"),
+                label=item.get("label"),
             ))
         else:
             comparison_meta = _load_comparison_metadata(ws, item)
@@ -154,7 +180,8 @@ def _resolve_artifacts(
 
 def _load_comparison_metadata(ws: Path, rel_path: str) -> dict[str, object]:
     """Return enriched metadata for a workspace comparison entry."""
-    if not rel_path.startswith("comparisons/"):
+    normalized = rel_path.replace("\\", "/")
+    if "/comparisons/" not in f"/{normalized}":
         return {}
 
     cmp_path = ws / rel_path
@@ -189,6 +216,29 @@ def _load_comparison_metadata(ws: Path, rel_path: str) -> dict[str, object]:
         "candidate_experiment_id": comparison_result.get("candidate_experiment_id"),
         "comparison_config_changes": config_diff if isinstance(config_diff, dict) else None,
     }
+
+
+def _resolve_experiment_series(
+    ws: Path,
+    manifest: WorkspaceManifest,
+) -> list[ExperimentSeriesSummaryEntry]:
+    """Build summary entries for registered experiment series."""
+    registry = manifest.experiment_series
+    if registry is None:
+        return []
+
+    entries: list[ExperimentSeriesSummaryEntry] = []
+    for series in registry.entries:
+        entries.append(ExperimentSeriesSummaryEntry(
+            id=series.id,
+            path=series.path,
+            title=series.title,
+            exists=(ws / series.path).exists(),
+            results=_resolve_artifacts(ws, series.generated.results),
+            comparisons=_resolve_artifacts(ws, series.generated.comparisons),
+            measurement_runs=_resolve_artifacts(ws, series.generated.measurement_runs),
+        ))
+    return entries
 
 
 def summarize_workspace(workspace_path: Path) -> WorkspaceSummary:
@@ -246,6 +296,7 @@ def summarize_workspace(workspace_path: Path) -> WorkspaceSummary:
         primary_configs=_resolve_artifacts(ws, manifest.primary_configs),
         primary_results=_resolve_artifacts(ws, manifest.primary_results),
         primary_comparisons=_resolve_artifacts(ws, manifest.primary_comparisons),
+        experiment_series=_resolve_experiment_series(ws, manifest),
         check_result=check_result,
         **dev_kwargs,
     )

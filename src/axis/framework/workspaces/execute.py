@@ -43,6 +43,7 @@ def execute_workspace(
     progress: object | None = None,
     progress_description_prefix: str | None = None,
     show_workspace_progress: bool = True,
+    results_root: Path | None = None,
 ) -> list[WorkspaceExecutionResult]:
     """Execute all run targets in a workspace (workspace-owned mode).
 
@@ -78,7 +79,7 @@ def execute_workspace(
     if type_issues:
         raise ValueError(type_issues[0].message)
 
-    results_dir = ws / "results"
+    results_dir = Path(results_root) if results_root is not None else (ws / "results")
     results_dir.mkdir(exist_ok=True)
 
     # Workspace-local repository: artifacts go under <workspace>/results/.

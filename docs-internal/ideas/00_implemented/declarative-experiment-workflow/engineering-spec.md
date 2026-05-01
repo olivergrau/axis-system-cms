@@ -339,7 +339,6 @@ Add:
 
 Recommended v1 options:
 
-- `--allow-world-changes`
 - `--override-guard`
 - `--update-notes`
 - `--output {text,json}`
@@ -403,7 +402,7 @@ Recommended fields:
 
 Recommended API:
 
-- `run_series(workspace_path: Path, *, allow_world_changes: bool = False, override_guard: bool = False, progress: object | None = None) -> WorkspaceExperimentSeriesServiceResult`
+- `run_series(workspace_path: Path, *, override_guard: bool = False, progress: object | None = None) -> WorkspaceExperimentSeriesServiceResult`
 
 Dependencies to inject:
 

@@ -35,6 +35,23 @@ def _config_path(entry: object) -> str:
     return str(entry)
 
 
+def _ensure_dict(data: dict, key: str) -> dict:
+    """Ensure *key* exists in *data* as a dict, creating it if needed."""
+    if key not in data or data[key] is None:
+        data[key] = {}
+    return data[key]
+
+
+def _ensure_series_generated(data: dict, series_id: str) -> dict:
+    """Return the generated-artifacts dict for one registered series."""
+    registry = _ensure_dict(data, "experiment_series")
+    entries = _ensure_list(registry, "entries")
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("id") == series_id:
+            return _ensure_dict(entry, "generated")
+    raise ValueError(f"Series '{series_id}' is not registered in workspace.yaml")
+
+
 # -----------------------------------------------------------------------
 # Primary result mutations
 # -----------------------------------------------------------------------
@@ -138,6 +155,89 @@ def append_primary_comparison(
         comparisons.append(comparison_output_path)
 
 
+def append_series_result(
+    data: dict,
+    *,
+    series_id: str,
+    result_path: str,
+    role: str | None = None,
+    output_form: str | None = None,
+    trace_mode: str | None = None,
+    system_type: str | None = None,
+    primary_run_id: str | None = None,
+    baseline_run_id: str | None = None,
+    run_notes: str | None = None,
+    config_changes: dict | None = None,
+) -> None:
+    """Append one structured result entry under one registered series."""
+    generated = _ensure_series_generated(data, series_id)
+    results = _ensure_list(generated, "results")
+    existing = _result_paths(results)
+    if result_path in existing:
+        return
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    entry: dict = {
+        "path": result_path,
+        "timestamp": now,
+        "config": f"{result_path}/experiment_config.json",
+    }
+    if role:
+        entry["role"] = role
+    if output_form:
+        entry["output_form"] = output_form
+    if trace_mode:
+        entry["trace_mode"] = trace_mode
+    if system_type:
+        entry["system_type"] = system_type
+    if primary_run_id:
+        entry["primary_run_id"] = primary_run_id
+    if baseline_run_id:
+        entry["baseline_run_id"] = baseline_run_id
+    if run_notes:
+        entry["run_notes"] = run_notes
+    if config_changes:
+        entry["config_changes"] = config_changes
+    results.append(entry)
+
+
+def append_series_comparison(
+    data: dict,
+    *,
+    series_id: str,
+    comparison_output_path: str,
+) -> None:
+    """Append one comparison path under one registered series."""
+    generated = _ensure_series_generated(data, series_id)
+    comparisons = _ensure_list(generated, "comparisons")
+    if comparison_output_path not in comparisons:
+        comparisons.append(comparison_output_path)
+
+
+def append_series_measurement_run(
+    data: dict,
+    *,
+    series_id: str,
+    measurement_path: str,
+    label: str | None = None,
+) -> None:
+    """Append one measurement directory entry under one registered series."""
+    generated = _ensure_series_generated(data, series_id)
+    runs = _ensure_list(generated, "measurement_runs")
+    existing_paths = {
+        item["path"] for item in runs
+        if isinstance(item, dict) and "path" in item
+    }
+    if measurement_path in existing_paths:
+        return
+    entry = {
+        "path": measurement_path,
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+    if label:
+        entry["label"] = label
+    runs.append(entry)
+
+
 def update_current_validation_comparison(
     data: dict,
     comparison_output_path: str,
@@ -194,6 +294,12 @@ def reset_workspace_artifacts(data: dict) -> None:
     """
     data["primary_results"] = []
     data["primary_comparisons"] = []
+    series_registry = data.get("experiment_series")
+    if isinstance(series_registry, dict):
+        for entry in series_registry.get("entries") or []:
+            if not isinstance(entry, dict):
+                continue
+            entry.pop("generated", None)
 
     if data.get("workspace_type") in ("system_development",):
         data["baseline_results"] = []

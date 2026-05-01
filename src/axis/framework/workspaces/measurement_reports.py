@@ -13,10 +13,11 @@ def export_measurement_reports(
     comparison_log_path: str,
     run_summary_role: str | None,
     run_summary_log_path: str,
-    allow_world_changes: bool,
     run_summary_experiment_id: str | None = None,
     run_summary_run_id: str | None = None,
     catalogs: dict | None = None,
+    comparison_output_path: str | None = None,
+    results_root: Path | None = None,
 ) -> None:
     """Export comparison-summary and run-summary text reports to files."""
     from axis.framework.cli.commands.runs import cmd_runs_show
@@ -37,13 +38,14 @@ def export_measurement_reports(
                 str(ws),
                 "text",
                 comparison_number=comparison_number,
-                allow_world_changes=allow_world_changes,
                 catalogs=catalogs,
+                comparison_path=comparison_output_path,
+                results_root=results_root,
             )
 
     run_summary_path = ws / run_summary_log_path
     run_summary_path.parent.mkdir(parents=True, exist_ok=True)
-    repo = ExperimentRepository(ws / "results")
+    repo = ExperimentRepository(results_root or (ws / "results"))
     if run_summary_experiment_id is not None and run_summary_run_id is not None:
         target = type("Target", (), {
             "experiment_id": run_summary_experiment_id,

@@ -934,6 +934,12 @@ axis --root /data/results experiments list
 # Reset one workspace's generated artifacts
 axis workspaces reset workspaces/my-workspace
 
+# Reset immediately without confirmation
+axis workspaces reset workspaces/my-workspace --force
+
+# Preview reset scope and counts as JSON
+axis --output json workspaces reset workspaces/my-workspace
+
 # Read raw summary file directly
 cat experiments/results/<experiment-id>/runs/run-0000/run_summary.json | python -m json.tool
 

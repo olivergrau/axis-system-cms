@@ -37,7 +37,6 @@ class WorkspaceCompareService:
         reference_experiment: str | None = None,
         candidate_experiment: str | None = None,
         *,
-        allow_world_changes: bool = False,
         extension_catalog: object | None = None,
         progress: object | None = None,
         progress_description: str | None = None,
@@ -54,7 +53,7 @@ class WorkspaceCompareService:
             raise ValueError(
                 "Workspace is closed; no further comparisons are allowed."
             )
-        compare_kwargs = {"allow_world_changes": allow_world_changes}
+        compare_kwargs = {}
         if extension_catalog is not None:
             compare_kwargs["extension_catalog"] = extension_catalog
         if progress is not None:

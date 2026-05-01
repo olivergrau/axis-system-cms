@@ -47,10 +47,11 @@ def compare_workspace(
     reference_experiment: str | None = None,
     candidate_experiment: str | None = None,
     *,
-    allow_world_changes: bool = False,
     extension_catalog: object | None = None,
     progress: object | None = None,
     progress_description: str | None = None,
+    results_root: Path | None = None,
+    comparisons_root: Path | None = None,
 ) -> tuple[WorkspaceComparisonEnvelope, str]:
     """Run a comparison for a workspace and save results.
 
@@ -74,12 +75,62 @@ def compare_workspace(
     from axis.framework.persistence import ExperimentRepository
 
     ws = Path(workspace_path)
-    plan = resolve_comparison_targets(
-        ws, reference_experiment, candidate_experiment,
-    )
+    if results_root is None and comparisons_root is None:
+        plan = resolve_comparison_targets(
+            ws, reference_experiment, candidate_experiment,
+        )
+    else:
+        from axis.framework.comparison import compare_runs
+        from axis.framework.experiment_output import load_experiment_output
+        from axis.framework.persistence import ExperimentRepository
+
+        if not reference_experiment or not candidate_experiment:
+            raise ValueError(
+                "Explicit reference and candidate experiment IDs are required "
+                "when compare_workspace(...) uses custom results/comparisons roots."
+            )
+        repo = ExperimentRepository(Path(results_root) if results_root is not None else ws / "results")
+        ref_output = load_experiment_output(repo, reference_experiment)
+        cand_output = load_experiment_output(repo, candidate_experiment)
+        if getattr(ref_output, "trace_mode", None) == "light":
+            raise ValueError(
+                f"The reference experiment '{reference_experiment}' was executed in "
+                "light trace mode and cannot be used for replay-based comparison."
+            )
+        if getattr(cand_output, "trace_mode", None) == "light":
+            raise ValueError(
+                f"The candidate experiment '{candidate_experiment}' was executed in "
+                "light trace mode and cannot be used for replay-based comparison."
+            )
+        result = compare_runs(
+            repo,
+            reference_experiment,
+            ref_output.primary_run_id,
+            candidate_experiment,
+            cand_output.primary_run_id,
+            extension_catalog=extension_catalog,
+            progress=progress,
+            progress_description=progress_description,
+        )
+        ref_config = repo.load_experiment_config(reference_experiment).model_dump(mode="json")
+        cand_config = repo.load_experiment_config(candidate_experiment).model_dump(mode="json")
+        comparisons_dir = Path(comparisons_root) if comparisons_root is not None else ws / "comparisons"
+        comparisons_dir.mkdir(parents=True, exist_ok=True)
+        num = _next_comparison_number(comparisons_dir)
+        filename = f"comparison-{num:03d}.json"
+        output_path = comparisons_dir / filename
+        envelope = WorkspaceComparisonEnvelope(
+            comparison_number=num,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            reference_config=ref_config,
+            candidate_config=cand_config,
+            comparison_result=result.model_dump(mode="json"),
+        )
+        output_path.write_text(json.dumps(envelope.model_dump(mode="json"), indent=2))
+        return envelope, str(output_path.relative_to(ws))
 
     # Use the workspace-local repository for loading traces.
-    repo = ExperimentRepository(ws / "results")
+    repo = ExperimentRepository(Path(results_root) if results_root is not None else ws / "results")
 
     ref_output = None
     cand_output = None
@@ -105,7 +156,6 @@ def compare_workspace(
         plan.reference.run_id,
         plan.candidate.experiment_id,
         plan.candidate.run_id,
-        allow_world_changes=allow_world_changes,
         extension_catalog=extension_catalog,
         progress=progress,
         progress_description=progress_description,
@@ -120,7 +170,7 @@ def compare_workspace(
     ).model_dump(mode="json")
 
     # Write comparison output to workspace comparisons/.
-    comparisons_dir = ws / "comparisons"
+    comparisons_dir = Path(comparisons_root) if comparisons_root is not None else ws / "comparisons"
     comparisons_dir.mkdir(exist_ok=True)
 
     num = _next_comparison_number(comparisons_dir)
@@ -132,7 +182,6 @@ def compare_workspace(
         timestamp=datetime.now(timezone.utc).isoformat(),
         reference_config=ref_config,
         candidate_config=cand_config,
-        allow_world_changes=allow_world_changes,
         comparison_result=result.model_dump(mode="json"),
     )
 
@@ -140,5 +189,4 @@ def compare_workspace(
         json.dumps(envelope.model_dump(mode="json"), indent=2),
     )
 
-    ws_relative = f"comparisons/{filename}"
-    return envelope, ws_relative
+    return envelope, str(output_path.relative_to(ws))

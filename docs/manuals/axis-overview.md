@@ -381,17 +381,11 @@ my-workspace/
 axis workspaces scaffold                       Interactive workspace creation
 axis workspaces close <path>                  Close a workspace
 axis workspaces reset <path>                  Clear generated workspace artifacts
+axis workspaces run-series <path> --series <id>  Run one registered experiment series
 axis workspaces show <path>                    Inspect state and artifacts
 axis workspaces run <path>                     Execute workspace configs
 axis workspaces compare <path>                 Compare workspace experiments
 axis workspaces comparison-summary <path>       Display comparison results
-
-Use `--allow-world-changes` with `compare` or `comparison-summary` when
-the world configuration itself was changed intentionally and should not
-block pairing.
-
-The same flag is also available on `axis workspaces run` when you want
-world-only config changes to bypass workspace duplicate-run protection.
 axis workspaces sweep-result <path>            Display sweep (OFAT) results
 axis workspaces check <path>                   Validate workspace structure
 axis workspaces set-candidate <path> <config>  Set candidate config (development)
@@ -406,6 +400,11 @@ workspace-relative paths. Each entry under
 ``point`` or ``sweep``), enabling the framework to route point outputs
 to comparison and sweep outputs to sweep-result inspection.
 
+Registered declarative series are tracked separately under
+``experiment_series.entries[*]``. Series-generated results, comparisons, and
+measurement runs are recorded there rather than mixed into the ad-hoc
+workspace-global tracking fields.
+
 The framework automatically updates the manifest after each run and
 comparison. Comparison files are sequentially numbered
 (``comparison-001.json``, ``comparison-002.json``, ...) and embed full
@@ -413,9 +412,10 @@ config copies, making each comparison self-contained and reproducible.
 
 When you need to restart a workspace from a clean artifact state,
 ``axis workspaces reset <path>`` deletes generated contents from
-``results/``, ``comparisons/``, and ``measurements/`` and clears the
-manifest's tracked primary result/comparison lists without removing the
-workspace's configs or notes.
+``results/``, ``comparisons/``, and ``measurements/`` as well as the generated
+roots of any registered series. By default it previews the reset plan and asks
+for confirmation. The preview reports per-root entry counts plus overall file
+and directory totals. Use ``--force`` to execute immediately.
 
 ### Investigation Workflows
 

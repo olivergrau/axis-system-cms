@@ -44,7 +44,6 @@ class WorkspaceMeasurementService:
         *,
         label: str | None = None,
         config_overrides_by_role: dict[str, str] | None = None,
-        allow_world_changes: bool = False,
         override_guard: bool = False,
         run_notes: str | None = None,
         extension_catalog: object | None = None,
@@ -90,7 +89,6 @@ class WorkspaceMeasurementService:
 
         run_kwargs = {
             "config_overrides_by_role": config_overrides_by_role,
-            "allow_world_changes": allow_world_changes,
             "override_guard": override_guard,
             "run_notes": run_notes,
         }
@@ -101,10 +99,7 @@ class WorkspaceMeasurementService:
         run_kwargs["show_workspace_progress"] = show_workspace_progress
         run_results = self._run_service.execute(ws, **run_kwargs)
 
-        compare_kwargs = {
-            "allow_world_changes": allow_world_changes,
-            "extension_catalog": extension_catalog,
-        }
+        compare_kwargs = {"extension_catalog": extension_catalog}
         if progress is not None:
             compare_kwargs["progress"] = progress
         if progress_description_prefix is not None:

@@ -103,6 +103,7 @@ def dispatch(
             elif args.action == "reset":
                 cmd_workspaces_reset(
                     args.workspace_path, output,
+                    force=getattr(args, "force", False),
                     workflow_service=ctx.workflow_service)
             elif args.action == "check":
                 cmd_workspaces_check(
@@ -121,8 +122,6 @@ def dispatch(
                 cmd_workspaces_run(
                     args.workspace_path, output,
                     run_filter=run_filter,
-                    allow_world_changes=getattr(
-                        args, "allow_world_changes", False),
                     override_guard=getattr(args, "override_guard", False),
                     run_notes=getattr(args, "notes", None),
                     run_service=ctx.run_service)
@@ -133,16 +132,12 @@ def dispatch(
                         args, "reference_experiment", None),
                     candidate_experiment=getattr(
                         args, "candidate_experiment", None),
-                    allow_world_changes=getattr(
-                        args, "allow_world_changes", False),
                     compare_service=ctx.compare_service,
                     catalogs=catalogs)
             elif args.action == "measure":
                 cmd_workspaces_measure(
                     args.workspace_path, output,
                     label=getattr(args, "label", None),
-                    allow_world_changes=getattr(
-                        args, "allow_world_changes", False),
                     override_guard=getattr(args, "override_guard", False),
                     run_notes=getattr(args, "notes", None),
                     measurement_service=ctx.measurement_service,
@@ -151,8 +146,7 @@ def dispatch(
             elif args.action == "run-series":
                 cmd_workspaces_run_series(
                     args.workspace_path, output,
-                    allow_world_changes=getattr(
-                        args, "allow_world_changes", False),
+                    series_id=getattr(args, "series", None),
                     override_guard=getattr(args, "override_guard", False),
                     update_notes=getattr(args, "update_notes", False),
                     experiment_series_service=ctx.experiment_series_service,
@@ -164,8 +158,6 @@ def dispatch(
                 cmd_workspaces_comparison_result(
                     args.workspace_path, output,
                     comparison_number=getattr(args, "number", None),
-                    allow_world_changes=getattr(
-                        args, "allow_world_changes", False),
                     catalogs=catalogs,
                 )
             elif args.action == "set-candidate":

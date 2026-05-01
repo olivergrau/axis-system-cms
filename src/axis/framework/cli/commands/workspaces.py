@@ -205,20 +205,68 @@ def cmd_workspaces_close(
 def cmd_workspaces_reset(
     workspace_path: str,
     output: str,
+    *,
+    force: bool = False,
     workflow_service: object = None,
 ) -> None:
     """Reset generated workspace artifacts and clear manifest tracking."""
-    result = workflow_service.reset(Path(workspace_path))
+    ws = Path(workspace_path)
+    plan = workflow_service.plan_reset(ws)
+
+    if output == "json" and not force:
+        print(json.dumps({
+            "mode": "preview",
+            "workspace_path": plan.workspace_path,
+            "workspace_global_paths": plan.workspace_global_paths,
+            "series_paths_by_id": plan.series_paths_by_id,
+            "manifest_fields_to_clear": plan.manifest_fields_to_clear,
+            "workspace_global_counts": plan.workspace_global_counts,
+            "series_counts_by_id": plan.series_counts_by_id,
+            "total_paths": plan.total_paths,
+            "total_entries": plan.total_entries,
+            "total_files": plan.total_files,
+            "total_directories": plan.total_directories,
+        }, indent=2))
+        return
+
+    if output != "json":
+        out = stdout_output()
+        out.title(f"Reset Preview: {ws.name}")
+        out.kv("Artifact roots", plan.total_paths)
+        out.kv("Top-level entries to delete", plan.total_entries)
+        out.kv("Nested files", plan.total_files)
+        out.kv("Nested directories", plan.total_directories)
+        out.section("Workspace Global")
+        for rel in plan.workspace_global_paths:
+            count = plan.workspace_global_counts.get(rel, 0)
+            out.list_row(rel, f"({count} top-level entries)")
+        if plan.series_paths_by_id:
+            out.section("Series Local")
+            for sid, paths in plan.series_paths_by_id.items():
+                out.kv("Series", sid)
+                for rel in paths:
+                    count = plan.series_counts_by_id.get(sid, {}).get(rel, 0)
+                    out.list_row(rel, f"({count} top-level entries)", indent=4)
+        out.section("Manifest Fields")
+        for field_name in plan.manifest_fields_to_clear:
+            out.list_row(field_name)
+        if not force:
+            response = input("Delete the generated workspace artifacts listed above? [y/N] ")
+            if response.strip().lower() not in {"y", "yes"}:
+                out.warning("workspace reset cancelled")
+                return
+
+    result = workflow_service.reset(ws)
 
     if output == "json":
         print(json.dumps({
+            "mode": "executed",
             "workspace_path": result.workspace_path,
             "cleared_results": result.cleared_results,
             "cleared_comparisons": result.cleared_comparisons,
             "cleared_measurements": result.cleared_measurements,
         }, indent=2))
     else:
-        out = stdout_output()
         out.success(f"workspace reset: {Path(workspace_path).name}")
         out.kv("Cleared results entries", result.cleared_results)
         out.kv("Cleared comparison entries", result.cleared_comparisons)
@@ -268,6 +316,30 @@ def cmd_workspaces_show(
         _print_artifact_section("Primary results", summary.primary_results, out=out)
         _print_artifact_section(
             "Primary comparisons", summary.primary_comparisons, out=out)
+        if summary.experiment_series:
+            out.section("Experiment Series")
+            for series in summary.experiment_series:
+                marker = "OK" if series.exists else "MISSING"
+                title_suffix = f" - {series.title}" if series.title else ""
+                out.line(
+                    f"  [{marker}] {series.id}{title_suffix}"
+                    f" ({series.path})"
+                )
+                _print_artifact_section(
+                    "Series results",
+                    series.results,
+                    out=out,
+                )
+                _print_artifact_section(
+                    "Series comparisons",
+                    series.comparisons,
+                    out=out,
+                )
+                _print_artifact_section(
+                    "Series measurements",
+                    series.measurement_runs,
+                    out=out,
+                )
         if summary.development_state:
             out.section("Development")
             out.kv("Development state", summary.development_state)
@@ -406,7 +478,6 @@ def cmd_workspaces_set_candidate(
 def cmd_workspaces_run(
     workspace_path: str, output: str,
     run_filter: str | None = None,
-    allow_world_changes: bool = False,
     override_guard: bool = False,
     run_notes: str | None = None,
     run_service: object = None,
@@ -419,7 +490,6 @@ def cmd_workspaces_run(
         summaries = run_service.execute(
             ws,
             run_filter=run_filter,
-            allow_world_changes=allow_world_changes,
             override_guard=override_guard,
             run_notes=run_notes,
             progress=progress,
@@ -442,7 +512,6 @@ def cmd_workspaces_compare(
     output: str,
     reference_experiment: str | None = None,
     candidate_experiment: str | None = None,
-    allow_world_changes: bool = False,
     compare_service: object = None,
     catalogs: dict | None = None,
 ) -> None:
@@ -455,7 +524,6 @@ def cmd_workspaces_compare(
             ws,
             reference_experiment,
             candidate_experiment,
-            allow_world_changes=allow_world_changes,
             extension_catalog=(
                 catalogs.get("comparison_extensions") if catalogs else None
             ),
@@ -477,7 +545,6 @@ def cmd_workspaces_measure(
     output: str,
     *,
     label: str | None = None,
-    allow_world_changes: bool = False,
     override_guard: bool = False,
     run_notes: str | None = None,
     measurement_service: object = None,
@@ -491,7 +558,6 @@ def cmd_workspaces_measure(
         result = measurement_service.measure(
             ws,
             label=label,
-            allow_world_changes=allow_world_changes,
             override_guard=override_guard,
             run_notes=run_notes,
             extension_catalog=(
@@ -510,7 +576,6 @@ def cmd_workspaces_measure(
         comparison_log_path=result.comparison_log_path,
         run_summary_role=result.run_summary_role,
         run_summary_log_path=result.run_summary_log_path,
-        allow_world_changes=allow_world_changes,
         catalogs=catalogs,
     )
 
@@ -539,7 +604,7 @@ def cmd_workspaces_run_series(
     workspace_path: str,
     output: str,
     *,
-    allow_world_changes: bool = False,
+    series_id: str,
     override_guard: bool = False,
     update_notes: bool = False,
     experiment_series_service: object = None,
@@ -552,7 +617,7 @@ def cmd_workspaces_run_series(
     with create_progress_reporter(output != "json") as progress:
         result = experiment_series_service.run_series(
             ws,
-            allow_world_changes=allow_world_changes,
+            series_id=series_id,
             override_guard=override_guard,
             update_notes=update_notes,
             catalogs=catalogs,
@@ -561,6 +626,7 @@ def cmd_workspaces_run_series(
 
     if output == "json":
         print(json.dumps({
+            "series_id": result.series_id,
             "series_title": result.series_title,
             "executed_experiment_count": result.executed_experiment_count,
             "executed_experiment_ids": result.executed_experiment_ids,
@@ -574,6 +640,7 @@ def cmd_workspaces_run_series(
     else:
         out = stdout_output()
         out.success("workspace experiment series completed")
+        out.kv("Series", result.series_id)
         out.kv("Experiments executed", result.executed_experiment_count)
         out.kv("Series summary", ws / result.series_summary_markdown_path)
         out.kv("Series JSON", ws / result.series_summary_json_path)
@@ -616,8 +683,9 @@ def cmd_workspaces_comparison_result(
     workspace_path: str,
     output: str,
     comparison_number: int | None = None,
-    allow_world_changes: bool = False,
     catalogs: dict | None = None,
+    comparison_path: str | None = None,
+    results_root: Path | None = None,
 ) -> None:
     """Display a stored workspace comparison result."""
     from axis.framework.comparison.types import RunComparisonResult
@@ -641,53 +709,56 @@ def cmd_workspaces_comparison_result(
             f"workspaces, got '{manifest.workspace_type}'."
         )
 
-    comparisons_dir = ws / "comparisons"
-    if not comparisons_dir.is_dir():
-        fail("No comparisons directory found.")
-
-    import re
-    files = sorted(
-        f for f in comparisons_dir.iterdir()
-        if re.match(r"comparison-\d+\.json$", f.name)
-    )
-    num_available = len(files)
-    if not files:
-        fail(
-            "No comparison results found.",
-            hint=f"Run `axis workspaces compare {workspace_path}` first.",
-        )
-
-    if comparison_number is not None:
-        target = comparisons_dir / f"comparison-{comparison_number:03d}.json"
+    if comparison_path is not None:
+        target = ws / comparison_path
         if not target.is_file():
-            fail(
-                f"Comparison #{comparison_number} not found. "
-                f"Available: {', '.join(f.name for f in files)}"
-            )
+            fail(f"Comparison file not found: {comparison_path}")
         files = [target]
+        num_available = 1
     else:
-        # Default to the latest comparison result if multiple exist.
-        files = [files[-1]]
+        comparisons_dir = ws / "comparisons"
+        if not comparisons_dir.is_dir():
+            fail("No comparisons directory found.")
+
+        import re
+        files = sorted(
+            f for f in comparisons_dir.iterdir()
+            if re.match(r"comparison-\d+\.json$", f.name)
+        )
+        num_available = len(files)
+        if not files:
+            fail(
+                "No comparison results found.",
+                hint=f"Run `axis workspaces compare {workspace_path}` first.",
+            )
+
+        if comparison_number is not None:
+            target = comparisons_dir / f"comparison-{comparison_number:03d}.json"
+            if not target.is_file():
+                fail(
+                    f"Comparison #{comparison_number} not found. "
+                    f"Available: {', '.join(f.name for f in files)}"
+                )
+            files = [target]
+        else:
+            # Default to the latest comparison result if multiple exist.
+            files = [files[-1]]
 
     # Display the selected comparison
     env = WorkspaceComparisonEnvelope.model_validate(
         json.loads(files[0].read_text()))
 
-    effective_allow_world_changes = (
-        allow_world_changes or env.allow_world_changes
-    )
     result = _resolve_comparison_result(
         ws,
         env,
-        allow_world_changes=effective_allow_world_changes,
         extension_catalog=(
             catalogs.get("comparison_extensions") if catalogs else None
         ),
+        results_root=results_root,
     )
 
     if output == "json":
         payload = env.model_dump(mode="json")
-        payload["allow_world_changes"] = effective_allow_world_changes
         payload["comparison_result"] = result.model_dump(mode="json")
         print(json.dumps(payload, indent=2))
     else:
@@ -696,14 +767,6 @@ def cmd_workspaces_comparison_result(
         out.kv("Timestamp", env.timestamp)
         if comparison_number is None and num_available > 1:
             out.hint("Showing latest comparison by default. Use --number to select another.")
-        out.kv(
-            "World changes",
-            "ALLOWED" if effective_allow_world_changes else "STRICT",
-        )
-        if allow_world_changes and not env.allow_world_changes:
-            out.hint(
-                "Result was recomputed for display with world-config differences allowed."
-            )
         # Print the comparison metrics using the existing formatter.
         print_run_comparison_text(result)
         out.section("Configurations")
@@ -754,43 +817,12 @@ def _resolve_comparison_result(
     workspace_path: Path,
     envelope,
     *,
-    allow_world_changes: bool,
     extension_catalog: object | None = None,
+    results_root: Path | None = None,
 ):
     """Return a stored or recomputed comparison result for display."""
-    from axis.framework.comparison import compare_runs
     from axis.framework.comparison.types import RunComparisonResult
-    from axis.framework.persistence import ExperimentRepository
-
-    if allow_world_changes == envelope.allow_world_changes:
-        return RunComparisonResult.model_validate(envelope.comparison_result)
-
-    cr = envelope.comparison_result
-    reference_experiment_id = cr.get("reference_experiment_id")
-    candidate_experiment_id = cr.get("candidate_experiment_id")
-    reference_run_id = cr.get("reference_run_id")
-    candidate_run_id = cr.get("candidate_run_id")
-
-    if not all([
-        reference_experiment_id,
-        candidate_experiment_id,
-        reference_run_id,
-        candidate_run_id,
-    ]):
-        raise ValueError(
-            "Stored comparison is missing run identity and cannot be recomputed."
-        )
-
-    repo = ExperimentRepository(workspace_path / "results")
-    return compare_runs(
-        repo,
-        reference_experiment_id,
-        reference_run_id,
-        candidate_experiment_id,
-        candidate_run_id,
-        allow_world_changes=allow_world_changes,
-        extension_catalog=extension_catalog,
-    )
+    return RunComparisonResult.model_validate(envelope.comparison_result)
 
 
 def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
@@ -815,6 +847,8 @@ def _print_artifact_section(label: str, entries: list, *, out=None) -> None:
             annotations.append(f"trace={e.trace_mode}")
         if getattr(e, "role", None):
             annotations.append(f"role={e.role}")
+        if getattr(e, "label", None):
+            annotations.append(f"label={e.label}")
         if getattr(e, "timestamp", None):
             annotations.append(e.timestamp)
         if annotations:

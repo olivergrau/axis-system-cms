@@ -10,8 +10,8 @@ Instead of manually repeating:
 4. export logs
 5. inspect and write notes
 
-you can define a bounded experiment sequence once in `experiment.yaml` and let
-AXIS execute it end to end.
+you can define a bounded experiment sequence once in a registered
+`series/<series-id>/experiment.yaml` file and let AXIS execute it end to end.
 
 ## Scope
 
@@ -27,13 +27,13 @@ explicit guardrail error.
 ## Command
 
 ```bash
-axis workspaces run-series workspaces/my-workspace
+axis workspaces run-series workspaces/my-workspace --series my-series
 ```
 
 Optional notes overwrite:
 
 ```bash
-axis workspaces run-series workspaces/my-workspace --update-notes
+axis workspaces run-series workspaces/my-workspace --series my-series --update-notes
 ```
 
 Important:
@@ -47,12 +47,23 @@ Important:
 An experiment series requires:
 
 - a normal `workspace.yaml`
-- an additional `experiment.yaml` in the workspace root
+- a registered `experiment_series` entry in `workspace.yaml`
+- a series-local `series/<series-id>/experiment.yaml`
 
-The workspace manifest does not need to reference `experiment.yaml`
-explicitly.
+The series manifest is resolved through the workspace registry, not by an
+implicit root-level lookup.
 
-## Minimal `experiment.yaml`
+Minimal registry example:
+
+```yaml
+experiment_series:
+  entries:
+    - id: my-series
+      path: series/my-series/experiment.yaml
+      title: My Series
+```
+
+## Minimal `series/<series-id>/experiment.yaml`
 
 ```yaml
 version: 1
@@ -197,6 +208,24 @@ AXIS does not inherit experiment configs from the previous experiment.
 AXIS also does not mutate the original workspace config files. It materializes
 temporary configs internally for series execution.
 
+## Artifact Layout
+
+Series-generated artifacts are series-local.
+
+For a registered series `my-series`, AXIS writes to:
+
+- `series/my-series/results/`
+- `series/my-series/measurements/`
+- `series/my-series/comparisons/`
+- `series/my-series/notes.md`
+
+This is intentionally separate from the workspace-global ad-hoc roots:
+
+- `results/`
+- `measurements/`
+- `comparisons/`
+- `notes.md`
+
 ## Execution Model
 
 For every enabled experiment, AXIS:
@@ -291,17 +320,18 @@ There is no resume support in the current version.
 
 ## Outputs
 
-Per experiment, AXIS still creates the normal measurement folder and text logs.
+Per experiment, AXIS still creates the normal measurement folder and text logs,
+but inside the selected series directory.
 
 Additionally, the series command writes aggregate artifacts:
 
-- `measurements/series-summary.md`
-- `measurements/series-summary.json`
-- `measurements/series-metrics.csv`
-- `measurements/series-manifest.json`
+- `series/<series-id>/measurements/series-summary.md`
+- `series/<series-id>/measurements/series-summary.json`
+- `series/<series-id>/measurements/series-metrics.csv`
+- `series/<series-id>/measurements/series-manifest.json`
 
-The exact root directory follows the workspace’s `measurement_workflow.root_dir`
-setting.
+The exact directory names under the selected series still follow the workspace’s
+`measurement_workflow` naming patterns.
 
 ## Final Overview
 
@@ -319,7 +349,8 @@ The report stays at pure reporting level:
 
 ## Notes Scaffolding
 
-If you pass `--update-notes`, AXIS regenerates `notes.md` as a scaffold only
+If you pass `--update-notes`, AXIS regenerates the selected series'
+`notes.md` as a scaffold only
 when `defaults.notes.scaffold_notes` is `true`.
 
 The scaffold includes:
@@ -329,7 +360,8 @@ The scaffold includes:
 - copied hypotheses
 - placeholders for observations, interpretation, and conclusion
 
-Without `--update-notes`, AXIS leaves the existing `notes.md` untouched,
+Without `--update-notes`, AXIS leaves the existing series-local `notes.md`
+untouched,
 regardless of the `scaffold_notes` setting.
 
 ## Relationship To `measure`

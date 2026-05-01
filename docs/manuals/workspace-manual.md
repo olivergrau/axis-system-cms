@@ -68,18 +68,9 @@ effectively unchanged.
 
 If the workspace has `status: closed`, the run command aborts before execution.
 
-By default, the duplicate-run guard treats world-only edits as
-insufficient to count as a new comparable run. If you intentionally
-want to rerun a workspace because only the world configuration changed,
-opt in explicitly:
-
-```bash
-axis workspaces run workspaces/my-workspace --allow-world-changes
-```
-
-This is especially useful for controlled world-manipulation studies
-where the systems remain unchanged but the environment is the variable
-under investigation.
+World-only edits now count as normal config changes for workspace runs.
+If the world configuration changed, that is enough to make the next run
+intentional and distinct.
 
 If you intentionally need to rerun unchanged configs, for example after fixing
 an earlier mismatched run setup outside the config delta that the guard treats
@@ -133,7 +124,6 @@ The command forwards the same execution controls as `run` / `compare`:
 
 ```bash
 axis workspaces measure workspaces/my-workspace --label configX
-axis workspaces measure workspaces/my-workspace --allow-world-changes
 axis workspaces measure workspaces/my-workspace --override-guard
 axis workspaces measure workspaces/my-workspace --notes "My notes for this run"
 ```
@@ -162,11 +152,11 @@ With that configuration, a run such as measurement 4 produces:
 ### Run an experiment series
 
 ```bash
-axis workspaces run-series workspaces/my-workspace
+axis workspaces run-series workspaces/my-workspace --series my-series
 ```
 
 This command executes a declarative experiment sequence defined in a
-workspace-local `experiment.yaml`.
+registered series-local `series/<series-id>/experiment.yaml`.
 
 Current support:
 
@@ -186,14 +176,14 @@ If you want AXIS to regenerate a notes scaffold after the series completes,
 pass:
 
 ```bash
-axis workspaces run-series workspaces/my-workspace --update-notes
+axis workspaces run-series workspaces/my-workspace --series my-series --update-notes
 ```
 
 The command writes aggregate outputs such as:
 
-- `measurements/series-summary.md`
-- `measurements/series-summary.json`
-- `measurements/series-metrics.csv`
+- `series/<series-id>/measurements/series-summary.md`
+- `series/<series-id>/measurements/series-summary.json`
+- `series/<series-id>/measurements/series-metrics.csv`
 
 See the dedicated manual for the full schema and workflow:
 
@@ -212,17 +202,6 @@ For `system_comparison` and `system_development` workspaces, resolves reference 
 - A timestamp and sequential comparison number
 
 Multiple comparisons can be run without overwriting previous results.
-
-If you intentionally want to compare runs where only the world
-configuration changed, opt in explicitly:
-
-```bash
-axis workspaces compare workspaces/my-workspace --allow-world-changes
-```
-
-This relaxes only the `world_config_mismatch` validation rule. World
-type, start position, seed pairing, and shared action-label validation
-remain strict.
 
 #### Comparison target resolution
 
@@ -310,6 +289,12 @@ workspaces:
 axis workspaces reset workspaces/my-workspace
 ```
 
+Skip confirmation:
+
+```bash
+axis workspaces reset workspaces/my-workspace --force
+```
+
 Resets a workspace's generated artifact state without changing its identity,
 question, configs, notes, or other authored metadata.
 
@@ -318,14 +303,31 @@ The command:
 - deletes all contents under `results/`
 - deletes all contents under `comparisons/`
 - deletes all contents under `measurements/`
+- deletes all generated contents under each registered
+  `series/<series-id>/results/`
+- deletes all generated contents under each registered
+  `series/<series-id>/comparisons/`
+- deletes all generated contents under each registered
+  `series/<series-id>/measurements/`
 - clears `primary_results` in `workspace.yaml`
 - clears `primary_comparisons` in `workspace.yaml`
+- clears the generated tracking fields under `experiment_series.entries[*]`
+
+Without `--force`, AXIS first prints a reset preview and asks for confirmation.
+The preview includes:
+
+- how many artifact roots are affected
+- how many top-level entries will be removed across those roots
+- how many nested files and directories exist under them
+- per-root top-level entry counts for workspace-global and series-local paths
 
 This is useful when you want to rerun or re-measure a workspace from a clean
 artifact state while keeping the workspace scaffold itself intact.
 
-`reset` does not close the workspace and does not remove config files,
-`notes.md`, `README.md`, `experiment.yaml`, or other authored documents.
+`reset` does not close the workspace and does not remove authored files such as
+config files, workspace-root `notes.md`, `README.md`,
+`series/<series-id>/experiment.yaml`, `series/<series-id>/notes.md`, or other
+authored documents.
 
 ### Inspect comparison results
 
@@ -345,15 +347,8 @@ axis workspaces comparison-summary workspaces/my-workspace --number 2
 
 The output includes the comparison metrics (same format as `axis compare`) followed by a summary of the reference and candidate configurations that were in effect when the comparison was run.
 
-If a stored comparison was created under the default strict rules, you
-can re-render it with relaxed world-config validation:
-
-```bash
-axis workspaces comparison-summary workspaces/my-workspace --number 2 --allow-world-changes
-```
-
-In that case AXIS recomputes the comparison from the stored run
-identities for display, without overwriting the saved comparison file.
+Stored comparison summaries are rendered directly from the saved
+comparison payload.
 
 This command is only valid for `system_comparison`, `system_development`, and `single_system` workspaces.
 
@@ -1041,7 +1036,6 @@ The JSON output includes a `drift_issues` array alongside the standard validatio
 | `--candidate-experiment <id>` | `compare` | Explicit candidate experiment ID |
 | `--number <N>` | `comparison-summary` | Select a specific comparison by number |
 | `--label <name>` | `measure` | Override the manifest-derived filename label for one measurement run |
-| `--allow-world-changes` | `run`, `measure`, `compare`, `comparison-summary` | Allow world-only changes as the intentional variable |
 | `--override-guard` | `run`, `measure` | Bypass the duplicate-run guard for an intentional rerun |
 | `--notes "<text>"` | `run`, `measure` | Store a free-text note in each created `primary_results` entry |
 | `--role <name>` | `run-summary`, `visualize --workspace` | Select role-specific workspace output |
