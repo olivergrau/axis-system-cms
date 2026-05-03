@@ -32,6 +32,6 @@
     }
   },
   "remoteUser": "vscode",
-  "forwardPorts": [8000],
-  "postCreateCommand": "python -m pip install --upgrade pip && pip install pytest ipykernel mkdocs mkdocs-material pymdown-extensions"
+  "forwardPorts": [8000, 8888],
+  "postCreateCommand": "python -m pip install --upgrade pip && pip install -r requirements.txt && pip install mkdocs mkdocs-material pymdown-extensions"
 }

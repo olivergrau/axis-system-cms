@@ -109,10 +109,32 @@ This stands in deliberate contrast to approaches based on:
   transparent but prescriptive: they encode a designer's intentions
   rather than generating behavior from first principles.
 
-AXIS agents are none of these. They are **generative
-mechanism**: a small set of equations that, given the world state and
-the agent's internal state, produce behavior as output. The equations
-are the agent. There is nothing else.
+At the current AXIS CMS stage, the implemented systems are none of these.
+They are **generative mechanism**: a small set of equations that, given the
+world state and the agent's internal state, produce behavior as output. The
+equations are the agent. There is nothing else.
+
+However, this should not be read as a permanent rejection of all future
+learned or partially opaque methods.
+
+The deeper AXIS commitment is architectural, not ideological:
+
+- the overall system should remain decomposable
+- the role of each subsystem should remain intelligible
+- learned components, if introduced later, should enter as bounded modules
+  rather than replacing the whole architecture with one undifferentiated
+  global black box
+
+This leaves open a future in which AXIS systems may include learned
+subsystems for specific roles, such as:
+
+- specialized movement heuristics
+- local prediction modules
+- perceptual preprocessing
+- routing or logic-like coordination layers
+
+What AXIS resists is not learning as such. What it resists is the loss of
+system-level intelligibility.
 
 It is important to distinguish between:
 
@@ -143,6 +165,19 @@ It is because the drive weight functions $w_H(t)$ and $w_C(t)$
 are continuous functions of the hunger drive activation $d_H(t)$,
 and as $d_H$ increases, $w_C$ smoothly decreases. The behavioral
 regime change is an emergent property of the weight dynamics.
+
+For the current AXIS CMS systems, this principle is applied strongly:
+behavior is generated directly from explicit mathematical structure.
+
+At the level of the broader AXIS Vision, the more durable principle is
+slightly wider:
+
+> the architecture should remain explainable through the interaction of
+> identifiable subsystems.
+
+So if future AXIS systems eventually incorporate learned submodules, they
+should still preserve this architectural intelligibility rather than collapse
+the whole system into a single opaque controller.
 
 ### 4.2 No Implicit Mental Vocabulary
 
@@ -188,6 +223,18 @@ We understand System A completely. We build System A+W by adding
 exactly one new drive and one new state variable (the world model).
 Every behavioral difference between A and A+W can be attributed to
 the presence or absence of the curiosity drive.
+
+More generally, this modularity principle is also what makes future hybrid
+architectures possible. If a learned component is ever introduced, the AXIS
+question should still be:
+
+- what function does this subsystem serve?
+- what inputs does it consume?
+- what outputs does it produce?
+- how does it interact with the rest of the architecture?
+
+That is the difference between a compositional hybrid system and a total
+black-box replacement.
 
 ### 4.4 No World Model (Baseline)
 
@@ -257,6 +304,19 @@ This strategy ensures that we never lose understanding as we add
 complexity. At every stage, the agent's behavior is fully
 determined by its equations, and those equations have been
 verified by hand calculation.
+
+For future AXIS development, this should be read with one important nuance:
+the strongest requirement is not that every possible future subsystem must be
+hand-derived in the same way, but that added complexity must remain
+architecturally interpretable.
+
+So even if later AXIS systems introduce learned modules, the broader strategy
+should still hold:
+
+- add complexity by bounded composition
+- preserve reduction paths where possible
+- keep subsystem roles explicit
+- avoid losing the ability to relate behavior back to system structure
 
 ---
 
