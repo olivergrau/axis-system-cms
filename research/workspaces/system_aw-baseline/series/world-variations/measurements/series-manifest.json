@@ -1,0 +1,39 @@
+{
+  "series_title": "System A+W World Variations on Sensory-Novelty Fixed Agent",
+  "series_description": "A world-only series for System A+W with the exp_08 sensory-novelty-dominant agent held fixed. The series probes how topology, regeneration structure, scarcity, and map scale reshape behavior when only the environment changes.\n",
+  "experiment_order": [
+    "exp_01",
+    "exp_02",
+    "exp_03",
+    "exp_04",
+    "exp_05",
+    "exp_06",
+    "exp_07",
+    "exp_08"
+  ],
+  "measurement_directories": [
+    "series/world-variations/measurements/experiment_1",
+    "series/world-variations/measurements/experiment_2",
+    "series/world-variations/measurements/experiment_3",
+    "series/world-variations/measurements/experiment_4",
+    "series/world-variations/measurements/experiment_5",
+    "series/world-variations/measurements/experiment_6",
+    "series/world-variations/measurements/experiment_7",
+    "series/world-variations/measurements/experiment_8"
+  ],
+  "comparison_outputs": [
+    "series/world-variations/comparisons/comparison-001.json",
+    "series/world-variations/comparisons/comparison-002.json",
+    "series/world-variations/comparisons/comparison-003.json",
+    "series/world-variations/comparisons/comparison-004.json",
+    "series/world-variations/comparisons/comparison-005.json",
+    "series/world-variations/comparisons/comparison-006.json",
+    "series/world-variations/comparisons/comparison-007.json",
+    "series/world-variations/comparisons/comparison-008.json"
+  ],
+  "aggregate_outputs": {
+    "markdown": "series/world-variations/measurements/series-summary.md",
+    "json": "series/world-variations/measurements/series-summary.json",
+    "csv": "series/world-variations/measurements/series-metrics.csv"
+  }
+}

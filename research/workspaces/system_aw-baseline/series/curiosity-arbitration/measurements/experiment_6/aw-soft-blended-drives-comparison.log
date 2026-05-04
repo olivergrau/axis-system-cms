@@ -1,0 +1,167 @@
+Comparison #6
+  Timestamp: 2026-05-04T07:50:09.085215+00:00
+Run Comparison
+  Reference: system_aw  experiment=d399e549ce624851ad46de2b8aa6ae84  run=run-0000
+  Candidate: system_aw  experiment=c8651ddfa1cc43a1a37de55abf66e480  run=run-0000
+  Episodes: 50 compared, 50 valid, 0 invalid
+
+Per-episode Results
+                      Per-episode Results                       
+┏━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┓
+┃ Episode ┃ Mismatch ┃ Pos div ┃ Steps r/c ┃ Survivor  ┃ Notes ┃
+┡━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━┩
+│ 1       │    77.8% │   11.45 │   400/387 │ reference │       │
+│ 2       │    82.6% │    9.42 │   232/115 │ reference │       │
+│ 3       │    71.0% │    9.34 │   100/170 │ candidate │       │
+│ 4       │    80.2% │    7.59 │   400/400 │ equal     │       │
+│ 5       │    79.3% │    9.34 │   400/242 │ reference │       │
+│ 6       │    82.6% │   10.41 │   115/305 │ candidate │       │
+│ 7       │    79.1% │   19.00 │   191/194 │ candidate │       │
+│ 8       │    63.0% │    8.82 │   400/100 │ reference │       │
+│ 9       │    70.3% │    8.03 │   101/396 │ candidate │       │
+│ 10      │    76.0% │    7.84 │   289/100 │ reference │       │
+│ 11      │    86.7% │   18.34 │   128/316 │ candidate │       │
+│ 12      │    77.2% │   11.14 │   101/163 │ candidate │       │
+│ 13      │    74.5% │    6.40 │   400/400 │ equal     │       │
+│ 14      │    81.0% │   10.44 │   400/400 │ equal     │       │
+│ 15      │    81.5% │    6.59 │   400/400 │ equal     │       │
+│ 16      │    78.0% │   16.18 │   396/100 │ reference │       │
+│ 17      │    74.9% │    7.94 │   285/243 │ reference │       │
+│ 18      │    77.3% │   10.12 │   299/110 │ reference │       │
+│ 19      │    74.8% │   17.12 │   103/400 │ candidate │       │
+│ 20      │    89.1% │   10.65 │   213/110 │ reference │       │
+│ 21      │    82.7% │   10.53 │   400/162 │ reference │       │
+│ 22      │    73.0% │    8.29 │   100/320 │ candidate │       │
+│ 23      │    72.0% │   10.76 │   100/122 │ candidate │       │
+│ 24      │    76.5% │   13.99 │   115/372 │ candidate │       │
+│ 25      │    80.2% │   11.18 │   101/397 │ candidate │       │
+│ 26      │    79.3% │    8.05 │   121/165 │ candidate │       │
+│ 27      │    93.0% │   16.79 │   400/100 │ reference │       │
+│ 28      │    83.5% │   10.20 │   347/212 │ reference │       │
+│ 29      │    78.8% │   11.31 │   400/400 │ equal     │       │
+│ 30      │    79.6% │   10.55 │   400/319 │ reference │       │
+│ 31      │    81.0% │    9.19 │   400/100 │ reference │       │
+│ 32      │    75.2% │   20.10 │   101/400 │ candidate │       │
+│ 33      │    67.0% │   13.84 │   400/100 │ reference │       │
+│ 34      │    82.0% │    9.19 │   100/400 │ candidate │       │
+│ 35      │    77.2% │   18.58 │   189/400 │ candidate │       │
+│ 36      │    85.0% │   11.76 │   400/100 │ reference │       │
+│ 37      │    80.2% │    6.29 │   400/400 │ equal     │       │
+│ 38      │    77.8% │   18.91 │   194/400 │ candidate │       │
+│ 39      │    69.3% │    7.35 │   101/213 │ candidate │       │
+│ 40      │    77.0% │   11.52 │   400/100 │ reference │       │
+│ 41      │    79.5% │    6.05 │   400/400 │ equal     │       │
+│ 42      │    83.9% │   12.51 │   168/399 │ candidate │       │
+│ 43      │    82.6% │    9.51 │   235/400 │ candidate │       │
+│ 44      │    77.2% │   15.62 │   232/400 │ candidate │       │
+│ 45      │    80.0% │   12.88 │   225/276 │ candidate │       │
+│ 46      │    79.5% │   10.55 │   400/400 │ equal     │       │
+│ 47      │    81.6% │   14.50 │   400/244 │ reference │       │
+│ 48      │    74.3% │   16.57 │   101/280 │ candidate │       │
+│ 49      │    80.4% │    9.08 │   347/317 │ reference │       │
+│ 50      │    81.3% │   14.94 │   182/270 │ candidate │       │
+└─────────┴──────────┴─────────┴───────────┴───────────┴───────┘
+   Aligned run-level comparison across matched episode pairs.   
+
+Statistical Summary
+                             Statistical Summary                              
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━┓
+┃ Metric                   ┃    Mean ┃      Std ┃       Min ┃       Max ┃  N ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━┩
+│ Action mismatch rate     │  0.7855 │   0.0529 │    0.6300 │    0.9300 │ 50 │
+│ Mean trajectory distance │ 11.5350 │   3.7599 │    6.0550 │   20.0990 │ 50 │
+│ Mean vitality difference │  0.2499 │   0.1431 │    0.0060 │    0.5300 │ 50 │
+│ Final vitality delta     │ -0.1280 │   0.4263 │   -1.0000 │   +0.5955 │ 50 │
+│ Total steps delta        │ +8.1400 │ 188.6374 │ -300.0000 │ +300.0000 │ 50 │
+└──────────────────────────┴─────────┴──────────┴───────────┴───────────┴────┘
+              Descriptive statistics across valid episode pairs.              
+  Hint: How often the two agents chose different actions at the same timestep.
+  Hint: Average Manhattan distance between the two agents per episode.
+  Hint: Average absolute difference in vitality between the two agents.
+  Hint: Candidate final vitality minus reference final vitality.
+  Hint: Candidate episode length minus reference episode length.
+  Survival rates: reference=38%  candidate=30%
+  Longer survivor: candidate=23  reference=19  equal=8
+
+Configurations
+  Hint: Differing config values are highlighted when terminal styling is enabled.
+  Reference config: system_type=system_aw
+    system_type: system_aw
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 400
+    execution.trace_mode: full
+    execution.parallelism_mode: episodes
+    execution.max_workers: 8
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: clustered
+    world.num_clusters: 3
+    world.regen_eligible_ratio: 0.1
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 50
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 10.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.0
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    system.curiosity.base_curiosity: 0.0
+    system.curiosity.spatial_sensory_balance: 0.7
+    system.curiosity.explore_suppression: 0.35
+    system.curiosity.novelty_sharpness: 1.5
+    system.arbitration.hunger_weight_base: 1.0
+    system.arbitration.curiosity_weight_base: 1.0
+    system.arbitration.gating_sharpness: 2.0
+    num_episodes_per_run: 50
+    agent_start_position.x: 10
+    agent_start_position.y: 10
+  Candidate config: system_type=system_aw
+    system_type: system_aw
+    experiment_type: single_run
+    general.seed: 42
+    execution.max_steps: 400
+    execution.trace_mode: full
+    execution.parallelism_mode: episodes
+    execution.max_workers: 8
+    world.world_type: grid_2d
+    world.grid_width: 20
+    world.grid_height: 20
+    world.obstacle_density: 0.2
+    world.resource_regen_rate: 0.01
+    world.resource_regen_cooldown_steps: 10
+    world.topology: bounded
+    world.regeneration_mode: clustered
+    world.num_clusters: 3
+    world.regen_eligible_ratio: 0.1
+    system.agent.initial_energy: 100.0
+    system.agent.max_energy: 100.0
+    system.agent.buffer_capacity: 50
+    system.policy.selection_mode: argmax
+    system.policy.temperature: 10.0
+    system.policy.stay_suppression: 0.1
+    system.policy.consume_weight: 2.0
+    system.transition.move_cost: 1.0
+    system.transition.consume_cost: 0.5
+    system.transition.stay_cost: 0.3
+    system.transition.max_consume: 1.0
+    system.transition.energy_gain_factor: 15.0
+    system.curiosity.base_curiosity: 1.0
+    system.curiosity.spatial_sensory_balance: 0.5
+    system.curiosity.explore_suppression: 0.35
+    system.curiosity.novelty_sharpness: 1.2
+    system.arbitration.hunger_weight_base: 0.3
+    system.arbitration.curiosity_weight_base: 1.0
+    system.arbitration.gating_sharpness: 1.0
+    num_episodes_per_run: 50
+    agent_start_position.x: 10
+    agent_start_position.y: 10

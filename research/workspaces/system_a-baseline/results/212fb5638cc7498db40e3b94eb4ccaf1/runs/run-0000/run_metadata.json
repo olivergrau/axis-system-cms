@@ -1,0 +1,11 @@
+{
+  "run_id": "run-0000",
+  "experiment_id": "212fb5638cc7498db40e3b94eb4ccaf1",
+  "variation_description": "baseline",
+  "created_at": "2026-05-04T07:28:58.370762+00:00",
+  "base_seed": 42,
+  "trace_mode": "full",
+  "variation_index": null,
+  "variation_value": null,
+  "is_baseline": null
+}

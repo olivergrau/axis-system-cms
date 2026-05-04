@@ -1,0 +1,29 @@
+Run run-0000
+  Experiment: 212fb5638cc7498db40e3b94eb4ccaf1
+  Status: completed
+  Output form: point
+  Variation: baseline
+  Created: 2026-05-04T07:28:58.370762+00:00
+  Trace mode: full
+  Base seed: 42
+  Episodes: 50
+
+Summary
+  mean_steps=241.0  death_rate=0.72  mean_final_vitality=0.221
+
+Behavioral Metrics
+           Standard Metrics            
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ Metric                  ┃     Value ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ resource_gain_per_step  │  0.493526 │
+│ net_energy_efficiency   │  0.544412 │
+│ successful_consume_rate │  0.800000 │
+│ failed_movement_rate    │  0.000000 │
+│ action_entropy          │  1.555853 │
+│ policy_sharpness        │  0.242537 │
+│ unique_cells_visited    │ 57.520000 │
+│ coverage_efficiency     │  0.285195 │
+│ revisit_rate            │  0.689236 │
+└─────────────────────────┴───────────┘
+      Mean values across the run.      

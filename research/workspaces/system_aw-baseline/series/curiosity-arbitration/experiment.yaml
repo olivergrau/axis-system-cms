@@ -1,0 +1,214 @@
+version: 1
+workflow_type: experiment_series
+workspace_type: single_system
+title: System A+W Curiosity and Arbitration Series
+description: >
+  A compact single-system series for System A+W that probes how curiosity,
+  arbitration, novelty style, and survival pressure reshape behavior relative
+  to a neutral A+W baseline configuration.
+
+base_configs:
+  system_under_test: configs/system_aw-baseline.yaml
+
+defaults:
+  export:
+    comparison_summary: true
+    candidate_run_summary: true
+    reference_run_summary: false
+  notes:
+    scaffold_notes: true
+  labels:
+    measurement_label_pattern: "{experiment_id}"
+
+experiments:
+
+  - id: exp_01
+    label: aw-a-reduction-check
+    title: System A Reduction Check
+    enabled: true
+    notes: >
+      Disable curiosity to verify that A+W collapses toward the hunger-only
+      behavioral regime. This is a structural control experiment.
+    hypothesis:
+      - Curiosity pressure should collapse to zero or near zero.
+      - Behavior should become dominated by resource-seeking and consumption.
+      - Coverage and exploration diversity should fall relative to baseline.
+      - Survival may improve or worsen depending on resource density, but behavior should be easier to interpret.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.0          
+        arbitration:
+          hunger_weight_base: 1.0
+          curiosity_weight_base: 1.0
+          gating_sharpness: 2.0
+
+  - id: exp_02
+    label: aw-baseline
+    title: Baseline Anchor
+    enabled: true
+    notes: >
+      Neutral A+W baseline anchor. Curiosity is active, but not over-amplified.
+      The arbitration curve should allow an interpretable transition between
+      exploration and hunger-driven foraging.
+    hypothesis:
+      - The baseline should show an alternating explore-versus-exploit pattern.
+      - Curiosity should be behaviorally relevant while energy is high.
+      - Hunger should increasingly dominate as energy decreases.
+      - The run should provide a stable comparison point for all later variants.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.5
+          spatial_sensory_balance: 0.5
+          explore_suppression: 0.35
+          novelty_sharpness: 1.5
+        arbitration:
+          hunger_weight_base: 0.5
+          curiosity_weight_base: 0.5
+          gating_sharpness: 2.0
+
+  
+  - id: exp_03
+    label: aw-exploration-biased
+    title: Exploration-Biased A+W
+    enabled: true
+    notes: >
+      Increase curiosity influence and reduce the hunger floor to create a more
+      aggressive exploration regime.
+    hypothesis:
+      - Unique cells visited should increase relative to baseline.
+      - Curiosity pressure should increase, especially in early episode phases.
+      - Resource gain per step may decline because the agent explores more than it harvests.
+      - Death rate may increase if exploration overrides local survival opportunities.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.7
+          spatial_sensory_balance: 0.5
+          explore_suppression: 0.45
+          novelty_sharpness: 1.8
+        arbitration:
+          hunger_weight_base: 0.2
+          curiosity_weight_base: 1.4
+          gating_sharpness: 2.0
+
+  - id: exp_04
+    label: aw-survival-biased
+    title: Survival-Biased A+W
+    enabled: true
+    notes: >
+      Raise the hunger floor and reduce curiosity dominance to test whether a
+      more conservative motivational hierarchy improves survival.
+    hypothesis:
+      - Death rate should decrease relative to exploration-biased variants.
+      - Mean final vitality should improve if resources are locally available.
+      - Coverage should decrease because curiosity has less room to dominate.
+      - Successful consume rate should increase relative to baseline.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.3
+          spatial_sensory_balance: 0.5
+          explore_suppression: 0.25
+          novelty_sharpness: 1.5
+        arbitration:
+          hunger_weight_base: 0.45
+          curiosity_weight_base: 0.5
+          gating_sharpness: 2.5
+
+  - id: exp_05
+    label: aw-sharp-maslow-switch
+    title: Sharp Hunger-Curiosity Handoff
+    enabled: true
+    notes: >
+      Increase gating sharpness to create more distinct behavioral phases:
+      exploration while satiated, foraging when hungry.
+    hypothesis:
+      - Curiosity should dominate clearly at high energy.
+      - Hunger should take over abruptly once energy drops far enough.
+      - Traces should show cleaner phase separation than the baseline.
+      - Mid-range blended behavior should decrease.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 1.0
+          spatial_sensory_balance: 0.5
+          explore_suppression: 0.35
+          novelty_sharpness: 1.5
+        arbitration:
+          hunger_weight_base: 0.25
+          curiosity_weight_base: 1.2
+          gating_sharpness: 4.0
+
+  - id: exp_06
+    label: aw-soft-blended-drives
+    title: Soft Blended Drives
+    enabled: true
+    notes: >
+      Reduce gating sharpness to keep hunger and curiosity simultaneously active
+      across a wider energy range.
+    hypothesis:
+      - The transition from exploration to foraging should become smoother.
+      - Curiosity should remain relevant deeper into medium-hunger regimes.
+      - Behavior may become more robust but less cleanly phase-separated.
+      - Survival may worsen if curiosity interferes with urgent consumption.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 1.0
+          spatial_sensory_balance: 0.5
+          explore_suppression: 0.35
+          novelty_sharpness: 1.2
+        arbitration:
+          hunger_weight_base: 0.3
+          curiosity_weight_base: 1.0
+          gating_sharpness: 1.0
+
+  - id: exp_07
+    label: aw-spatial-novelty-dominant
+    title: Spatial Novelty Dominant
+    enabled: true
+    notes: >
+      Bias curiosity strongly toward visit-count based spatial novelty rather
+      than sensory contrast.
+    hypothesis:
+      - Unique cells visited should increase relative to baseline.
+      - Revisit rate should decrease if unvisited cells remain available.
+      - The agent should behave more like a spatial explorer than a stimulus seeker.
+      - Resource efficiency may decline if spatial novelty pulls the agent away from resource-rich regions.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 1.0
+          spatial_sensory_balance: 0.95
+          explore_suppression: 0.4
+          novelty_sharpness: 1.7
+        arbitration:
+          hunger_weight_base: 0.3
+          curiosity_weight_base: 1.1
+          gating_sharpness: 2.0
+
+  - id: exp_08
+    label: aw-sensory-novelty-dominant
+    title: Sensory Novelty Dominant
+    enabled: true
+    notes: >
+      Bias curiosity toward sensory contrast from the observation buffer rather
+      than spatial unfamiliarity.
+    hypothesis:
+      - The agent should react more strongly to changing local resource patterns.
+      - Revisit behavior may increase if regenerated or changing areas remain sensory-interesting.
+      - Coverage may be lower than in the spatial-novelty-dominant variant.
+      - Resource gain may improve in regenerating worlds if sensory novelty correlates with food availability.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 1.0
+          spatial_sensory_balance: 0.25
+          explore_suppression: 0.35
+          novelty_sharpness: 1.5
+        arbitration:
+          hunger_weight_base: 0.3
+          curiosity_weight_base: 1.0
+          gating_sharpness: 2.0

@@ -1,0 +1,184 @@
+version: 1
+workflow_type: experiment_series
+workspace_type: single_system
+title: System A+W World Variations on Sensory-Novelty Fixed Agent
+description: >
+  A world-only series for System A+W with the exp_08 sensory-novelty-dominant
+  agent held fixed. The series probes how topology, regeneration structure,
+  scarcity, and map scale reshape behavior when only the environment changes.
+
+base_configs:
+  system_under_test: configs/system_aw-exp08-world-baseline.yaml
+
+defaults:
+  export:
+    comparison_summary: true
+    candidate_run_summary: true
+    reference_run_summary: false
+  notes:
+    scaffold_notes: true
+  labels:
+    measurement_label_pattern: "{experiment_id}"
+
+experiments:
+  - id: exp_01
+    label: world-baseline-anchor
+    title: Baseline World Anchor
+    enabled: true
+    notes: >
+      Re-run the fixed exp_08 agent in the unchanged baseline world so the
+      world-only series has its own clean anchor point.
+    hypothesis:
+      - This run should reproduce the characteristic sensory-novelty behavior of exp_08.
+      - It should serve as the comparison point for every later world variation.
+      - Coverage and revisit behavior should sit near the already observed exp_08 pattern.
+    candidate_config_delta:
+      world:
+        world_type: "grid_2d"
+        grid_width: 20
+        grid_height: 20
+        obstacle_density: 0.2
+        resource_regen_rate: 0.01
+        resource_regen_cooldown_steps: 10
+        topology: "bounded"
+        regeneration_mode: "clustered"
+        num_clusters: 3
+        regen_eligible_ratio: 0.10
+
+  - id: exp_02
+    label: world-open-fast-regen
+    title: Open World with Fast Uniform Regeneration
+    enabled: true
+    notes: >
+      Reduce obstacles and switch to all-traversable, faster regeneration to
+      create a highly fluid and information-rich environment.
+    hypothesis:
+      - Sensory novelty should stay high because many cells continue changing.
+      - Revisit behavior may increase because previously harvested areas recover quickly.
+      - Survival should improve if the agent can exploit recurring local change.
+    candidate_config_delta:
+      world:
+        obstacle_density: 0.10
+        resource_regen_rate: 0.03
+        resource_regen_cooldown_steps: 4
+        regeneration_mode: all_traversable
+        regen_eligible_ratio: null
+        num_clusters: null
+
+  - id: exp_03
+    label: world-sparse-scarcity
+    title: Sparse Scarcity Patches
+    enabled: true
+    notes: >
+      Keep the bounded grid but make regenerating cells rarer and slower, so
+      the agent must discover and return to a smaller set of viable zones.
+    hypothesis:
+      - Coverage pressure should rise because rewards are spatially sparse.
+      - Survival may worsen if sensory novelty keeps the agent moving away from productive cells.
+      - Successful exploitation should depend more on finding the right sparse patches.
+    candidate_config_delta:
+      world:
+        obstacle_density: 0.22
+        resource_regen_rate: 0.008
+        resource_regen_cooldown_steps: 14
+        regeneration_mode: sparse_fixed_ratio
+        regen_eligible_ratio: 0.06
+        num_clusters: null
+
+  - id: exp_04
+    label: world-rich-cluster-islands
+    title: Rich Cluster Islands
+    enabled: true
+    notes: >
+      Concentrate stronger regeneration into fewer, richer islands to test
+      whether sensory novelty helps the agent repeatedly lock onto dynamic hubs.
+    hypothesis:
+      - Revisit behavior should increase around the richest changing islands.
+      - Resource gain may improve if sensory novelty tracks cluster recovery well.
+      - Coverage may shrink because fewer regions remain behaviorally attractive.
+    candidate_config_delta:
+      world:
+        obstacle_density: 0.18
+        resource_regen_rate: 0.025
+        resource_regen_cooldown_steps: 6
+        regeneration_mode: clustered
+        regen_eligible_ratio: 0.08
+        num_clusters: 2
+
+  - id: exp_05
+    label: world-toroidal-wrap
+    title: Toroidal Wraparound Grid
+    enabled: true
+    notes: >
+      Keep the general resource structure close to baseline, but replace hard
+      boundaries with wraparound movement and sensing.
+    hypothesis:
+      - Edge-avoidance artifacts should disappear.
+      - Coverage may increase because traversal paths become less interrupted.
+      - Sensory novelty may stay more spatially continuous across former borders.
+    candidate_config_delta:
+      world:
+        topology: toroidal
+
+  - id: exp_06
+    label: world-large-open-field
+    title: Larger Open Field
+    enabled: true
+    notes: >
+      Scale the map up and make it slightly more open to test whether the fixed
+      sensory-novelty policy still maintains coherent exploration at larger scale.
+    hypothesis:
+      - Unique cells visited should increase in absolute terms but may fall proportionally.
+      - The agent may struggle to repeatedly exploit good regions in a larger search space.
+      - Survival may drop if exploration costs outrun rediscovery of resources.
+    candidate_config_delta:
+      world:
+        grid_width: 28
+        grid_height: 28
+        obstacle_density: 0.10
+        resource_regen_rate: 0.012
+        resource_regen_cooldown_steps: 10
+        regeneration_mode: clustered
+        regen_eligible_ratio: 0.08
+        num_clusters: 4
+
+  - id: exp_07
+    label: world-compact-dense-feedback
+    title: Compact Dense-Feedback Arena
+    enabled: true
+    notes: >
+      Shrink the world and move to moderate uniform regeneration so local
+      sensory changes happen more often in a tighter loop.
+    hypothesis:
+      - Revisit behavior should increase because the agent cycles through the same cells more frequently.
+      - Sensory novelty may remain high despite lower total coverage.
+      - Survival should improve if the tighter world keeps resources within easier reach.
+    candidate_config_delta:
+      world:
+        grid_width: 12
+        grid_height: 12
+        obstacle_density: 0.15
+        resource_regen_rate: 0.018
+        resource_regen_cooldown_steps: 5
+        regeneration_mode: all_traversable
+        regen_eligible_ratio: null
+        num_clusters: null
+
+  - id: exp_08
+    label: world-long-cooldown
+    title: Long Cooldown Regeneration
+    enabled: true
+    notes: >
+      Keep the clustered resource layout but greatly lengthen the post-depletion
+      cooldown so recently exploited cells stay static for much longer.
+    hypothesis:
+      - Sensory novelty near harvested regions should collapse for longer periods.
+      - The agent may be forced into wider exploration before local recovery becomes visible again.
+      - Resource efficiency may worsen if the agent repeatedly checks unrecovered areas.
+    candidate_config_delta:
+      world:
+        resource_regen_rate: 0.015
+        resource_regen_cooldown_steps: 25
+        regeneration_mode: clustered
+        regen_eligible_ratio: 0.10
+        num_clusters: 3
