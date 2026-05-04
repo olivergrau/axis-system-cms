@@ -12,8 +12,6 @@ class TraceMode(str, enum.Enum):
 
     FULL = "full"
     LIGHT = "light"
-    DELTA = "delta"
-    DELTA_OPT = "delta-opt"
 
 
 class ParallelismMode(str, enum.Enum):

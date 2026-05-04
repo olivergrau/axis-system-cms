@@ -1,0 +1,33 @@
+{
+  "series_title": "System A vs System A+W Parameter Variations",
+  "series_description": "Candidate-side series for comparing the System A baseline against targeted System A+W parameter regimes while keeping the world, seed, and execution budget fixed.\n",
+  "experiment_order": [
+    "exp_01",
+    "exp_02",
+    "exp_03",
+    "exp_04",
+    "exp_05",
+    "exp_06"
+  ],
+  "measurement_directories": [
+    "series/system-parameter-variations/measurements/experiment_1",
+    "series/system-parameter-variations/measurements/experiment_2",
+    "series/system-parameter-variations/measurements/experiment_3",
+    "series/system-parameter-variations/measurements/experiment_4",
+    "series/system-parameter-variations/measurements/experiment_5",
+    "series/system-parameter-variations/measurements/experiment_6"
+  ],
+  "comparison_outputs": [
+    "series/system-parameter-variations/comparisons/comparison-001.json",
+    "series/system-parameter-variations/comparisons/comparison-002.json",
+    "series/system-parameter-variations/comparisons/comparison-003.json",
+    "series/system-parameter-variations/comparisons/comparison-004.json",
+    "series/system-parameter-variations/comparisons/comparison-005.json",
+    "series/system-parameter-variations/comparisons/comparison-006.json"
+  ],
+  "aggregate_outputs": {
+    "markdown": "series/system-parameter-variations/measurements/series-summary.md",
+    "json": "series/system-parameter-variations/measurements/series-summary.json",
+    "csv": "series/system-parameter-variations/measurements/series-metrics.csv"
+  }
+}

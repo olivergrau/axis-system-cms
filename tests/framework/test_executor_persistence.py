@@ -136,12 +136,12 @@ class TestExecuteWithPersistence:
         assert repo.artifact_exists(repo.run_result_path(eid, rid))
 
     def test_execute_persists_compact_run_result_manifest(self, tmp_path: Path) -> None:
-        _result, repo = _execute(tmp_path, _single_run_config(trace_mode="delta"))
+        _result, repo = _execute(tmp_path, _single_run_config(trace_mode="full"))
         eid = repo.list_experiments()[0]
         rid = repo.list_runs(eid)[0]
         data = json.loads(repo.run_result_path(eid, rid).read_text())
 
-        assert data["result_type"] == "delta_run"
+        assert data["result_type"] == "full_run"
         assert data["episode_storage"] == "external"
         assert "episode_traces" not in data
 

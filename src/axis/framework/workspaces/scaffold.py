@@ -19,7 +19,7 @@ from axis.framework.workspaces.types import (
 _REQUIRED_DIRS = ("configs", "results", "comparisons", "exports")
 _SCAFFOLD_EXECUTION = {
     "max_steps": 200,
-    "trace_mode": "delta",
+    "trace_mode": "full",
     "parallelism_mode": "episodes",
     "max_workers": 4,
 }

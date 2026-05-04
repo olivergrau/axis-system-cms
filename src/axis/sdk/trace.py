@@ -1,4 +1,4 @@
-"""Replay contract types for full, delta, and delta-opt episode traces."""
+"""Replay contract types for materialized and compact full episode traces."""
 
 from __future__ import annotations
 
@@ -101,42 +101,6 @@ class WorldDelta(BaseModel):
     changed_cells: tuple[DeltaCellUpdate, ...] = ()
 
 
-class DeltaStepTrace(BaseModel):
-    """Per-step delta representation for replay-capable persistence."""
-
-    model_config = ConfigDict(frozen=True)
-
-    timestep: int = Field(..., ge=0)
-    action: str
-    regen_delta: WorldDelta
-    action_delta: WorldDelta
-    agent_position_before: Position
-    agent_position_after: Position
-    vitality_before: float = Field(..., ge=0.0, le=1.0)
-    vitality_after: float = Field(..., ge=0.0, le=1.0)
-    terminated: bool
-    termination_reason: str | None = None
-    system_data: dict[str, Any] = Field(default_factory=dict)
-    world_data: dict[str, Any] = Field(default_factory=dict)
-
-
-class DeltaEpisodeTrace(BaseModel):
-    """Compact replay-capable episode trace stored as initial state + deltas."""
-
-    model_config = ConfigDict(frozen=True)
-
-    result_type: str = "delta_episode"
-    system_type: str
-    initial_world: WorldSnapshot
-    steps: tuple[DeltaStepTrace, ...]
-    total_steps: int = Field(..., ge=0)
-    termination_reason: str
-    final_vitality: float = Field(..., ge=0.0, le=1.0)
-    final_position: Position
-    world_type: str = "grid_2d"
-    world_config: dict[str, Any] = Field(default_factory=dict)
-
-
 class InternalCellState(BaseModel):
     """Minimal hidden world state required for deterministic replay."""
 
@@ -146,8 +110,8 @@ class InternalCellState(BaseModel):
     cooldown_remaining: int = Field(default=0, ge=0)
 
 
-class DeltaOptStepTrace(BaseModel):
-    """Per-step compact replay trace without persisted regen deltas."""
+class FullStepTrace(BaseModel):
+    """Per-step compact replay trace for full replay-capable persistence."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -164,16 +128,16 @@ class DeltaOptStepTrace(BaseModel):
     world_data: dict[str, Any] = Field(default_factory=dict)
 
 
-class DeltaOptEpisodeTrace(BaseModel):
+class FullEpisodeTrace(BaseModel):
     """Compact replay-capable trace using replay-state reconstruction."""
 
     model_config = ConfigDict(frozen=True)
 
-    result_type: str = "delta_opt_episode"
+    result_type: str = "full_episode"
     system_type: str
     initial_world: WorldSnapshot
     initial_internal_state: tuple[tuple[InternalCellState, ...], ...]
-    steps: tuple[DeltaOptStepTrace, ...]
+    steps: tuple[FullStepTrace, ...]
     total_steps: int = Field(..., ge=0)
     termination_reason: str
     final_vitality: float = Field(..., ge=0.0, le=1.0)
@@ -182,21 +146,21 @@ class DeltaOptEpisodeTrace(BaseModel):
     world_config: dict[str, Any] = Field(default_factory=dict)
 
 
-def compact_delta_opt_system_payload(
+def compact_full_system_payload(
     *,
     system_type: str,
     decision_data: dict[str, Any],
     trace_data: dict[str, Any],
     post_observation: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Return a slimmer system payload for delta-opt persistence."""
+    """Return a slimmer system payload for compact full persistence."""
     compact_decision = dict(decision_data)
     compact_trace = dict(trace_data)
 
     if system_type in {"system_a", "system_aw"}:
         compact_trace.pop("buffer_snapshot", None)
         if post_observation is not None:
-            compact_trace["_delta_opt_post_observation"] = post_observation
+            compact_trace["_full_post_observation"] = post_observation
 
     if system_type in {"system_aw", "system_cw"}:
         compact_trace.pop("relative_position", None)
@@ -325,7 +289,7 @@ def _serialize_buffer_entry(
     }
 
 
-def _restore_delta_opt_system_payloads(
+def _restore_full_system_payloads(
     system_type: str,
     steps: list[BaseStepTrace],
 ) -> list[BaseStepTrace]:
@@ -336,7 +300,7 @@ def _restore_delta_opt_system_payloads(
         next_steps: list[BaseStepTrace] = []
         for step in restored_steps:
             trace_data = dict(step.system_data.get("trace_data", {}) or {})
-            post_observation = trace_data.pop("_delta_opt_post_observation", None)
+            post_observation = trace_data.pop("_full_post_observation", None)
             if post_observation is not None:
                 buffer_entries.append(
                     _serialize_buffer_entry(post_observation, step.timestep)
@@ -434,7 +398,7 @@ def reconstruct_after_regen(
     """Reconstruct the deterministic AFTER_REGEN phase from replay state."""
     if world_type not in {"grid_2d", "toroidal"}:
         raise ValueError(
-            f"delta-opt replay does not support deterministic regen for world_type={world_type!r}"
+            f"full replay does not support deterministic regen for world_type={world_type!r}"
         )
 
     regen_rate = _regen_rate(world_config)
@@ -500,7 +464,7 @@ def apply_action_delta_with_state(
     world_after = apply_world_delta(snapshot_after_regen, action_delta)
     if world_type not in {"grid_2d", "toroidal"}:
         raise ValueError(
-            f"delta-opt replay does not support action-state reconstruction for world_type={world_type!r}"
+            f"full replay does not support action-state reconstruction for world_type={world_type!r}"
         )
 
     cooldown_steps = _regen_cooldown_steps(world_config)
@@ -539,37 +503,28 @@ def apply_action_delta_with_state(
 
 
 def reconstruct_episode_trace(
-    delta_episode: DeltaEpisodeTrace | DeltaOptEpisodeTrace,
+    full_episode: FullEpisodeTrace,
 ) -> BaseEpisodeTrace:
-    """Materialize a full replay trace from a delta episode."""
-    current_world = delta_episode.initial_world
-    current_internal_state = (
-        delta_episode.initial_internal_state
-        if isinstance(delta_episode, DeltaOptEpisodeTrace)
-        else None
-    )
+    """Materialize a full replay trace from a compact full episode."""
+    current_world = full_episode.initial_world
+    current_internal_state = full_episode.initial_internal_state
     steps: list[BaseStepTrace] = []
 
-    for step in delta_episode.steps:
+    for step in full_episode.steps:
         world_before = current_world
-        if isinstance(delta_episode, DeltaOptEpisodeTrace):
-            assert current_internal_state is not None
-            world_after_regen, internal_after_regen = reconstruct_after_regen(
-                world_before,
-                current_internal_state,
-                world_type=delta_episode.world_type,
-                world_config=delta_episode.world_config,
-            )
-            world_after, current_internal_state = apply_action_delta_with_state(
-                world_after_regen,
-                internal_after_regen,
-                step.action_delta,
-                world_type=delta_episode.world_type,
-                world_config=delta_episode.world_config,
-            )
-        else:
-            world_after_regen = apply_world_delta(world_before, step.regen_delta)
-            world_after = apply_world_delta(world_after_regen, step.action_delta)
+        world_after_regen, internal_after_regen = reconstruct_after_regen(
+            world_before,
+            current_internal_state,
+            world_type=full_episode.world_type,
+            world_config=full_episode.world_config,
+        )
+        world_after, current_internal_state = apply_action_delta_with_state(
+            world_after_regen,
+            internal_after_regen,
+            step.action_delta,
+            world_type=full_episode.world_type,
+            world_config=full_episode.world_config,
+        )
         steps.append(
             BaseStepTrace(
                 timestep=step.timestep,
@@ -589,19 +544,18 @@ def reconstruct_episode_trace(
         )
         current_world = world_after
 
-    if isinstance(delta_episode, DeltaOptEpisodeTrace):
-        steps = _restore_delta_opt_system_payloads(
-            delta_episode.system_type,
-            steps,
-        )
+    steps = _restore_full_system_payloads(
+        full_episode.system_type,
+        steps,
+    )
 
     return BaseEpisodeTrace(
-        system_type=delta_episode.system_type,
+        system_type=full_episode.system_type,
         steps=tuple(steps),
-        total_steps=delta_episode.total_steps,
-        termination_reason=delta_episode.termination_reason,
-        final_vitality=delta_episode.final_vitality,
-        final_position=delta_episode.final_position,
-        world_type=delta_episode.world_type,
-        world_config=delta_episode.world_config,
+        total_steps=full_episode.total_steps,
+        termination_reason=full_episode.termination_reason,
+        final_vitality=full_episode.final_vitality,
+        final_position=full_episode.final_position,
+        world_type=full_episode.world_type,
+        world_config=full_episode.world_config,
     )

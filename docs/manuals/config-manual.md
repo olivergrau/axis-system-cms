@@ -107,14 +107,14 @@ and so on. This ensures statistical independence between runs.
 | Field              | Type           | Required | Default        | Description |
 |--------------------|----------------|----------|----------------|-------------|
 | `max_steps`        | integer (> 0)  | yes      | --             | Maximum steps per episode. Episodes terminate after this many steps if the system hasn't terminated them first. |
-| `trace_mode`       | string         | no       | `"full"`       | Trace richness mode: `"full"`, `"delta"`, or `"light"`. |
+| `trace_mode`       | string         | no       | `"full"`       | Trace richness mode: `"full"` or `"light"`. |
 | `parallelism_mode` | string         | no       | `"sequential"` | Parallelization strategy: `"sequential"`, `"episodes"`, or `"runs"`. |
 | `max_workers`      | integer (>= 1) | no       | `1`            | Maximum worker count used by parallel execution modes. |
 
 ```yaml
 execution:
   max_steps: 200
-  trace_mode: "delta"
+  trace_mode: "full"
   parallelism_mode: "episodes"
   max_workers: 4
 ```
@@ -128,7 +128,7 @@ An episode ends when either `max_steps` is reached (termination reason:
 - **`"full"`** -- Persist the richest replay artifacts. Best when you want the
   most detailed replay/debugging surface.
 
-- **`"delta"`** -- Persist replay-compatible compact traces. This mode remains
+- **`"full"`** -- Persist replay-compatible compact traces. This is the default replay-capable mode
   visualizable and replay-comparable, but typically uses less storage and
   runtime overhead than `full`.
 
@@ -150,7 +150,7 @@ An episode ends when either `max_steps` is reached (termination reason:
 #### 3.2.3 Practical guidance
 
 - Use `full` when replay fidelity matters most.
-- Use `delta` when you still want the visualizer or replay-based comparison,
+- Use `full` when you still want the visualizer or replay-based comparison,
   but want lower artifact cost.
 - Use `light` when you only need summaries and throughput.
 - Start with `max_workers` near your available CPU cores, then benchmark on
@@ -298,7 +298,7 @@ logging:
 
 - Setting `jsonl_enabled: true` without providing `jsonl_path` raises
   `ValueError`.
-- `trace_mode` must be one of `"full"`, `"delta"`, or `"light"`.
+- `trace_mode` must be one of `"full"` or `"light"`.
 - `parallelism_mode` must be one of `"sequential"`, `"episodes"`, or `"runs"`.
 - `max_workers` must be at least `1`.
 

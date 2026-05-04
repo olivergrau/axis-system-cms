@@ -16,8 +16,6 @@ from axis.framework.config import (
 )
 from axis.framework.execution_policy import ParallelismMode, TraceMode
 from axis.framework.execution_results import (
-    DeltaRunResult,
-    DeltaOptRunResult,
     LightEpisodeResult,
     LightRunResult,
 )
@@ -29,7 +27,7 @@ from axis.framework.run import (
     RunResult,
     RunSummary,
 )
-from axis.sdk.trace import BaseEpisodeTrace, DeltaEpisodeTrace, DeltaOptEpisodeTrace
+from axis.sdk.trace import FullEpisodeTrace
 
 if TYPE_CHECKING:
     from axis.framework.persistence import ExperimentRepository
@@ -69,7 +67,7 @@ class ExperimentResult(BaseModel):
 
     experiment_id: str
     experiment_config: ExperimentConfig
-    run_results: tuple[RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult, ...]
+    run_results: tuple[RunResult | LightRunResult, ...]
     summary: ExperimentSummary
 
 
@@ -143,7 +141,7 @@ def _resolve_ofat(config: ExperimentConfig) -> tuple[RunConfig, ...]:
 
 def compute_experiment_summary(
     config: ExperimentConfig,
-    run_results: tuple[RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult, ...],
+    run_results: tuple[RunResult | LightRunResult, ...],
 ) -> ExperimentSummary:
     """Build experiment summary with optional OFAT deltas."""
     baseline: RunSummary | None = None
@@ -280,7 +278,7 @@ class ExperimentExecutor:
             total=len(run_configs),
         )
 
-        results: list[RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult]
+        results: list[RunResult | LightRunResult]
         if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
             from axis.framework.parallel_execution import execute_runs_parallel
 
@@ -371,7 +369,7 @@ class ExperimentExecutor:
             f"{prefix}Experiment runs",
             total=len(run_configs),
         )
-        run_results: list[RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult] = []
+        run_results: list[RunResult | LightRunResult] = []
         completed_count = 0
 
         if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
@@ -491,7 +489,7 @@ class ExperimentExecutor:
         *,
         progress: object | None = None,
         progress_description_prefix: str | None = None,
-    ) -> RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult:
+    ) -> RunResult | LightRunResult:
         """Execute a single run and persist all its artifacts."""
         from axis.framework.persistence import RunMetadata, RunStatus
 
@@ -534,7 +532,7 @@ class ExperimentExecutor:
         self,
         experiment_id: str,
         run_config: RunConfig,
-        result: RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult,
+        result: RunResult | LightRunResult,
         run_index: int,
     ) -> None:
         """Persist a completed run result in either full or light mode."""
@@ -569,20 +567,8 @@ class ExperimentExecutor:
             )
             return
 
-        if isinstance(episode_result, DeltaEpisodeTrace):
-            repo.save_delta_episode_trace(
-                experiment_id, run_id, episode_number, episode_result, overwrite=True,
-            )
-            return
-
-        if isinstance(episode_result, DeltaOptEpisodeTrace):
-            repo.save_delta_episode_trace(
-                experiment_id, run_id, episode_number, episode_result, overwrite=True,
-            )
-            return
-
-        if isinstance(episode_result, BaseEpisodeTrace):
-            repo.save_episode_trace(
+        if isinstance(episode_result, FullEpisodeTrace):
+            repo.save_full_episode_trace(
                 experiment_id, run_id, episode_number, episode_result, overwrite=True,
             )
             return
@@ -595,7 +581,7 @@ class ExperimentExecutor:
         self,
         experiment_id: str,
         config: ExperimentConfig,
-        run_results: list[RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult],
+        run_results: list[RunResult | LightRunResult],
         *,
         overwrite_summary: bool = False,
     ) -> ExperimentResult:

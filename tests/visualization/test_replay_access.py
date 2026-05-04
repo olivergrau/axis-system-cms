@@ -20,8 +20,8 @@ from axis.sdk.snapshot import WorldSnapshot
 from axis.sdk.trace import (
     BaseEpisodeTrace,
     BaseStepTrace,
-    DeltaEpisodeTrace,
-    DeltaStepTrace,
+    FullEpisodeTrace,
+    FullStepTrace,
     WorldDelta,
 )
 from axis.sdk.world_types import BaseWorldConfig, CellView
@@ -221,21 +221,30 @@ class TestLoading:
         assert isinstance(trace, BaseEpisodeTrace)
         assert trace.total_steps == 3
 
-    def test_load_delta_episode_trace(self, tmp_path: Path) -> None:
+    def test_load_full_episode_trace(self, tmp_path: Path) -> None:
         repo = _setup_repo(
             tmp_path,
             experiments=["exp_a"],
             runs={"exp_a": ["run_1"]},
         )
         initial = _make_snapshot()
-        delta_episode = DeltaEpisodeTrace(
+        full_episode = FullEpisodeTrace(
             system_type="test",
             initial_world=initial,
+            initial_internal_state=tuple(
+                tuple(
+                    {
+                        "regen_eligible": True,
+                        "cooldown_remaining": 0,
+                    }
+                    for _ in range(initial.width)
+                )
+                for _ in range(initial.height)
+            ),
             steps=(
-                DeltaStepTrace(
+                FullStepTrace(
                     timestep=0,
                     action="stay",
-                    regen_delta=WorldDelta(agent_position=Position(x=0, y=0)),
                     action_delta=WorldDelta(agent_position=Position(x=0, y=0)),
                     agent_position_before=Position(x=0, y=0),
                     agent_position_after=Position(x=0, y=0),
@@ -249,7 +258,7 @@ class TestLoading:
             final_vitality=0.9,
             final_position=Position(x=0, y=0),
         )
-        repo.save_delta_episode_trace("exp_a", "run_1", 0, delta_episode)
+        repo.save_full_episode_trace("exp_a", "run_1", 0, full_episode)
         svc = ReplayAccessService(repo)
         trace = svc.load_episode_trace("exp_a", "run_1", 0)
         assert isinstance(trace, BaseEpisodeTrace)

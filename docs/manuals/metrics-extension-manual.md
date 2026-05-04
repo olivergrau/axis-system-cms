@@ -71,7 +71,7 @@ no extension is registered, standard metrics still work normally.
 Metrics extensions are defined only for **replay-capable** trace modes:
 
 - `full`
-- `delta`
+- `full`
 
 `light` is intentionally out of scope. A metrics extension should assume
 that it receives complete `BaseEpisodeTrace` objects reconstructed from
@@ -378,7 +378,7 @@ Always wrap your output in a top-level namespace key.
 
 ### Assuming `light` support
 
-Metrics extensions should assume `full` or `delta`, never `light`.
+Metrics extensions should assume `full`, never `light`.
 
 ---
 

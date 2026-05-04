@@ -27,7 +27,7 @@ completed and its episodes have been persisted to the repository.
 Replay compatibility depends on the experiment's `trace_mode`:
 
 - `full` -- directly visualizable
-- `delta` -- visualizable after AXIS reconstructs replay-rich episode traces at load time
+- `full` -- visualizable after AXIS reconstructs replay-rich episode traces at load time
 - `light` -- not visualizable
 
 ---
@@ -90,7 +90,7 @@ or `2.0` for larger displays.
 If you intend to use the replay viewer later, prefer:
 
 - `trace_mode: full`
-- or `trace_mode: delta`
+- or `trace_mode: full`
 
 Do not use `trace_mode: light` for runs you plan to visualize. `light` is a
 summary-only execution lane and AXIS will reject visualization for those runs.

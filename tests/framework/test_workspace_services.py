@@ -105,7 +105,11 @@ class TestRunServiceInjection:
         ):
             result = svc.execute(Path("/ws"))
 
-        execute_fn.assert_called_once_with(Path("/ws"), run_filter=None)
+        execute_fn.assert_called_once_with(
+            Path("/ws"),
+            run_filter=None,
+            show_workspace_progress=True,
+        )
         assert result == []
 
     def test_execute_calls_sync_fn_per_result(self) -> None:

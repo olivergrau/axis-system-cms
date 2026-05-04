@@ -18,7 +18,6 @@ from axis.framework.execution_policy import (
     TraceMode,
 )
 from axis.framework.execution_results import (
-    DeltaRunResult,
     LightEpisodeResult,
     LightRunResult,
 )
@@ -104,7 +103,6 @@ __all__ = [
     "RunConfig",
     "RunExecutor",
     "RunResult",
-    "DeltaRunResult",
     "LightEpisodeResult",
     "LightRunResult",
     "RunSummary",

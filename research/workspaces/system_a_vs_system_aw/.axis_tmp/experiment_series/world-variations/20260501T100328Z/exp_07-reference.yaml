@@ -1,0 +1,46 @@
+system_type: system_a
+experiment_type: single_run
+general:
+  seed: 42
+execution:
+  max_steps: 200
+  trace_mode: delta
+  parallelism_mode: episodes
+  max_workers: 4
+world:
+  world_type: grid_2d
+  grid_width: 28
+  grid_height: 28
+  obstacle_density: 0.1
+  resource_regen_rate: 0.012
+  resource_regen_cooldown_steps: 10
+  topology: bounded
+  regeneration_mode: clustered
+  num_clusters: 4
+  regen_eligible_ratio: 0.08
+agent_start_position:
+  x: 10
+  y: 10
+system:
+  agent:
+    initial_energy: 100.0
+    max_energy: 100.0
+    buffer_capacity: 30
+  policy:
+    selection_mode: argmax
+    temperature: 10.0
+    stay_suppression: 0.1
+    consume_weight: 2.5
+  transition:
+    move_cost: 1.0
+    consume_cost: 0.5
+    stay_cost: 0.3
+    max_consume: 1.0
+    energy_gain_factor: 15.0
+logging:
+  enabled: false
+  console_enabled: true
+  jsonl_enabled: false
+  jsonl_path: system-a.jsonl
+  verbosity: compact
+num_episodes_per_run: 50

@@ -12,8 +12,6 @@ from pydantic import BaseModel, ConfigDict
 from axis.framework.config import ExperimentConfig
 from axis.framework.experiment import ExperimentSummary
 from axis.framework.execution_results import (
-    DeltaRunResult,
-    DeltaOptRunResult,
     LightEpisodeResult,
     LightRunResult,
 )
@@ -21,8 +19,7 @@ from axis.framework.metrics.types import RunBehaviorMetrics
 from axis.framework.run import RunConfig, RunResult, RunSummary
 from axis.sdk.trace import (
     BaseEpisodeTrace,
-    DeltaEpisodeTrace,
-    DeltaOptEpisodeTrace,
+    FullEpisodeTrace,
     reconstruct_episode_trace,
 )
 
@@ -70,7 +67,7 @@ class ExperimentMetadata(BaseModel):
 
     # --- Experiment Output Abstraction fields ---
     output_form: str | None = None          # "point" or "sweep"
-    trace_mode: str | None = None           # "full", "light", "delta", or "delta-opt"
+    trace_mode: str | None = None           # "full" or "light"
     primary_run_id: str | None = None       # for point outputs
     baseline_run_id: str | None = None      # for sweep outputs
 
@@ -267,7 +264,7 @@ class ExperimentRepository:
         self,
         experiment_id: str,
         run_id: str,
-        result: RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult,
+        result: RunResult | LightRunResult,
         *, overwrite: bool = False,
     ) -> Path:
         p = self.run_result_path(experiment_id, run_id)
@@ -311,12 +308,12 @@ class ExperimentRepository:
         _save_json(p, result.model_dump(mode="json"), overwrite=overwrite)
         return p
 
-    def save_delta_episode_trace(
+    def save_full_episode_trace(
         self,
         experiment_id: str,
         run_id: str,
         episode_index: int,
-        trace: DeltaEpisodeTrace | DeltaOptEpisodeTrace,
+        trace: FullEpisodeTrace,
         *,
         overwrite: bool = False,
     ) -> Path:
@@ -408,20 +405,12 @@ class ExperimentRepository:
         self,
         experiment_id: str,
         run_id: str,
-    ) -> RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult:
+    ) -> RunResult | LightRunResult:
         data = _load_json(self.run_result_path(experiment_id, run_id))
         if data.get("result_type") == "light_run":
             if "episode_results" in data:
                 return LightRunResult.model_validate(data)
             return self._load_compact_light_run_result(experiment_id, run_id, data)
-        if data.get("result_type") == "delta_run":
-            if "episode_traces" in data:
-                return DeltaRunResult.model_validate(data)
-            return self._load_compact_delta_run_result(experiment_id, run_id, data)
-        if data.get("result_type") == "delta_opt_run":
-            if "episode_traces" in data:
-                return DeltaOptRunResult.model_validate(data)
-            return self._load_compact_delta_opt_run_result(experiment_id, run_id, data)
         if "episode_traces" in data:
             return RunResult.model_validate(data)
         return self._load_compact_full_run_result(experiment_id, run_id, data)
@@ -439,12 +428,9 @@ class ExperimentRepository:
         self, experiment_id: str, run_id: str, episode_index: int,
     ) -> BaseEpisodeTrace:
         data = _load_json(self.episode_path(experiment_id, run_id, episode_index))
-        if data.get("result_type") == "delta_episode":
-            delta_trace = DeltaEpisodeTrace.model_validate(data)
-            return reconstruct_episode_trace(delta_trace)
-        if data.get("result_type") == "delta_opt_episode":
-            delta_trace = DeltaOptEpisodeTrace.model_validate(data)
-            return reconstruct_episode_trace(delta_trace)
+        if data.get("result_type") in {"full_episode", "delta_opt_episode"}:
+            full_trace = FullEpisodeTrace.model_validate(data)
+            return reconstruct_episode_trace(full_trace)
         return BaseEpisodeTrace.model_validate(data)
 
     # -- Discovery ----------------------------------------------------------
@@ -490,7 +476,7 @@ class ExperimentRepository:
 
     def _build_compact_run_result_payload(
         self,
-        result: RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult,
+        result: RunResult | LightRunResult,
     ) -> dict[str, Any]:
         data = result.model_dump(
             mode="json",
@@ -503,7 +489,7 @@ class ExperimentRepository:
         self,
         experiment_id: str,
         run_id: str,
-        result: RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult,
+        result: RunResult | LightRunResult,
     ) -> bool:
         if isinstance(result, LightRunResult):
             expected = result.num_episodes
@@ -525,7 +511,7 @@ class ExperimentRepository:
         data: dict[str, Any],
     ) -> RunResult:
         episode_traces = tuple(
-            BaseEpisodeTrace.model_validate(_load_json(path))
+            FullEpisodeTrace.model_validate(_load_json(path))
             for path in self.list_episode_files(experiment_id, run_id)
         )
         data = dict(data)
@@ -545,31 +531,3 @@ class ExperimentRepository:
         data = dict(data)
         data["episode_results"] = episode_results
         return LightRunResult.model_validate(data)
-
-    def _load_compact_delta_run_result(
-        self,
-        experiment_id: str,
-        run_id: str,
-        data: dict[str, Any],
-    ) -> DeltaRunResult:
-        episode_traces = tuple(
-            DeltaEpisodeTrace.model_validate(_load_json(path))
-            for path in self.list_episode_files(experiment_id, run_id)
-        )
-        data = dict(data)
-        data["episode_traces"] = episode_traces
-        return DeltaRunResult.model_validate(data)
-
-    def _load_compact_delta_opt_run_result(
-        self,
-        experiment_id: str,
-        run_id: str,
-        data: dict[str, Any],
-    ) -> DeltaOptRunResult:
-        episode_traces = tuple(
-            DeltaOptEpisodeTrace.model_validate(_load_json(path))
-            for path in self.list_episode_files(experiment_id, run_id)
-        )
-        data = dict(data)
-        data["episode_traces"] = episode_traces
-        return DeltaOptRunResult.model_validate(data)

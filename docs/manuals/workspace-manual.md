@@ -441,7 +441,7 @@ axis workspaces run-metrics workspaces/my-workspace \
 Behavioral metrics require replay-capable traces:
 
 - `full`
-- `delta`
+- `full`
 
 `light` runs are not supported.
 
@@ -461,7 +461,7 @@ Visualization uses the workspace-local results — the experiment ID must exist 
 
 Trace-mode rule:
 
-- `full` and `delta` workspace results are visualizable
+- `full` workspace results are visualizable
 - `light` workspace results are not visualizable
 
 If a workspace run was executed in `light` mode, AXIS will reject visualization

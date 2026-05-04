@@ -539,7 +539,7 @@ runs.
 Supported trace modes:
 
 - `full`
-- `delta`
+- `full`
 
 Unsupported:
 
@@ -871,7 +871,7 @@ experiment's `system_type` and `world_type`.
 Visualization compatibility depends on the experiment's `trace_mode`:
 
 - `full` -- visualizable
-- `delta` -- visualizable
+- `full` -- visualizable
 - `light` -- not visualizable
 
 If an experiment was executed in `light` mode, AXIS rejects the command

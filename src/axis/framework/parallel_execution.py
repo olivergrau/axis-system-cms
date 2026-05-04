@@ -149,7 +149,7 @@ def _persist_episode_result_worker(
     episode_result: Any,
 ) -> None:
     from axis.framework.execution_results import LightEpisodeResult
-    from axis.sdk.trace import BaseEpisodeTrace, DeltaEpisodeTrace, DeltaOptEpisodeTrace
+    from axis.sdk.trace import FullEpisodeTrace
 
     episode_number = episode_index + 1
     if isinstance(episode_result, LightEpisodeResult):
@@ -157,13 +157,8 @@ def _persist_episode_result_worker(
             experiment_id, run_id, episode_number, episode_result, overwrite=True,
         )
         return
-    if isinstance(episode_result, (DeltaEpisodeTrace, DeltaOptEpisodeTrace)):
-        repo.save_delta_episode_trace(
-            experiment_id, run_id, episode_number, episode_result, overwrite=True,
-        )
-        return
-    if isinstance(episode_result, BaseEpisodeTrace):
-        repo.save_episode_trace(
+    if isinstance(episode_result, FullEpisodeTrace):
+        repo.save_full_episode_trace(
             experiment_id, run_id, episode_number, episode_result, overwrite=True,
         )
         return

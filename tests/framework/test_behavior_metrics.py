@@ -218,12 +218,9 @@ class TestBehaviorMetricsParity:
                     trace_mode=trace_mode,
                 ),
             )
-            if trace_mode == "delta":
+            if trace_mode == "full":
                 for i, trace in enumerate(result.episode_traces, start=1):
-                    repo.save_delta_episode_trace("exp", run_id, i, trace)
-            else:
-                for i, trace in enumerate(result.episode_traces, start=1):
-                    repo.save_episode_trace("exp", run_id, i, trace)
+                    repo.save_full_episode_trace("exp", run_id, i, trace)
 
         repo.create_experiment_dir("exp")
         repo.save_experiment_metadata(
@@ -236,10 +233,10 @@ class TestBehaviorMetricsParity:
             ),
         )
 
-        _store_run("run-full", "full")
-        _store_run("run-delta", "delta")
+        _store_run("run-full-a", "full")
+        _store_run("run-full-b", "full")
 
-        full_metrics = compute_run_behavior_metrics(repo, "exp", "run-full")
-        delta_metrics = compute_run_behavior_metrics(repo, "exp", "run-delta")
+        full_metrics = compute_run_behavior_metrics(repo, "exp", "run-full-a")
+        delta_metrics = compute_run_behavior_metrics(repo, "exp", "run-full-b")
 
         assert full_metrics.standard_metrics == delta_metrics.standard_metrics

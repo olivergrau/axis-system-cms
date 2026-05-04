@@ -17,8 +17,6 @@ from axis.framework.execution_policy import (
     TraceMode,
 )
 from axis.framework.execution_results import (
-    DeltaRunResult,
-    DeltaOptRunResult,
     EpisodeSummaryLike,
     LightEpisodeResult,
     LightRunResult,
@@ -27,7 +25,7 @@ from axis.framework.progress import NullProgressReporter
 from axis.framework.registry import create_system
 from axis.framework.runner import run_episode, setup_episode
 from axis.sdk.position import Position
-from axis.sdk.trace import BaseEpisodeTrace, DeltaEpisodeTrace, DeltaOptEpisodeTrace
+from axis.sdk.trace import FullEpisodeTrace
 
 
 # ---------------------------------------------------------------------------
@@ -66,14 +64,14 @@ class RunSummary(BaseModel):
 
 
 class RunResult(BaseModel):
-    """Complete result of a multi-episode run."""
+    """Replay-capable full result of a multi-episode run."""
 
     model_config = ConfigDict(frozen=True)
 
     result_type: str = "full_run"
     run_id: str
     num_episodes: int = Field(..., gt=0)
-    episode_traces: tuple[BaseEpisodeTrace, ...]
+    episode_traces: tuple[FullEpisodeTrace, ...]
     summary: RunSummary
     seeds: tuple[int, ...]
     config: RunConfig
@@ -85,10 +83,8 @@ class RunResult(BaseModel):
 
 
 EpisodeResultLike = (
-    BaseEpisodeTrace
+    FullEpisodeTrace
     | LightEpisodeResult
-    | DeltaEpisodeTrace
-    | DeltaOptEpisodeTrace
 )
 EpisodeCompletionCallback = Callable[[int, EpisodeResultLike], None]
 
@@ -192,7 +188,7 @@ class RunExecutor:
         progress_description: str | None = None,
         on_episode_complete: EpisodeCompletionCallback | None = None,
         retain_episode_payloads: bool = True,
-    ) -> RunResult | LightRunResult | DeltaRunResult | DeltaOptRunResult:
+    ) -> RunResult | LightRunResult:
         """Execute a complete run: N episodes, aggregate results."""
         from axis.framework.logging import EpisodeLogger
 
@@ -262,26 +258,6 @@ class RunExecutor:
                 config=config,
             )
 
-        if policy.trace_mode is TraceMode.DELTA:
-            return DeltaRunResult(
-                run_id=run_id,
-                num_episodes=config.num_episodes,
-                episode_traces=episode_results,  # type: ignore[arg-type]
-                summary=summary,
-                seeds=seeds,
-                config=config,
-            )
-
-        if policy.trace_mode is TraceMode.DELTA_OPT:
-            return DeltaOptRunResult(
-                run_id=run_id,
-                num_episodes=config.num_episodes,
-                episode_traces=episode_results,  # type: ignore[arg-type]
-                summary=summary,
-                seeds=seeds,
-                config=config,
-            )
-
         return RunResult(
             run_id=run_id,
             num_episodes=config.num_episodes,
@@ -302,7 +278,7 @@ class RunExecutor:
         on_episode_complete: EpisodeCompletionCallback | None = None,
         retain_episode_payloads: bool = True,
     ) -> tuple[
-        BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
+        FullEpisodeTrace | LightEpisodeResult,
         ...
     ]:
         """Execute episodes sequentially under the given policy."""
@@ -333,7 +309,7 @@ class RunExecutor:
         on_episode_complete: EpisodeCompletionCallback | None = None,
         retain_episode_payloads: bool = True,
     ) -> tuple[
-        BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
+        FullEpisodeTrace | LightEpisodeResult,
         ...
     ]:
         """Execute episodes in parallel worker processes."""
@@ -375,7 +351,7 @@ def _execute_episode_from_config(
     trace_mode: TraceMode,
     system_catalog: Any | None = None,
     world_catalog: Any | None = None,
-) -> BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace:
+) -> FullEpisodeTrace | LightEpisodeResult:
     """Run one episode from config and return either full or light output."""
     system = create_system(
         config.system_type,
