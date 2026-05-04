@@ -37,8 +37,10 @@ class ExecutionConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_speedup_fields(self) -> ExecutionConfig:
-        if self.trace_mode not in {"full", "light", "delta"}:
-            raise ValueError("trace_mode must be 'full', 'light', or 'delta'")
+        if self.trace_mode not in {"full", "light", "delta", "delta-opt"}:
+            raise ValueError(
+                "trace_mode must be 'full', 'light', 'delta', or 'delta-opt'"
+            )
         if self.parallelism_mode not in {"sequential", "episodes", "runs"}:
             raise ValueError(
                 "parallelism_mode must be 'sequential', 'episodes', or 'runs'"

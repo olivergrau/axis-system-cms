@@ -28,7 +28,7 @@ from axis.framework.persistence import (
     RunMetadata,
     RunStatus,
 )
-from axis.framework.execution_results import DeltaRunResult, LightRunResult
+from axis.framework.execution_results import DeltaOptRunResult, DeltaRunResult, LightRunResult
 from axis.framework.run import (
     RunConfig,
     RunExecutor,
@@ -282,6 +282,58 @@ class TestRoundtrip:
         repo.save_run_result("exp", "run", result)
         loaded = repo.load_run_result("exp", "run")
         assert isinstance(loaded, DeltaRunResult)
+
+    def test_delta_opt_run_result(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = RunExecutor().execute(
+            RunConfig(
+                system_type="system_a",
+                system_config=SystemAConfigBuilder().build(),
+                framework_config=(
+                    FrameworkConfigBuilder()
+                    .with_max_steps(10)
+                    .with_trace_mode("delta-opt")
+                    .build()
+                ),
+                num_episodes=1,
+                base_seed=42,
+            )
+        )
+        repo.save_delta_episode_trace("exp", "run", 1, result.episode_traces[0])  # type: ignore[index]
+        repo.save_run_result("exp", "run", result)
+        loaded = repo.load_run_result("exp", "run")
+        assert isinstance(loaded, DeltaOptRunResult)
+
+    def test_compact_run_result_roundtrip_uses_external_episode_artifacts(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = RunExecutor().execute(
+            RunConfig(
+                system_type="system_a",
+                system_config=SystemAConfigBuilder().build(),
+                framework_config=(
+                    FrameworkConfigBuilder()
+                    .with_max_steps(10)
+                    .with_trace_mode("delta")
+                    .build()
+                ),
+                num_episodes=1,
+                base_seed=42,
+            )
+        )
+        assert isinstance(result, DeltaRunResult)
+        repo.save_delta_episode_trace("exp", "run", 1, result.episode_traces[0])
+        repo.save_run_result("exp", "run", result)
+
+        raw = json.loads(repo.run_result_path("exp", "run").read_text())
+        assert raw["episode_storage"] == "external"
+        assert "episode_traces" not in raw
+
+        loaded = repo.load_run_result("exp", "run")
+        assert isinstance(loaded, DeltaRunResult)
+        assert len(loaded.episode_traces) == 1
+        assert loaded.episode_traces[0].total_steps == result.episode_traces[0].total_steps
 
     def test_episode_trace(self, tmp_path: Path) -> None:
         repo = ExperimentRepository(tmp_path)

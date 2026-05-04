@@ -14,7 +14,11 @@ from axis.sdk.trace import (
     BaseEpisodeTrace,
     BaseStepTrace,
     DeltaEpisodeTrace,
+    DeltaOptEpisodeTrace,
+    DeltaOptStepTrace,
     DeltaStepTrace,
+    InternalCellState,
+    compact_delta_opt_system_payload,
     diff_world_snapshots,
 )
 from axis.sdk.world_types import BaseWorldConfig, MutableWorldProtocol
@@ -144,6 +148,15 @@ def run_episode(
             seed=seed,
             world_config=world_config,
         )
+    if trace_mode is TraceMode.DELTA_OPT:
+        return _run_episode_delta_opt(
+            system,
+            world,
+            registry,
+            max_steps=max_steps,
+            seed=seed,
+            world_config=world_config,
+        )
     return _run_episode_full(
         system,
         world,
@@ -234,6 +247,125 @@ def _run_episode_delta(
     return DeltaEpisodeTrace(
         system_type=system.system_type(),
         initial_world=initial_world,
+        steps=tuple(steps),
+        total_steps=len(steps),
+        termination_reason=termination_reason,
+        final_vitality=system.vitality(agent_state),
+        final_position=world.agent_position,
+        world_type=world_config.world_type if world_config else "grid_2d",
+        world_config=world_config.model_dump() if world_config else {},
+    )
+
+
+def _capture_internal_world_state(
+    world: MutableWorldProtocol,
+) -> tuple[tuple[InternalCellState, ...], ...]:
+    rows: list[tuple[InternalCellState, ...]] = []
+    for y in range(world.height):
+        row: list[InternalCellState] = []
+        for x in range(world.width):
+            cell = world.get_internal_cell(Position(x=x, y=y))
+            row.append(
+                InternalCellState(
+                    regen_eligible=bool(getattr(cell, "regen_eligible", True)),
+                    cooldown_remaining=int(getattr(cell, "cooldown_remaining", 0) or 0),
+                )
+            )
+        rows.append(tuple(row))
+    return tuple(rows)
+
+
+def _run_episode_delta_opt(
+    system: SystemInterface,
+    world: MutableWorldProtocol,
+    registry: ActionRegistry,
+    *,
+    max_steps: int,
+    seed: int,
+    world_config: BaseWorldConfig | None = None,
+) -> DeltaOptEpisodeTrace:
+    """Run an episode while persisting a compact replay-state trace."""
+    if world_config is not None and world_config.world_type not in {"grid_2d", "toroidal"}:
+        raise ValueError(
+            "trace_mode='delta-opt' currently supports only 'grid_2d' and 'toroidal' worlds"
+        )
+
+    rng = np.random.default_rng(seed)
+    agent_state = system.initialize_state()
+    ctx = system.action_context()
+    initial_world = world.snapshot()
+    initial_internal_state = _capture_internal_world_state(world)
+    steps: list[DeltaOptStepTrace] = []
+
+    for timestep in range(max_steps):
+        position_before = world.agent_position
+        vitality_before = system.vitality(agent_state)
+
+        decide_result = system.decide(world, agent_state, rng)
+        decision_data_for_trace = dict(decide_result.decision_data)
+        pre_observation = decision_data_for_trace.pop("_pre_observation", None)
+
+        world.tick()
+        world_after_regen = world.snapshot()
+        world_data = world.world_metadata()
+
+        outcome = registry.apply(
+            world, decide_result.action, context=ctx,
+        )
+        if pre_observation is not None:
+            outcome = outcome.model_copy(
+                update={
+                    "data": {**outcome.data, "_pre_observation": pre_observation},
+                },
+            )
+
+        world_after = world.snapshot()
+        new_observation = system.observe(world, world.agent_position)
+        transition_result = system.transition(
+            agent_state, outcome, new_observation,
+        )
+        agent_state = transition_result.new_state
+        vitality_after = system.vitality(agent_state)
+        position_after = world.agent_position
+
+        compact_decision_data, compact_trace_data = compact_delta_opt_system_payload(
+            system_type=system.system_type(),
+            decision_data=decision_data_for_trace,
+            trace_data=transition_result.trace_data,
+            post_observation=new_observation.model_dump(),
+        )
+
+        steps.append(
+            DeltaOptStepTrace(
+                timestep=timestep,
+                action=decide_result.action,
+                action_delta=diff_world_snapshots(world_after_regen, world_after),
+                agent_position_before=position_before,
+                agent_position_after=position_after,
+                vitality_before=vitality_before,
+                vitality_after=vitality_after,
+                terminated=transition_result.terminated,
+                termination_reason=transition_result.termination_reason,
+                system_data={
+                    "decision_data": compact_decision_data,
+                    "trace_data": compact_trace_data,
+                },
+                world_data=world_data,
+            )
+        )
+
+        if transition_result.terminated:
+            termination_reason = (
+                transition_result.termination_reason or "system_terminated"
+            )
+            break
+    else:
+        termination_reason = "max_steps_reached"
+
+    return DeltaOptEpisodeTrace(
+        system_type=system.system_type(),
+        initial_world=initial_world,
+        initial_internal_state=initial_internal_state,
         steps=tuple(steps),
         total_steps=len(steps),
         termination_reason=termination_reason,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -133,6 +134,16 @@ class TestExecuteWithPersistence:
         assert repo.artifact_exists(repo.run_config_path(eid, rid))
         assert repo.artifact_exists(repo.run_summary_path(eid, rid))
         assert repo.artifact_exists(repo.run_result_path(eid, rid))
+
+    def test_execute_persists_compact_run_result_manifest(self, tmp_path: Path) -> None:
+        _result, repo = _execute(tmp_path, _single_run_config(trace_mode="delta"))
+        eid = repo.list_experiments()[0]
+        rid = repo.list_runs(eid)[0]
+        data = json.loads(repo.run_result_path(eid, rid).read_text())
+
+        assert data["result_type"] == "delta_run"
+        assert data["episode_storage"] == "external"
+        assert "episode_traces" not in data
 
     def test_execute_episode_count(self, tmp_path: Path) -> None:
         cfg = _single_run_config(num_episodes=3)

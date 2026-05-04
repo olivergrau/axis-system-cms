@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -8,6 +10,10 @@ import yaml
 from axis.framework.workspaces.experiment_series import (
     load_experiment_series,
 )
+from axis.framework.workspaces.services.experiment_series_service import (
+    WorkspaceExperimentSeriesService,
+)
+from axis.framework.workspaces.types import WorkspaceType
 
 
 def _write_registered_series(ws: Path, data: dict, *, series_id: str = "series-a") -> None:
@@ -136,3 +142,71 @@ def test_load_experiment_series_rejects_no_enabled_experiments(tmp_path: Path) -
 
     with pytest.raises(ValueError, match="at least one experiment must be enabled"):
         load_experiment_series(ws, series_id="series-a")
+
+
+def test_run_series_removes_empty_measurement_dir_on_failure(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+
+    service = WorkspaceExperimentSeriesService(
+        measurement_service=object(),
+        load_manifest_fn=lambda path: SimpleNamespace(
+            workspace_type=WorkspaceType.SYSTEM_COMPARISON,
+            measurement_workflow=None,
+            workspace_id="ws",
+        ),
+        load_experiment_series_fn=lambda path, series_id: SimpleNamespace(
+            workspace_type=WorkspaceType.SYSTEM_COMPARISON,
+            base_configs=None,
+            defaults=SimpleNamespace(
+                labels=SimpleNamespace(measurement_label_pattern="{experiment_id}"),
+            ),
+            experiments=[
+                SimpleNamespace(
+                    id="exp_01",
+                    title="Experiment 01",
+                    label=None,
+                    enabled=True,
+                    notes=None,
+                    reference_config_delta=None,
+                    candidate_config_delta={},
+                ),
+            ],
+        ),
+        export_measurement_reports_fn=MagicMock(),
+    )
+
+    series_root = ws / "series" / "series-a"
+    results_root = series_root / "results"
+    measurements_root = series_root / "measurements"
+    comparisons_root = series_root / "comparisons"
+    results_root.mkdir(parents=True)
+    measurements_root.mkdir(parents=True)
+    comparisons_root.mkdir(parents=True)
+
+    with (
+        patch(
+            "axis.framework.workspaces.series_paths.resolve_series_paths",
+            return_value=SimpleNamespace(
+                results_root=results_root,
+                measurements_root=measurements_root,
+                comparisons_root=comparisons_root,
+            ),
+        ),
+        patch(
+            "axis.framework.workspaces.config_materialization.resolve_base_config_paths",
+            return_value={"reference": "ref.yaml", "candidate": "cand.yaml"},
+        ),
+        patch(
+            "axis.framework.workspaces.config_materialization.materialize_candidate_config",
+            return_value=SimpleNamespace(temp_config_path="tmp/candidate.yaml"),
+        ),
+        patch(
+            "axis.framework.workspaces.execute.execute_workspace",
+            side_effect=RuntimeError("boom"),
+        ),
+    ):
+        with pytest.raises(RuntimeError, match="boom"):
+            service.run_series(ws, series_id="series-a")
+
+    assert not (measurements_root / "experiment_1").exists()

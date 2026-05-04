@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from axis.framework.comparison.actions import compute_action_usage
 from axis.framework.comparison.alignment import compute_alignment
 from axis.framework.comparison.extensions import build_system_specific_analysis
@@ -25,6 +28,41 @@ from axis.framework.persistence import ExperimentRepository, RunMetadata
 from axis.framework.progress import NullProgressReporter
 from axis.framework.run import RunConfig
 from axis.sdk.trace import BaseEpisodeTrace
+
+
+def _load_and_compare_episode_pair(
+    repo: ExperimentRepository,
+    reference_experiment_id: str,
+    reference_run_id: str,
+    candidate_experiment_id: str,
+    candidate_run_id: str,
+    episode_index: int,
+    *,
+    reference_run_config: RunConfig | None = None,
+    candidate_run_config: RunConfig | None = None,
+    reference_run_metadata: RunMetadata | None = None,
+    candidate_run_metadata: RunMetadata | None = None,
+    extension_catalog: object | None = None,
+) -> tuple[str, str, PairedTraceComparisonResult]:
+    """Load one episode pair and return its comparison result."""
+    ref_trace = repo.load_episode_trace(
+        reference_experiment_id, reference_run_id, episode_index,
+    )
+    cand_trace = repo.load_episode_trace(
+        candidate_experiment_id, candidate_run_id, episode_index,
+    )
+    result = compare_episode_traces(
+        ref_trace,
+        cand_trace,
+        reference_run_config=reference_run_config,
+        candidate_run_config=candidate_run_config,
+        reference_run_metadata=reference_run_metadata,
+        candidate_run_metadata=candidate_run_metadata,
+        reference_episode_index=episode_index,
+        candidate_episode_index=episode_index,
+        extension_catalog=extension_catalog,
+    )
+    return ref_trace.system_type, cand_trace.system_type, result
 
 
 def compare_episode_traces(
@@ -157,31 +195,64 @@ def compare_runs(
     ref_system_type = ""
     cand_system_type = ""
 
-    for i in range(n_pairs):
-        ep_idx = i + 1  # episodes are 1-based on disk
-        ref_trace = repo.load_episode_trace(
-            reference_experiment_id, reference_run_id, ep_idx,
-        )
-        cand_trace = repo.load_episode_trace(
-            candidate_experiment_id, candidate_run_id, ep_idx,
-        )
-        if not ref_system_type:
-            ref_system_type = ref_trace.system_type
-            cand_system_type = cand_trace.system_type
+    can_parallelize = n_pairs > 1
+    max_workers = min(n_pairs, max(1, os.cpu_count() or 1))
 
-        result = compare_episode_traces(
-            ref_trace,
-            cand_trace,
-            reference_run_config=ref_config,
-            candidate_run_config=cand_config,
-            reference_run_metadata=ref_meta,
-            candidate_run_metadata=cand_meta,
-            reference_episode_index=ep_idx,
-            candidate_episode_index=ep_idx,
-            extension_catalog=extension_catalog,
-        )
-        results.append(result)
-        reporter.advance(task_id)
+    if can_parallelize and max_workers > 1:
+        indexed_results: list[PairedTraceComparisonResult | None] = [None] * n_pairs
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_index = {
+                executor.submit(
+                    _load_and_compare_episode_pair,
+                    repo,
+                    reference_experiment_id,
+                    reference_run_id,
+                    candidate_experiment_id,
+                    candidate_run_id,
+                    episode_index,
+                    reference_run_config=ref_config,
+                    candidate_run_config=cand_config,
+                    reference_run_metadata=ref_meta,
+                    candidate_run_metadata=cand_meta,
+                    extension_catalog=extension_catalog,
+                ): episode_index - 1
+                for episode_index in range(1, n_pairs + 1)
+            }
+            for future in as_completed(future_to_index):
+                result_index = future_to_index[future]
+                episode_ref_system_type, episode_cand_system_type, result = future.result()
+                if not ref_system_type:
+                    ref_system_type = episode_ref_system_type
+                    cand_system_type = episode_cand_system_type
+                indexed_results[result_index] = result
+                reporter.advance(task_id)
+        results = [result for result in indexed_results if result is not None]
+    else:
+        for i in range(n_pairs):
+            ep_idx = i + 1  # episodes are 1-based on disk
+            ref_trace = repo.load_episode_trace(
+                reference_experiment_id, reference_run_id, ep_idx,
+            )
+            cand_trace = repo.load_episode_trace(
+                candidate_experiment_id, candidate_run_id, ep_idx,
+            )
+            if not ref_system_type:
+                ref_system_type = ref_trace.system_type
+                cand_system_type = cand_trace.system_type
+
+            result = compare_episode_traces(
+                ref_trace,
+                cand_trace,
+                reference_run_config=ref_config,
+                candidate_run_config=cand_config,
+                reference_run_metadata=ref_meta,
+                candidate_run_metadata=cand_meta,
+                reference_episode_index=ep_idx,
+                candidate_episode_index=ep_idx,
+                extension_catalog=extension_catalog,
+            )
+            results.append(result)
+            reporter.advance(task_id)
 
     summary = compute_run_summary(results)
 

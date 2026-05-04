@@ -7,7 +7,7 @@ from typing import Protocol, runtime_checkable
 from pydantic import BaseModel, ConfigDict, Field
 
 from axis.sdk.position import Position
-from axis.sdk.trace import DeltaEpisodeTrace
+from axis.sdk.trace import DeltaEpisodeTrace, DeltaOptEpisodeTrace
 
 
 @runtime_checkable
@@ -56,6 +56,20 @@ class DeltaRunResult(BaseModel):
     run_id: str
     num_episodes: int = Field(..., gt=0)
     episode_traces: tuple[DeltaEpisodeTrace, ...]
+    summary: object
+    seeds: tuple[int, ...]
+    config: object
+
+
+class DeltaOptRunResult(BaseModel):
+    """Run-level result carrying delta-opt episode traces."""
+
+    model_config = ConfigDict(frozen=True)
+
+    result_type: str = "delta_opt_run"
+    run_id: str
+    num_episodes: int = Field(..., gt=0)
+    episode_traces: tuple[DeltaOptEpisodeTrace, ...]
     summary: object
     seeds: tuple[int, ...]
     config: object

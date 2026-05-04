@@ -14,7 +14,12 @@ from typing import IO
 from axis.framework.config import LoggingConfig
 from axis.framework.execution_policy import TraceMode
 from axis.framework.execution_results import LightEpisodeResult
-from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace, DeltaEpisodeTrace
+from axis.sdk.trace import (
+    BaseEpisodeTrace,
+    BaseStepTrace,
+    DeltaEpisodeTrace,
+    DeltaOptEpisodeTrace,
+)
 
 
 class EpisodeLogger:
@@ -58,7 +63,7 @@ class EpisodeLogger:
 
     def log_episode(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
         episode_index: int,
     ) -> None:
         """Log every step in *trace* followed by an episode summary."""
@@ -85,7 +90,7 @@ class EpisodeLogger:
 
     def log_episode_summary(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
         episode_index: int,
     ) -> None:
         if self._noop:
@@ -103,7 +108,7 @@ class EpisodeLogger:
 
     def _print_episode_start(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
         ep: int,
     ) -> None:
         print(
@@ -141,7 +146,7 @@ class EpisodeLogger:
 
     def _print_episode_summary(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
         ep: int,
     ) -> None:
         fp = trace.final_position
@@ -188,7 +193,7 @@ class EpisodeLogger:
 
     def _write_episode_summary_jsonl(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace | DeltaOptEpisodeTrace,
         ep: int,
     ) -> None:
         record = {

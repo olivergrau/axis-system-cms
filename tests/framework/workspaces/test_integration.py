@@ -1942,11 +1942,12 @@ class TestStrictVisualizationResolution:
         ws = _scaffold_single_system(tmp_path)
         _add_point_experiment_to_workspace(ws, "exp-001")
 
-        eid, rid, ep = resolve_visualization_target(
+        eid, rid, ep, results_root = resolve_visualization_target(
             ws, episode=1, experiment="exp-001", run="run-0000",
         )
         assert eid == "exp-001"
         assert rid == "run-0000"
+        assert results_root == ws / "results"
 
     def test_sweep_without_run_raises(self, tmp_path):
         from axis.framework.workspaces.visualization import resolve_visualization_target
@@ -1963,11 +1964,49 @@ class TestStrictVisualizationResolution:
         ws = _scaffold_single_system(tmp_path)
         _add_sweep_experiment_to_workspace(ws, "exp-002")
 
-        eid, rid, ep = resolve_visualization_target(
+        eid, rid, ep, results_root = resolve_visualization_target(
             ws, episode=1, experiment="exp-002", run="run-0001",
         )
         assert eid == "exp-002"
         assert rid == "run-0001"
+        assert results_root == ws / "results"
+
+    def test_explicit_experiment_resolves_from_series_results_root(self, tmp_path):
+        from axis.framework.persistence import (
+            ExperimentMetadata, ExperimentRepository, ExperimentStatus,
+            RunMetadata, RunStatus,
+        )
+        from axis.framework.workspaces.visualization import resolve_visualization_target
+
+        ws = _scaffold_single_system(tmp_path)
+        series_results_root = ws / "series" / "alpha" / "results"
+        repo = ExperimentRepository(series_results_root)
+        experiment_id = "exp-series-001"
+        repo.create_experiment_dir(experiment_id)
+        repo.save_experiment_metadata(experiment_id, ExperimentMetadata(
+            experiment_id=experiment_id,
+            created_at="2025-01-01T00:00:00",
+            experiment_type="single_run",
+            system_type="system_a",
+            output_form="point",
+            primary_run_id="run-0000",
+        ))
+        repo.save_experiment_status(experiment_id, ExperimentStatus.COMPLETED)
+        repo.create_run_dir(experiment_id, "run-0000")
+        repo.save_run_metadata(experiment_id, "run-0000", RunMetadata(
+            run_id="run-0000",
+            experiment_id=experiment_id,
+            created_at="2025-01-01T00:00:00",
+            base_seed=42,
+        ))
+        repo.save_run_status(experiment_id, "run-0000", RunStatus.COMPLETED)
+
+        eid, rid, ep, results_root = resolve_visualization_target(
+            ws, episode=1, experiment=experiment_id, run="run-0000",
+        )
+        assert eid == experiment_id
+        assert rid == "run-0000"
+        assert results_root == series_results_root
 
     def test_sweep_with_invalid_run_raises(self, tmp_path):
         from axis.framework.workspaces.visualization import resolve_visualization_target

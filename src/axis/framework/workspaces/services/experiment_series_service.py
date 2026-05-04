@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -174,82 +175,87 @@ class WorkspaceExperimentSeriesService:
                     effective_workflow.experiment_dir_pattern.format(number=measurement_number)
                 )
                 measurement_dir_path.mkdir(parents=True, exist_ok=False)
-                exec_results = execute_workspace(
-                    ws,
-                    config_overrides_by_role=config_overrides_by_role,
-                    progress=progress,
-                    progress_description_prefix=progress_prefix,
-                    show_workspace_progress=False,
-                    results_root=series_paths.results_root,
-                )
-                run_notes = experiment.notes or experiment.title
-                for er in exec_results:
-                    config = er.experiment_result.experiment_config
-                    execution = getattr(config, "execution", None)
-                    sync_manifest_after_series_run(
+                try:
+                    exec_results = execute_workspace(
+                        ws,
+                        config_overrides_by_role=config_overrides_by_role,
+                        progress=progress,
+                        progress_description_prefix=progress_prefix,
+                        show_workspace_progress=False,
+                        results_root=series_paths.results_root,
+                    )
+                    run_notes = experiment.notes or experiment.title
+                    for er in exec_results:
+                        config = er.experiment_result.experiment_config
+                        execution = getattr(config, "execution", None)
+                        sync_manifest_after_series_run(
+                            ws,
+                            series_id=series_id,
+                            result_path=str(
+                                (series_paths.results_root / er.experiment_result.experiment_id).relative_to(ws)
+                            ),
+                            role=er.role,
+                            output_form="point" if config.experiment_type.value == "single_run" else "sweep",
+                            trace_mode=getattr(execution, "trace_mode", None),
+                            system_type=config.system_type,
+                            primary_run_id="run-0000" if config.experiment_type.value == "single_run" else None,
+                            baseline_run_id="run-0000" if config.experiment_type.value != "single_run" else None,
+                            run_notes=run_notes,
+                            label=label,
+                            measurement_path=str(measurement_dir_path.relative_to(ws)),
+                        )
+                    by_role = {er.role: er.experiment_result.experiment_id for er in exec_results}
+                    reference_experiment_id = by_role["reference"]
+                    current_experiment_id = by_role["candidate"]
+                    compare_result_envelope, comparison_output_path = compare_workspace(
+                        ws,
+                        reference_experiment=reference_experiment_id,
+                        candidate_experiment=current_experiment_id,
+                        extension_catalog=(
+                            catalogs.get("comparison_extensions") if catalogs else None
+                        ),
+                        progress=progress,
+                        progress_description=f"{progress_prefix} | Episode comparisons",
+                        results_root=series_paths.results_root,
+                        comparisons_root=series_paths.comparisons_root,
+                    )
+                    sync_manifest_after_series_compare(
                         ws,
                         series_id=series_id,
-                        result_path=str(
-                            (series_paths.results_root / er.experiment_result.experiment_id).relative_to(ws)
-                        ),
-                        role=er.role,
-                        output_form="point" if config.experiment_type.value == "single_run" else "sweep",
-                        trace_mode=getattr(execution, "trace_mode", None),
-                        system_type=config.system_type,
-                        primary_run_id="run-0000" if config.experiment_type.value == "single_run" else None,
-                        baseline_run_id="run-0000" if config.experiment_type.value != "single_run" else None,
-                        run_notes=run_notes,
-                        label=label,
-                        measurement_path=str(measurement_dir_path.relative_to(ws)),
+                        comparison_output_path=comparison_output_path,
                     )
-                by_role = {er.role: er.experiment_result.experiment_id for er in exec_results}
-                reference_experiment_id = by_role["reference"]
-                current_experiment_id = by_role["candidate"]
-                compare_result_envelope, comparison_output_path = compare_workspace(
-                    ws,
-                    reference_experiment=reference_experiment_id,
-                    candidate_experiment=current_experiment_id,
-                    extension_catalog=(
-                        catalogs.get("comparison_extensions") if catalogs else None
-                    ),
-                    progress=progress,
-                    progress_description=f"{progress_prefix} | Episode comparisons",
-                    results_root=series_paths.results_root,
-                    comparisons_root=series_paths.comparisons_root,
-                )
-                sync_manifest_after_series_compare(
-                    ws,
-                    series_id=series_id,
-                    comparison_output_path=comparison_output_path,
-                )
-                comparison_number = compare_result_envelope.comparison_number
-                tokens = {
-                    "label": label,
-                    "number": measurement_number,
-                    "role": effective_workflow.default_run_summary_role,
-                }
-                comparison_log_path = str((
-                    measurement_dir_path /
-                    effective_workflow.comparison_log_pattern.format(**tokens)
-                ).relative_to(ws))
-                run_summary_log_path = str((
-                    measurement_dir_path /
-                    effective_workflow.run_summary_log_pattern.format(**tokens)
-                ).relative_to(ws))
-                self._export_measurement_reports_fn(
-                    ws,
-                    comparison_number=comparison_number,
-                    comparison_log_path=comparison_log_path,
-                    run_summary_role=None,
-                    run_summary_log_path=run_summary_log_path,
-                    run_summary_experiment_id=current_experiment_id,
-                    run_summary_run_id="run-0000",
-                    catalogs=catalogs,
-                    comparison_output_path=comparison_output_path,
-                    results_root=series_paths.results_root,
-                )
-                run_summary_role = effective_workflow.default_run_summary_role
-                measurement_dir = str(measurement_dir_path.relative_to(ws))
+                    comparison_number = compare_result_envelope.comparison_number
+                    tokens = {
+                        "label": label,
+                        "number": measurement_number,
+                        "role": effective_workflow.default_run_summary_role,
+                    }
+                    comparison_log_path = str((
+                        measurement_dir_path /
+                        effective_workflow.comparison_log_pattern.format(**tokens)
+                    ).relative_to(ws))
+                    run_summary_log_path = str((
+                        measurement_dir_path /
+                        effective_workflow.run_summary_log_pattern.format(**tokens)
+                    ).relative_to(ws))
+                    self._export_measurement_reports_fn(
+                        ws,
+                        comparison_number=comparison_number,
+                        comparison_log_path=comparison_log_path,
+                        run_summary_role=None,
+                        run_summary_log_path=run_summary_log_path,
+                        run_summary_experiment_id=current_experiment_id,
+                        run_summary_run_id="run-0000",
+                        catalogs=catalogs,
+                        comparison_output_path=comparison_output_path,
+                        results_root=series_paths.results_root,
+                    )
+                    run_summary_role = effective_workflow.default_run_summary_role
+                    measurement_dir = str(measurement_dir_path.relative_to(ws))
+                except Exception:
+                    if measurement_dir_path.exists() and not any(measurement_dir_path.iterdir()):
+                        shutil.rmtree(measurement_dir_path)
+                    raise
             else:
                 materialized = materialize_role_config(
                     ws,
