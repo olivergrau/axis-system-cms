@@ -8,7 +8,11 @@ import pytest
 
 from axis.framework.comparison.actions import compute_action_usage
 from axis.framework.comparison.alignment import compute_alignment, iter_aligned_steps
-from axis.framework.comparison.compare import compare_episode_traces, compare_runs
+from axis.framework.comparison.compare import (
+    _resolve_comparison_max_workers,
+    compare_episode_traces,
+    compare_runs,
+)
 from axis.framework.comparison.extensions import (
     _EXTENSION_REGISTRY,
     build_system_specific_analysis,
@@ -670,6 +674,48 @@ class TestRunSummary:
 
 
 class TestRunComparisonExecution:
+    def test_resolve_comparison_max_workers_uses_minimum_run_budget(self):
+        ref_config = RunConfig(
+            system_type="system_a",
+            system_config={},
+            framework_config=FrameworkConfig(
+                general=GeneralConfig(seed=1),
+                execution=ExecutionConfig(max_steps=100, max_workers=6),
+                world=BaseWorldConfig(),
+            ),
+            num_episodes=1,
+            base_seed=42,
+        )
+        cand_config = RunConfig(
+            system_type="system_c",
+            system_config={},
+            framework_config=FrameworkConfig(
+                general=GeneralConfig(seed=1),
+                execution=ExecutionConfig(max_steps=100, max_workers=2),
+                world=BaseWorldConfig(),
+            ),
+            num_episodes=1,
+            base_seed=42,
+        )
+
+        resolved = _resolve_comparison_max_workers(
+            50,
+            reference_run_config=ref_config,
+            candidate_run_config=cand_config,
+        )
+
+        assert resolved == 2
+
+    def test_resolve_comparison_max_workers_honors_explicit_override(self):
+        resolved = _resolve_comparison_max_workers(
+            50,
+            reference_run_config=None,
+            candidate_run_config=None,
+            requested_max_workers=3,
+        )
+
+        assert resolved == 3
+
     def test_compare_runs_preserves_episode_order_under_parallel_completion(
         self,
         monkeypatch,

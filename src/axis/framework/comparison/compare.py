@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import pickle
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -84,6 +85,9 @@ def _execute_episode_comparison_job(
     job: _EpisodeComparisonJob,
 ) -> tuple[str, str, PairedTraceComparisonResult]:
     """Load one episode pair from repository storage and compare it."""
+    from axis.plugins import discover_plugins
+
+    discover_plugins()
     repo = ExperimentRepository(context.repo_root)
     episode_index = job.episode_index
     ref_trace = repo.load_episode_trace(
@@ -145,6 +149,59 @@ def _load_optional_run_context(
         reference_run_metadata,
         candidate_run_metadata,
     )
+
+
+def _can_use_process_pool(
+    repo: object,
+    context: _EpisodeComparisonContext | None,
+) -> bool:
+    """Return True when the comparison context is safe to ship to worker processes."""
+    if not isinstance(repo, ExperimentRepository) or context is None:
+        return False
+    try:
+        pickle.dumps(context)
+    except Exception:
+        return False
+    return True
+
+
+def _resolve_comparison_max_workers(
+    n_pairs: int,
+    *,
+    reference_run_config: RunConfig | None,
+    candidate_run_config: RunConfig | None,
+    requested_max_workers: int | None = None,
+) -> int:
+    """Resolve comparison worker budget conservatively.
+
+    Preference order:
+    1. Explicit comparison override, when provided.
+    2. The minimum configured execution.max_workers across the two runs.
+    3. The single available execution.max_workers if only one config is present.
+    4. Host CPU count as final fallback.
+
+    The result is always clamped to ``[1, n_pairs]``.
+    """
+    if n_pairs <= 0:
+        return 1
+
+    if requested_max_workers is not None:
+        return min(n_pairs, max(1, requested_max_workers))
+
+    configured_limits: list[int] = []
+    for run_config in (reference_run_config, candidate_run_config):
+        if run_config is None:
+            continue
+        framework_config = getattr(run_config, "framework_config", None)
+        execution = getattr(framework_config, "execution", None)
+        max_workers = getattr(execution, "max_workers", None)
+        if isinstance(max_workers, int) and max_workers >= 1:
+            configured_limits.append(max_workers)
+
+    if configured_limits:
+        return min(n_pairs, min(configured_limits))
+
+    return min(n_pairs, max(1, os.cpu_count() or 1))
 
 
 def compare_episode_traces(
@@ -229,6 +286,7 @@ def compare_runs(
     extension_catalog: object | None = None,
     progress: object | None = None,
     progress_description: str | None = None,
+    max_workers: int | None = None,
 ) -> RunComparisonResult:
     """Compare all matched episodes across two runs.
 
@@ -254,13 +312,57 @@ def compare_runs(
     results: list[PairedTraceComparisonResult] = []
     ref_system_type = ""
     cand_system_type = ""
+    context = None
+    if isinstance(repo, ExperimentRepository):
+        context = _EpisodeComparisonContext(
+            repo_root=repo.root,
+            reference_experiment_id=reference_experiment_id,
+            reference_run_id=reference_run_id,
+            candidate_experiment_id=candidate_experiment_id,
+            candidate_run_id=candidate_run_id,
+            reference_run_config=ref_config,
+            candidate_run_config=cand_config,
+            reference_run_metadata=ref_meta,
+            candidate_run_metadata=cand_meta,
+            extension_catalog=extension_catalog,
+        )
 
     can_parallelize = n_pairs > 1
-    max_workers = min(n_pairs, max(1, os.cpu_count() or 1))
+    resolved_max_workers = _resolve_comparison_max_workers(
+        n_pairs,
+        reference_run_config=ref_config,
+        candidate_run_config=cand_config,
+        requested_max_workers=max_workers,
+    )
+    can_use_process_pool = (
+        can_parallelize
+        and resolved_max_workers > 1
+        and _can_use_process_pool(repo, context)
+    )
 
-    if can_parallelize and max_workers > 1:
+    if can_use_process_pool:
         indexed_results: list[PairedTraceComparisonResult | None] = [None] * n_pairs
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        with ProcessPoolExecutor(max_workers=resolved_max_workers) as executor:
+            future_to_index = {
+                executor.submit(
+                    _execute_episode_comparison_job,
+                    context,
+                    _EpisodeComparisonJob(episode_index=episode_index),
+                ): episode_index - 1
+                for episode_index in range(1, n_pairs + 1)
+            }
+            for future in as_completed(future_to_index):
+                result_index = future_to_index[future]
+                episode_ref_system_type, episode_cand_system_type, result = future.result()
+                if not ref_system_type:
+                    ref_system_type = episode_ref_system_type
+                    cand_system_type = episode_cand_system_type
+                indexed_results[result_index] = result
+                reporter.advance(task_id)
+        results = [result for result in indexed_results if result is not None]
+    elif can_parallelize and resolved_max_workers > 1:
+        indexed_results: list[PairedTraceComparisonResult | None] = [None] * n_pairs
+        with ThreadPoolExecutor(max_workers=resolved_max_workers) as executor:
             future_to_index = {
                 executor.submit(
                     _load_and_compare_episode_pair,

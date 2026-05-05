@@ -67,6 +67,7 @@ nav:
       - "Visualization": manuals/visualization-manual.md
       - "Paired Trace Comparison": manuals/comparison-manual.md
       - "Experiment Series": manuals/experiment-series-manual.md
+      - "Series Measurement Artifacts": manuals/series-measurement-artifacts-manual.md
       - "System Development": manuals/system-dev-manual.md
       - "System A+W": manuals/system-aw-manual.md
       - "World Development": manuals/world-dev-manual.md

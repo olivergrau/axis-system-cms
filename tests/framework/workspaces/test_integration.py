@@ -680,6 +680,7 @@ class TestCLIIntegration:
         summary_text = (ws / payload["series_summary_markdown_path"]).read_text()
         assert "Progression View" in summary_text
         assert "Reference-System View" in summary_text
+        assert "Paired-Survival View" in summary_text
 
     def test_run_series_text_output_prefixes_progress_with_experiment_context(
         self, tmp_path, capsys,

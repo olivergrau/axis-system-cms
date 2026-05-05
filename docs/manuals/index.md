@@ -13,6 +13,7 @@ Reference documentation for using and extending the AXIS framework.
 | [Paired Trace Comparison](comparison-manual.md) | Comparing two episode traces: CLI, Python API, metrics |
 | [Experiment Workspaces](workspace-manual.md) | Structured workspace containers: scaffold, check, run, compare |
 | [Experiment Series](experiment-series-manual.md) | Declarative multi-experiment execution inside a workspace |
+| [Series Measurement Artifacts](series-measurement-artifacts-manual.md) | How to read run summaries, comparison logs, and aggregate series reports correctly |
 
 ## Developer Guides
 

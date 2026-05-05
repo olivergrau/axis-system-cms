@@ -233,6 +233,17 @@ def _render_markdown(
                 f"mean trajectory distance {comparison['mean_trajectory_distance']['mean']:.3f}; "
                 f"final vitality delta {comparison['final_vitality_delta']['mean']:.3f}"
             )
+        lines.extend(["", "## Paired-Survival View", ""])
+        for entry in entries:
+            comparison = entry.comparison_summary
+            lines.append(
+                "- "
+                f"`{entry.experiment_id}` candidate longer "
+                f"{comparison['candidate_longer_count']} vs reference "
+                f"{comparison['reference_longer_count']}; "
+                f"equal {comparison['equal_count']}; "
+                f"mean total steps delta {comparison['total_steps_delta']['mean']:+.3f}"
+            )
     else:
         lines.extend(["## Baseline Comparison View", ""])
         for entry in entries:
