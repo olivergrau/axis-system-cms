@@ -506,3 +506,4 @@ In short:
 
 - [Experiment Workspaces](workspace-manual.md)
 - [CLI User Guide](cli-manual.md)
+- [Series Measurement Artifacts](series-measurement-artifacts-manual.md)
