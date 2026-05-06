@@ -124,10 +124,11 @@ examples:
                --candidate-experiment <eid2> --candidate-run <rid2> --candidate-episode 0
 
   axis workspaces show <workspace-path>         Inspect workspace state
-  axis workspaces reset <workspace-path>        Clear workspace results and comparisons
+  axis workspaces reset <workspace-path>        Clear generated results, comparisons, measurements, and plots
   axis workspaces run-metrics <workspace-path>  Inspect metrics for one resolved run
   axis workspaces compare <workspace-path>      Run a workspace comparison
   axis workspaces run-series <workspace-path> --series <id>   Run a declarative experiment series
+  axis workspaces render-series-plots <workspace-path> --series <id>   Render series plot artifacts
 
   Use --output json on any command for machine-readable output.
   Use --root <path> to point to a non-default repository location.
@@ -284,7 +285,7 @@ examples:
 
     ws_reset_p = ws_action.add_parser(
         "reset", parents=[common],
-        help="Delete workspace results/comparisons and clear manifest tracking",
+        help="Delete generated results, comparisons, measurements, and plots; then clear manifest tracking",
     )
     ws_reset_p.add_argument(
         "workspace_path", help="Path to workspace directory")
@@ -405,6 +406,18 @@ examples:
         help=(
             "Overwrite notes.md with a regenerated scaffold after the series completes."
         ),
+    )
+
+    ws_render_series_plots_p = ws_action.add_parser(
+        "render-series-plots", parents=[common],
+        help="Render plot artifacts for a completed experiment series",
+    )
+    ws_render_series_plots_p.add_argument(
+        "workspace_path", help="Path to workspace directory")
+    ws_render_series_plots_p.add_argument(
+        "--series",
+        required=True,
+        help="Registered series ID from workspace.yaml to render plots for.",
     )
 
     ws_cmp_cfg_p = ws_action.add_parser(

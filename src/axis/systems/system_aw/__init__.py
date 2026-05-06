@@ -35,3 +35,13 @@ def register() -> None:
             import axis.systems.system_aw.visualization  # noqa: F401
         except ImportError:
             pass
+
+    from axis.framework.workspaces.plot_extensions import (
+        registered_measurement_plot_extensions,
+    )
+
+    if "system_aw" not in registered_measurement_plot_extensions():
+        try:
+            import axis.systems.system_aw.measurement_plots  # noqa: F401
+        except ImportError:
+            pass

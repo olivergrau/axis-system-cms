@@ -60,7 +60,7 @@ class TestCatalog:
 class TestBuildCatalogsFromRegistries:
     """Verify bridge from global registries populates catalogs."""
 
-    def test_builds_all_five(self) -> None:
+    def test_builds_all_six(self) -> None:
         from axis.plugins import discover_plugins
         discover_plugins()
 
@@ -72,6 +72,7 @@ class TestBuildCatalogsFromRegistries:
         assert "world_vis" in catalogs
         assert "system_vis" in catalogs
         assert "comparison_extensions" in catalogs
+        assert "measurement_plot_extensions" in catalogs
 
         # At least one system should be registered after plugin discovery.
         assert len(catalogs["systems"]) > 0

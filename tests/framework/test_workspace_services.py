@@ -685,9 +685,12 @@ class TestWorkflowServiceInjection:
         (ws / "results" / "exp-001").mkdir(parents=True)
         (ws / "comparisons").mkdir(parents=True)
         (ws / "measurements" / "experiment_001").mkdir(parents=True)
+        (ws / "measurements" / "plots" / "series-overview").mkdir(parents=True)
         (ws / "comparisons" / "comparison-001.json").write_text("{}")
         (ws / "results" / "exp-001" / "file.json").write_text("{}")
         (ws / "measurements" / "experiment_001" / "summary.log").write_text("")
+        (ws / "measurements" / "plots" / "series-overview" / "survival-rates.png").write_text("")
+        (ws / "measurements" / "plots" / "plots-manifest.json").write_text("{}")
         (ws / "workspace.yaml").write_text(yaml.dump({
             "workspace_id": "ws",
             "title": "Workspace",
@@ -721,7 +724,7 @@ class TestWorkflowServiceInjection:
 
         assert result.cleared_results == 1
         assert result.cleared_comparisons == 1
-        assert result.cleared_measurements == 1
+        assert result.cleared_measurements == 2
         assert list((ws / "results").iterdir()) == []
         assert list((ws / "comparisons").iterdir()) == []
         assert list((ws / "measurements").iterdir()) == []
@@ -740,11 +743,15 @@ class TestWorkflowServiceInjection:
         (ws / "comparisons" / "nested" / "comparison-001.json").write_text("{}")
         (ws / "measurements" / "experiment_001").mkdir(parents=True)
         (ws / "measurements" / "experiment_001" / "summary.log").write_text("")
+        (ws / "measurements" / "plots" / "series-overview").mkdir(parents=True)
+        (ws / "measurements" / "plots" / "series-overview" / "survival-rates.png").write_text("{}")
         (ws / "series" / "alpha" / "results" / "exp-101").mkdir(parents=True)
         (ws / "series" / "alpha" / "results" / "exp-101" / "artifact.json").write_text("{}")
         (ws / "series" / "alpha" / "comparisons").mkdir(parents=True)
         (ws / "series" / "alpha" / "measurements" / "experiment_101").mkdir(parents=True)
         (ws / "series" / "alpha" / "measurements" / "experiment_101" / "notes.log").write_text("")
+        (ws / "series" / "alpha" / "measurements" / "plots" / "system-specific" / "system_aw").mkdir(parents=True)
+        (ws / "series" / "alpha" / "measurements" / "plots" / "system-specific" / "system_aw" / "aw-curiosity-profile.png").write_text("{}")
         (ws / "series" / "alpha" / "experiment.yaml").write_text(yaml.dump({
             "base_config": "configs/base.yaml",
             "experiments": [],
@@ -785,14 +792,14 @@ class TestWorkflowServiceInjection:
 
         assert plan.workspace_global_counts["results"] == 1
         assert plan.workspace_global_counts["comparisons"] == 1
-        assert plan.workspace_global_counts["measurements"] == 1
+        assert plan.workspace_global_counts["measurements"] == 2
         assert plan.series_counts_by_id["alpha"]["series/alpha/results"] == 1
         assert plan.series_counts_by_id["alpha"]["series/alpha/comparisons"] == 0
-        assert plan.series_counts_by_id["alpha"]["series/alpha/measurements"] == 1
+        assert plan.series_counts_by_id["alpha"]["series/alpha/measurements"] == 2
         assert plan.total_paths == 6
-        assert plan.total_entries == 5
-        assert plan.total_files == 5
-        assert plan.total_directories == 5
+        assert plan.total_entries == 7
+        assert plan.total_files == 7
+        assert plan.total_directories == 10
 
     def test_reset_removes_series_generated_tracking_blocks(self, tmp_path: Path) -> None:
         import yaml

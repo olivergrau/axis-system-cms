@@ -9,6 +9,7 @@ This manual explains how to read:
 - per-experiment measurement logs
 - per-experiment comparison outputs
 - aggregate series reports under `series/<series-id>/measurements/`
+- generated plot artifacts under the series measurement tree
 
 It also explains the most common source of confusion:
 
@@ -38,14 +39,64 @@ For a series such as `system-parameter-variations`, the important outputs are:
 - `series/<series-id>/measurements/series-summary.json`
 - `series/<series-id>/measurements/series-metrics.csv`
 - `series/<series-id>/measurements/series-manifest.json`
+- `series/<series-id>/measurements/plots/`
 
 Per experiment, AXIS also writes:
 
 - `series/<series-id>/measurements/experiment_N/...-candidate-run-summary.log`
 - `series/<series-id>/measurements/experiment_N/...-comparison.log`
+- `series/<series-id>/measurements/experiment_N/plots/experiment-comparison/`
 - `series/<series-id>/comparisons/comparison-XYZ.json`
 
 These files are related, but they are not duplicates.
+
+## 2.1 Rendering Plot Artifacts
+
+Series plots are rendered from the existing structured series artifacts.
+
+Use:
+
+```bash
+axis workspaces render-series-plots <workspace-path> --series <series-id>
+```
+
+Example:
+
+```bash
+axis workspaces render-series-plots workspaces/system_cw_vs_aw --series system-parameter-variations
+```
+
+This command:
+
+1. reads the existing aggregate series artifacts
+2. reads the per-experiment comparison outputs
+3. generates generic plots
+4. generates any available system-specific plots
+5. writes image files into the series measurement tree
+6. writes a plot manifest and a human-readable plot report
+
+The command does **not** re-run experiments.
+
+You can also call it from inside a workspace directory:
+
+```bash
+cd workspaces/system_cw_vs_aw
+axis workspaces render-series-plots . --series system-parameter-variations
+```
+
+It is intended for:
+
+- post-hoc rendering after a completed series
+- regenerating plots after renderer improvements
+- rendering system-specific plots added after a series already exists
+
+Important:
+
+- this command is a **render step**, not a measurement step
+- it expects the underlying series artifacts to already exist
+- it is safe to run again after documentation, plotting, or renderer changes
+- re-running it replaces previously generated plot artifacts for that series
+- it is best-effort: one failing plot should not invalidate the whole series
 
 ## 3. What Each Artifact Means
 
@@ -162,12 +213,134 @@ Use it when you want to:
 It is convenient, but it drops some structure. For careful interpretation,
 prefer the JSON.
 
-## 4. How To Read `series-summary.md`
+### 3.7 Plot directories and plot manifest
+
+Rendered plots live in two places:
+
+- series-level:
+  - `series/<series-id>/measurements/plots/series-overview/`
+  - `series/<series-id>/measurements/plots/system-specific/<system-type>/`
+- per-experiment:
+  - `series/<series-id>/measurements/experiment_N/plots/experiment-comparison/`
+
+The renderer also writes:
+
+- `series/<series-id>/measurements/plots/plots-manifest.json`
+- `series/<series-id>/measurements/plots/plots-report.md`
+
+This manifest records:
+
+- which plots were generated
+- where they were written
+- and whether any plot-generation failures occurred
+
+Use it when:
+
+- you want a machine-readable inventory of generated visual artifacts
+- you want to link plots from notebooks or later docs
+- you want to quickly inspect whether a render pass completed cleanly
+
+The manifest is especially useful because it separates:
+
+- successful plot generation
+- skipped plots
+- and failed plot generation
+
+So when a plot is missing from a measurement folder, `plots-manifest.json` is
+the first place to check.
+
+The generated Markdown report is the most convenient human-facing entrypoint.
+It groups plots by:
+
+- series overview
+- system-specific plots
+- per-experiment comparison plots
+
+and embeds the images with direct hyperlinks to the underlying files.
+
+## 4. Example Plot Families
+
+The renderer currently generates two broad families of plots:
+
+### 4.1 Series-level overview plots
+
+Typical examples include:
+
+- survival-rate comparisons
+- paired-survival count summaries
+- trajectory-divergence vs survival plots
+- efficiency vs survival plots
+- multi-metric progression plots over experiment order
+
+These plots are useful for:
+
+- quickly spotting promising experiments
+- seeing trade-offs between divergence and outcome
+- checking whether a result is broad or driven by a few outliers
+- seeing whether a series has a coherent progression pattern
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/plots/series-overview/survival-rates.png]`
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/plots/series-overview/paired-survival-counts.png]`
+
+### 4.2 Per-experiment comparison plots
+
+Typical examples include:
+
+- histogram of total-steps deltas
+- histogram of final-vitality deltas
+- episode-outcome strips
+- mismatch-vs-outcome scatter plots
+- trajectory-distance distributions
+
+These plots are useful for:
+
+- seeing whether a candidate advantage is broad or narrow
+- detecting tail-driven outcomes
+- understanding whether pairwise differences are noisy, balanced, or systematic
+- checking whether a textual summary is hiding important distribution shape
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/experiment_N/plots/experiment-comparison/paired-steps-delta-hist.png]`
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/experiment_N/plots/experiment-comparison/mismatch-vs-outcome.png]`
+
+### 4.3 System-specific plots
+
+Some systems also contribute extra plots through plot extensions.
+
+These are meant to visualize mechanism-specific structure that generic plots do
+not capture well, for example:
+
+- arbitration balance
+- curiosity and world-model profiles
+- prediction impact vs survival
+- modulation strength vs performance
+- prediction error profiles
+
+These plots are especially helpful when you want to separate:
+
+- mechanism activation
+- behavioral impact
+- and outcome benefit
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/plots/system-specific/<system-type>/...]`
+
+## 5. How To Read `series-summary.md`
 
 The markdown report contains several sections. Each section answers a different
 question.
 
-### 4.1 `At A Glance`
+### 5.1 `At A Glance`
 
 This table is the fastest scan across the whole series.
 
@@ -195,7 +368,7 @@ Important:
 
 That mixed table is useful, but it is one reason people get confused.
 
-### 4.2 `Progression View`
+### 5.2 `Progression View`
 
 This section compares each experiment to the immediately previous one.
 
@@ -205,7 +378,7 @@ It answers:
 
 This is useful when the series was intentionally designed as a parameter walk.
 
-### 4.3 `Baseline View`
+### 5.3 `Baseline View`
 
 This section compares every experiment back to the first one.
 
@@ -216,7 +389,7 @@ It answers:
 This is usually the better view for scientific interpretation than
 `Progression View`, because it avoids chaining local changes.
 
-### 4.4 `Reference-System View`
+### 5.4 `Reference-System View`
 
 This section is specific to `system_comparison` series.
 
@@ -242,7 +415,7 @@ means:
 This section is about **horizon success** and broad pairwise divergence, not
 about who outlived whom inside failing pairs.
 
-### 4.5 `Paired-Survival View`
+### 5.5 `Paired-Survival View`
 
 This section is also specific to `system_comparison` series.
 
@@ -274,7 +447,33 @@ This section is the right place to answer:
 This section should be read together with `Reference-System View`, not as a
 replacement for it.
 
-## 5. The Most Important Distinction
+## 6. How Plots Fit Into Interpretation
+
+Plots are a complement to the structured summaries, not a replacement.
+
+Recommended use:
+
+- use `series-summary.md` to identify the experiments worth deeper inspection
+- use `plots-report.md` as the primary visual reading surface
+- use the generated plots to see shape, spread, and pair structure quickly
+- use `series-summary.json` and `comparison-XXX.json` when exact values matter
+
+A good habit is:
+
+1. read the summary text
+2. open `plots-report.md`
+3. inspect the relevant plot family
+4. validate any surprising visual pattern against the JSON artifact
+
+In practice, this usually means:
+
+1. start with `series-summary.md`
+2. open `plots-report.md`
+3. inspect one or two series-level overview plots
+4. open the per-experiment plots for the most interesting experiment
+5. if needed, inspect the machine-readable summary or comparison JSON
+
+## 7. The Most Important Distinction
 
 ### Survival rate is not longer-survivor count
 
@@ -324,7 +523,7 @@ This is not an inconsistency. It means:
 So `equal` does not mean “both succeeded.” It only means “neither outlived the
 other.”
 
-## 6. Recommended Reading Order
+## 8. Recommended Reading Order
 
 When inspecting one experiment inside a series, use this order:
 
@@ -337,17 +536,23 @@ When inspecting one experiment inside a series, use this order:
 3. Open the corresponding comparison JSON if something feels surprising.
    Ask: is the summary hiding pairwise structure?
 
-4. Return to `series-summary.md`.
+4. Open the relevant generated plots.
+   Ask:
+   - do the distributions support the textual summary?
+   - is the result broad, narrow, or tail-driven?
+   - are candidate and reference mostly tied or structurally different?
+
+5. Return to `series-summary.md`.
    Ask: how should this experiment be positioned relative to the others?
    Use:
    - `Reference-System View` for survival-rate comparison
    - `Paired-Survival View` for longer-survivor comparison
 
-5. If needed, inspect `series-summary.json`.
+6. If needed, inspect `series-summary.json`.
    Ask: are the series-level summary values consistent with the underlying
    measurement artifacts?
 
-## 7. Which File Should I Use For Which Question?
+## 9. Which File Should I Use For Which Question?
 
 | Question | Best artifact |
 | --- | --- |
@@ -355,10 +560,13 @@ When inspecting one experiment inside a series, use this order:
 | Did the candidate differ from the reference? | comparison log |
 | Which episodes drove the difference? | comparison log or comparison JSON |
 | Which experiments look best across the series? | `series-summary.md` |
+| What is the easiest human-readable entrypoint into all generated plots? | `measurements/plots/plots-report.md` |
+| What does the result distribution or pair structure look like? | generated plots under `measurements/plots/` and `experiment_N/plots/` |
+| Did plot rendering succeed and which files were produced? | `measurements/plots/plots-manifest.json` |
 | Are the series report values exact? | `series-summary.json` |
 | Do I want to plot or sort metrics quickly? | `series-metrics.csv` |
 
-## 8. Common Misreadings
+## 10. Common Misreadings
 
 ### “The series summary says candidate survival is worse, but the comparison log says candidate lived longer.”
 
@@ -393,7 +601,26 @@ on:
 
 That is why the comparison artifacts exist.
 
-## 9. Interpreting Series Results Scientifically
+### “The plot looks convincing, so I do not need to check the JSON.”
+
+Also not necessarily.
+
+Plots help you see:
+
+- shape
+- spread
+- clustering
+- outliers
+
+But the structured artifacts still define:
+
+- exact values
+- comparison semantics
+- which aggregation level a quantity came from
+
+Use plots to guide attention, not to replace the source artifacts.
+
+## 11. Interpreting Series Results Scientifically
 
 A good series interpretation usually separates three claims:
 
@@ -418,9 +645,13 @@ For example, a prediction system may show:
 That means the mechanism is active and behaviorally consequential, but not yet
 beneficial under the tested world conditions.
 
-## 10. Practical Advice
+## 12. Practical Advice
 
 - Use `series-summary.md` for orientation.
+- Run `axis workspaces render-series-plots <workspace> --series <series-id>` after a completed series when you want fresh visual artifacts.
+- Open `measurements/plots/plots-report.md` first when you want to browse plots comfortably.
+- Use generated plots for fast pattern recognition.
+- Check `measurements/plots/plots-manifest.json` first if expected plots are missing.
 - Use per-experiment logs for explanation.
 - Use `series-summary.json` when something looks inconsistent.
 - Be explicit about whether you mean:

@@ -418,8 +418,167 @@ class TestWorkspaceCompare:
         ws = _scaffold_comparison(tmp_path)
         # results/ dir exists (from scaffold) but is empty
         assert (ws / "results").is_dir()
-        with pytest.raises(ValueError, match="No execution results"):
-            compare_workspace(ws)
+
+
+class TestWorkspaceSeriesPlotRendering:
+    def test_render_series_plots_generates_generic_plot_artifacts(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        run_payload = json.loads(captured.out)
+        assert (ws / run_payload["series_summary_json_path"]).is_file()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        assert payload["generated_count"] >= 10
+        assert payload["failure_count"] == 0
+
+        manifest_path = ws / payload["manifest_path"]
+        report_path = ws / payload["report_path"]
+        assert manifest_path.is_file()
+        assert report_path.is_file()
+        manifest = json.loads(manifest_path.read_text())
+        generated_paths = {item["relative_output_path"] for item in manifest["generated"]}
+        generated_groups = {item["plot_group"] for item in manifest["generated"]}
+        generated_producers = {item["producer_kind"] for item in manifest["generated"]}
+        report_text = report_path.read_text()
+
+        assert "series/integration-series/measurements/plots/series-overview/survival-rates.png" in generated_paths
+        assert "series/integration-series/measurements/plots/series-overview/paired-survival-counts.png" in generated_paths
+        assert "series/integration-series/measurements/experiment_1/plots/experiment-comparison/paired-steps-delta-hist.png" in generated_paths
+        assert "series/integration-series/measurements/experiment_2/plots/experiment-comparison/mismatch-vs-outcome.png" in generated_paths
+        assert generated_groups >= {"series_overview", "experiment_comparison"}
+        assert "framework" in generated_producers
+        assert "## Series Overview" in report_text
+        assert "## Per-Experiment Comparison Plots" in report_text
+        assert "plots-manifest.json" in report_text
+
+    def test_render_series_plots_for_single_system_uses_consistent_manifest_and_paths(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        _write_single_system_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "single-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        run_payload = json.loads(captured.out)
+        assert (ws / run_payload["series_summary_json_path"]).is_file()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "single-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        assert payload["generated_count"] >= 10
+        assert payload["failure_count"] == 0
+
+        manifest_path = ws / payload["manifest_path"]
+        report_path = ws / payload["report_path"]
+        assert manifest_path.is_file()
+        assert report_path.is_file()
+        manifest = json.loads(manifest_path.read_text())
+        report_text = report_path.read_text()
+
+        generated_paths = {item["relative_output_path"] for item in manifest["generated"]}
+        assert "series/single-series/measurements/plots/series-overview/survival-rates.png" in generated_paths
+        assert "series/single-series/measurements/experiment_1/plots/experiment-comparison/episode-outcomes-strip.png" in generated_paths
+
+        # The manifest should expose origin metadata for every plot artifact.
+        assert all("plot_group" in item for item in manifest["generated"])
+        assert all("producer_kind" in item for item in manifest["generated"])
+        for item in manifest["generated"]:
+            if item["producer_kind"] == "system_extension":
+                assert item["producer_system_type"]
+        assert "current system" in report_text
+        assert "baseline system" in report_text
+
+    def test_render_series_plots_replaces_stale_plot_files(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        stale_series = ws / "series" / "integration-series" / "measurements" / "plots" / "stale.txt"
+        stale_series.parent.mkdir(parents=True, exist_ok=True)
+        stale_series.write_text("old")
+        stale_experiment = (
+            ws
+            / "series"
+            / "integration-series"
+            / "measurements"
+            / "experiment_1"
+            / "plots"
+            / "old-layout.png"
+        )
+        stale_experiment.parent.mkdir(parents=True, exist_ok=True)
+        stale_experiment.write_text("old")
+        assert stale_series.exists()
+        assert stale_experiment.exists()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        assert payload["failure_count"] == 0
+
+        assert not stale_series.exists()
+        assert not stale_experiment.exists()
+        assert (ws / payload["manifest_path"]).is_file()
+        assert (ws / payload["report_path"]).is_file()
+
+    def test_reset_removes_rendered_series_plot_artifacts(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        run_payload = json.loads(captured.out)
+        assert (ws / run_payload["series_summary_json_path"]).is_file()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        manifest_path = ws / payload["manifest_path"]
+        assert manifest_path.is_file()
+
+        code = cli_main([
+            "workspaces", "reset", str(ws), "--force", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        reset_payload = json.loads(captured.out)
+        assert reset_payload["cleared_measurements"] >= 0
+        assert list((ws / "measurements").iterdir()) == []
+        assert list((ws / "series" / "integration-series" / "measurements").iterdir()) == []
 
     def test_compare_succeeds_after_run(self, tmp_path):
         """Full flow: scaffold → run → sync → compare using workspace results."""

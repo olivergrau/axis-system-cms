@@ -649,6 +649,42 @@ def cmd_workspaces_run_series(
         out.kv("Notes updated", "yes" if result.notes_updated else "no")
 
 
+def cmd_workspaces_render_series_plots(
+    workspace_path: str,
+    output: str,
+    *,
+    series_id: str,
+    series_plot_service: object = None,
+    catalogs: dict | None = None,
+) -> None:
+    """Render plot artifacts for a completed workspace series."""
+    ws = Path(workspace_path)
+    result = series_plot_service.render(
+        ws,
+        series_id=series_id,
+        extension_catalog=(
+            catalogs.get("measurement_plot_extensions") if catalogs else None
+        ),
+    )
+
+    if output == "json":
+        print(json.dumps({
+            "series_id": result.series_id,
+            "generated_count": result.generated_count,
+            "failure_count": result.failure_count,
+            "manifest_path": result.manifest_path,
+            "report_path": result.report_path,
+        }, indent=2))
+    else:
+        out = stdout_output()
+        out.success("series plot rendering completed")
+        out.kv("Series", result.series_id)
+        out.kv("Generated plots", result.generated_count)
+        out.kv("Failures", result.failure_count)
+        out.kv("Manifest", ws / result.manifest_path)
+        out.kv("Report", ws / result.report_path)
+
+
 def cmd_workspaces_compare_configs(
     workspace_path: str,
     output: str,

@@ -24,6 +24,7 @@ class TestPluginCatalogBridge:
 
         ctx = build_context(tmp_path)
         assert "systems" in ctx.catalogs
+        assert "measurement_plot_extensions" in ctx.catalogs
         assert len(ctx.catalogs["systems"]) > 0
 
     def test_catalog_matches_global_registry(self) -> None:

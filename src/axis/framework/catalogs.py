@@ -75,6 +75,7 @@ WorldVisCatalog = Catalog[Any]      # WorldVisFactory values
 SystemVisCatalog = Catalog[Any]     # SystemVisFactory values
 ComparisonExtensionCatalog = Catalog[Any]  # ComparisonExtensionProtocol
 MetricExtensionCatalog = Catalog[Any]      # MetricExtensionProtocol
+MeasurementPlotExtensionCatalog = Catalog[Any]  # MeasurementPlotExtensionProtocol
 
 
 def build_catalogs_from_registries() -> dict[str, Catalog]:
@@ -91,6 +92,9 @@ def build_catalogs_from_registries() -> dict[str, Catalog]:
     )
     from axis.framework.comparison.extensions import _EXTENSION_REGISTRY
     from axis.framework.metrics.extensions import _METRIC_EXTENSION_REGISTRY
+    from axis.framework.workspaces.plot_extensions import (
+        _MEASUREMENT_PLOT_EXTENSION_REGISTRY,
+    )
 
     systems = SystemCatalog("systems")
     for k, v in _SYSTEM_REGISTRY.items():
@@ -116,6 +120,12 @@ def build_catalogs_from_registries() -> dict[str, Catalog]:
     for k, v in _METRIC_EXTENSION_REGISTRY.items():
         metric_extensions.register(k, v)
 
+    measurement_plot_extensions = MeasurementPlotExtensionCatalog(
+        "measurement_plot_extensions"
+    )
+    for k, v in _MEASUREMENT_PLOT_EXTENSION_REGISTRY.items():
+        measurement_plot_extensions.register(k, v)
+
     return {
         "systems": systems,
         "worlds": worlds,
@@ -123,4 +133,5 @@ def build_catalogs_from_registries() -> dict[str, Catalog]:
         "system_vis": system_vis,
         "comparison_extensions": extensions,
         "metric_extensions": metric_extensions,
+        "measurement_plot_extensions": measurement_plot_extensions,
     }
