@@ -36,6 +36,20 @@ Workspace commands are documented in detail in the
 workspace-local layer for managing `results/`, `comparisons/`, and
 `measurements/` around the normal experiment engine.
 
+Two especially important workflow distinctions:
+
+- `axis workspaces measure` runs one automated comparison checkpoint and writes
+  text logs under the workspace-local `measurements/` tree.
+- `axis workspaces run-metrics` inspects one already persisted run and computes
+  or loads `behavior_metrics.json` for that run on demand. It is a post-hoc
+  inspection step, not a series-execution step.
+
+For declarative multi-experiment campaigns, use:
+
+- `axis workspaces run-series` to execute the series
+- `axis workspaces render-series-plots` to render plots later from the stored
+  series artifacts without rerunning experiments
+
 ### Global flags
 
 | Flag       | Default                 | Description                     |

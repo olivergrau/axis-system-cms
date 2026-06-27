@@ -326,17 +326,17 @@ def cmd_workspaces_show(
                     f" ({series.path})"
                 )
                 _print_artifact_section(
-                    "Series results",
+                    f"Series results [{series.id}]",
                     series.results,
                     out=out,
                 )
                 _print_artifact_section(
-                    "Series comparisons",
+                    f"Series comparisons [{series.id}]",
                     series.comparisons,
                     out=out,
                 )
                 _print_artifact_section(
-                    "Series measurements",
+                    f"Series measurements [{series.id}]",
                     series.measurement_runs,
                     out=out,
                 )
@@ -672,6 +672,14 @@ def cmd_workspaces_render_series_plots(
             "series_id": result.series_id,
             "generated_count": result.generated_count,
             "failure_count": result.failure_count,
+            "failures": [
+                {
+                    "plot_id": failure.plot_id,
+                    "message": failure.message,
+                    "system_type": failure.system_type,
+                }
+                for failure in result.failures
+            ],
             "manifest_path": result.manifest_path,
             "report_path": result.report_path,
         }, indent=2))
@@ -683,6 +691,13 @@ def cmd_workspaces_render_series_plots(
         out.kv("Failures", result.failure_count)
         out.kv("Manifest", ws / result.manifest_path)
         out.kv("Report", ws / result.report_path)
+        if result.failures:
+            out.section("Failure Details")
+            for failure in result.failures:
+                label = failure.plot_id
+                if failure.system_type:
+                    label = f"{label} [{failure.system_type}]"
+                out.list_row(label, failure.message)
 
 
 def cmd_workspaces_compare_configs(

@@ -58,6 +58,7 @@ nav:
       - "Workspace: Comparing Two Systems": tutorials/workspace-system-comparison.md
       - "Workspace: Developing a System": tutorials/workspace-system-development.md
       - "Workspace: OFAT Parameter Sweeps": tutorials/workspace-ofat-sweep.md
+      - "Workspace: Series Workflow": tutorials/workspace-series-workflow.md
 
   - Manuals:
       - manuals/index.md
@@ -68,6 +69,7 @@ nav:
       - "Paired Trace Comparison": manuals/comparison-manual.md
       - "Experiment Series": manuals/experiment-series-manual.md
       - "Series Measurement Artifacts": manuals/series-measurement-artifacts-manual.md
+      - "Series Measurement Plot Interpretation": manuals/series-measurement-plot-interpretation-manual.md
       - "System Development": manuals/system-dev-manual.md
       - "System A+W": manuals/system-aw-manual.md
       - "World Development": manuals/world-dev-manual.md

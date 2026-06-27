@@ -32,9 +32,13 @@ Implementation should proceed in four staged work packages:
 Optional later:
 
 5. **WP-05: `run-series` end-of-workflow integration**
+6. **WP-06: Lifespan-vs-horizon plot family**
 
 The order matters. Generic plotting and standalone rendering should exist before
 system-specific extensions are added, and workflow integration should come last.
+The lifespan-vs-horizon block should follow once the generic renderer is
+stable, because it reuses the same comparison artifacts but sharpens the
+interpretation of survival.
 
 ---
 
@@ -347,6 +351,138 @@ Behavior:
 
 ---
 
+## WP-06: Lifespan-vs-Horizon Plot Family
+
+### Objective
+
+Add a dedicated generic plot family that makes **horizon-reaching survival**
+and **sub-horizon lifespan robustness** visible as separate analytical signals.
+
+### Motivation
+
+Current plots already show:
+
+- survival rate
+- paired longer/equal counts
+- per-experiment step deltas
+
+But they do not yet provide a strong, explicit view of cases where:
+
+- neither system reaches the horizon
+- yet one system consistently lives longer
+
+For many AXIS questions, especially around prediction, arbitration, and local
+robustness, this is an important outcome class rather than a footnote.
+
+### Scope
+
+Add the following generic plots:
+
+#### Series-level
+
+- `horizon-vs-lifespan-delta.png`
+- `sub-horizon-advantage.png`
+
+#### Per-experiment or experiment-indexed overview
+
+- `paired-outcome-categories.png`
+- `steps-lived-distribution.png`
+
+### Planned modules
+
+Primarily:
+
+- `src/axis/framework/workspaces/series_plot_rendering.py`
+
+Possibly small helper additions in:
+
+- `src/axis/framework/workspaces/plotting.py`
+
+### Required data
+
+These plots should be derived from existing structured comparison artifacts,
+especially:
+
+- paired per-episode `reference_total_steps`
+- paired per-episode `candidate_total_steps`
+- comparison-summary survival rates
+- configured horizon from the paired run config
+
+No log parsing should be introduced.
+
+### Plot semantics
+
+#### `paired-outcome-categories.png`
+
+Show, per experiment:
+
+- both reached horizon
+- candidate/current reached, reference/baseline not
+- reference/baseline reached, candidate/current not
+- both died, candidate/current longer
+- both died, reference/baseline longer
+- both died equal
+
+This plot should make it immediately obvious whether a system is winning by
+crossing the horizon or merely by lasting longer below it.
+
+#### `steps-lived-distribution.png`
+
+Show actual steps-lived distributions for the two paired sides, so that
+late-failing but non-surviving behavior remains visible.
+
+Preferred forms:
+
+- box plot
+- violin plot
+
+#### `horizon-vs-lifespan-delta.png`
+
+Show:
+
+- x = survival-rate delta
+- y = mean total-steps-lived delta
+
+This should make it easy to spot experiments that:
+
+- do not improve horizon success
+- but still improve lifespan robustness
+
+#### `sub-horizon-advantage.png`
+
+Restrict to episode pairs where both sides die before the horizon and show:
+
+- candidate/current longer
+- reference/baseline longer
+- equal
+- optionally mean or median sub-horizon total-steps delta
+
+### Acceptance criteria
+
+- The plots clearly distinguish survival success from lifespan robustness
+- The plots work for both:
+  - `system_comparison`
+  - `single_system`
+- The plots use only structured AXIS comparison artifacts
+- The plots are understandable without reading comparison logs first
+
+### Risks
+
+- category definitions becoming opaque if not labeled carefully
+- cluttered visuals for experiments with many outcome classes
+- confusion between absolute steps lived and step delta if both are shown
+
+### Tests
+
+- synthetic rendering tests for each category combination
+- integration tests for:
+  - `system_comparison`
+  - `single_system`
+- at least one test ensuring a “both died, candidate longer” case is rendered
+  distinctly from a horizon-reaching win
+
+---
+
 ## Cross-Cutting Requirements
 
 These apply to all work packages.
@@ -401,7 +537,8 @@ If we implement this now, the recommended order is:
 3. WP-03
 4. WP-04 (`system_cw` first)
 5. WP-04 (`system_aw`, `system_c`)
-6. WP-05
+6. WP-06
+7. WP-05
 
 This gives us:
 
@@ -432,11 +569,13 @@ Result:
 ### Milestone C
 
 - remaining `system_aw` / `system_c` plots
+- WP-06
 - optional WP-05
 
 Result:
 
-- complete first-generation plot pipeline for current systems
+- complete first-generation plot pipeline for current systems, including
+  lifespan-aware comparison visuals
 
 ---
 

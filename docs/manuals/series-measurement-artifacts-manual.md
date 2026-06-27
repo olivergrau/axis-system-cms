@@ -15,6 +15,10 @@ It also explains the most common source of confusion:
 
 - **survival rate** is not the same as **longer survivor count**
 
+For a dedicated guide to reading the generated plots themselves, see:
+
+- [Series Measurement Plot Interpretation](series-measurement-plot-interpretation-manual.md)
+
 ## 1. Mental Model
 
 A workspace series produces three nested levels of evidence:
@@ -255,6 +259,7 @@ It groups plots by:
 - series overview
 - system-specific plots
 - per-experiment comparison plots
+- per-experiment system-specific plots
 
 and embeds the images with direct hyperlinks to the underlying files.
 
@@ -268,14 +273,18 @@ Typical examples include:
 
 - survival-rate comparisons
 - paired-survival count summaries
+- paired outcome-category summaries
 - trajectory-divergence vs survival plots
 - efficiency vs survival plots
+- horizon-vs-lifespan delta plots
+- sub-horizon advantage plots
 - multi-metric progression plots over experiment order
 
 These plots are useful for:
 
 - quickly spotting promising experiments
 - seeing trade-offs between divergence and outcome
+- separating horizon-reaching success from sub-horizon robustness
 - checking whether a result is broad or driven by a few outliers
 - seeing whether a series has a coherent progression pattern
 
@@ -287,6 +296,14 @@ Placeholder:
 
 `[Placeholder: insert example image for measurements/plots/series-overview/paired-survival-counts.png]`
 
+Placeholder:
+
+`[Placeholder: insert example image for measurements/plots/series-overview/paired-outcome-categories.png]`
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/plots/series-overview/horizon-vs-lifespan-delta.png]`
+
 ### 4.2 Per-experiment comparison plots
 
 Typical examples include:
@@ -296,12 +313,14 @@ Typical examples include:
 - episode-outcome strips
 - mismatch-vs-outcome scatter plots
 - trajectory-distance distributions
+- steps-lived distributions
 
 These plots are useful for:
 
 - seeing whether a candidate advantage is broad or narrow
 - detecting tail-driven outcomes
 - understanding whether pairwise differences are noisy, balanced, or systematic
+- seeing when neither side reaches the horizon but one side still lasts longer
 - checking whether a textual summary is hiding important distribution shape
 
 Placeholder:
@@ -311,6 +330,10 @@ Placeholder:
 Placeholder:
 
 `[Placeholder: insert example image for measurements/experiment_N/plots/experiment-comparison/mismatch-vs-outcome.png]`
+
+Placeholder:
+
+`[Placeholder: insert example image for measurements/experiment_N/plots/experiment-comparison/steps-lived-distribution.png]`
 
 ### 4.3 System-specific plots
 

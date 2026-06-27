@@ -55,6 +55,15 @@ class TestCheckWorkspace:
         assert not result.is_valid
         assert any("comparisons" in i.message for i in result.issues)
 
+    def test_missing_exports_dir_is_allowed(self, tmp_workspace):
+        import shutil
+        shutil.rmtree(tmp_workspace / "exports")
+        result = check_workspace(tmp_workspace)
+        assert result.is_valid, [
+            i.message for i in result.issues
+            if i.severity == WorkspaceCheckSeverity.ERROR
+        ]
+
     def test_missing_required_file(self, tmp_workspace):
         (tmp_workspace / "notes.md").unlink()
         result = check_workspace(tmp_workspace)

@@ -40,7 +40,7 @@ class WorkspaceCheckResult(BaseModel, frozen=True):
 
 # Required top-level items (files and directories) per spec Section 12.
 _REQUIRED_FILES = ("README.md", "notes.md")
-_REQUIRED_DIRS = ("configs", "results", "comparisons", "exports")
+_REQUIRED_DIRS = ("configs", "results", "comparisons")
 
 
 def check_workspace(workspace_path: Path) -> WorkspaceCheckResult:

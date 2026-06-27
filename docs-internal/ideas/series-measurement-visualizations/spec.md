@@ -23,6 +23,12 @@ remain hard to see quickly, especially when trying to answer questions like:
 This idea introduces a **standard visualization layer for measurement artifacts**
 so that series execution can also emit a set of reusable, interpretable plots.
 
+An especially important extension is to make **lifespan robustness** visible
+separately from plain **horizon survival**. In AXIS, two systems may both fail
+to reach the configured horizon while still differing substantially in how long
+they remain viable. That paired lifespan information is analytically important
+and should not be collapsed away into a binary survival rate alone.
+
 ## High-Level Goal
 
 Extend the measurement/reporting workflow so that AXIS can automatically produce
@@ -185,6 +191,117 @@ Primary use:
 
 - visually inspect local progression across the series
 
+## Lifespan-vs-Horizon Extension
+
+The current generic plots already expose some pieces of the relevant signal:
+
+- `survival-rates.png`
+- `paired-survival-counts.png`
+- `paired-steps-delta-hist.png`
+- `episode-outcomes-strip.png`
+
+But they do not yet provide a strong, dedicated visualization family for the
+distinction between:
+
+- **survival success**
+  Did the episode reach the configured horizon?
+- **lifespan robustness**
+  How long did the system remain alive, including in cases where neither side
+  reached the horizon?
+
+This distinction is especially important for series such as:
+
+- `system_aw` vs `system_cw`
+- any `single_system` baseline/current series
+
+where a candidate may fail to improve horizon-reaching survival while still
+showing meaningful sub-horizon robustness gains.
+
+### Additional proposed generic plots
+
+#### 6. `paired-outcome-categories.png`
+
+Stacked bar chart per experiment with categories:
+
+- `both reached horizon`
+- `candidate/current reached, reference/baseline not`
+- `reference/baseline reached, candidate/current not`
+- `both died, candidate/current longer`
+- `both died, reference/baseline longer`
+- `both died equal`
+
+Primary use:
+
+- distinguish absolute horizon wins from sub-horizon lifespan advantages
+
+#### 7. `steps-lived-distribution.png`
+
+Per-experiment distribution plot for actual total steps lived:
+
+- one distribution for candidate/current
+- one distribution for reference/baseline
+
+Preferred forms:
+
+- box plot
+- violin plot
+
+Primary use:
+
+- show whether one side tends to fail later even when horizon success does not
+  improve
+
+#### 8. `horizon-vs-lifespan-delta.png`
+
+Series-level scatter plot:
+
+- x = survival rate delta
+- y = mean total steps lived delta
+
+Primary use:
+
+- separate experiments into:
+  - more horizon + longer lived
+  - same horizon + longer lived
+  - less horizon + longer lived
+  - clearly worse on both axes
+
+#### 9. `sub-horizon-advantage.png`
+
+Series-level plot computed only from paired episodes where **both sides fail to
+reach the horizon**.
+
+Suggested metrics per experiment:
+
+- count of `candidate/current longer`
+- count of `reference/baseline longer`
+- count of `equal`
+- mean and/or median total-steps delta
+
+Primary use:
+
+- isolate the regime where binary survival rate hides important robustness
+  structure
+
+### Why this matters
+
+Without this plot family, a series can misleadingly appear neutral or
+uninteresting if:
+
+- both systems usually fail before the horizon
+- but one system consistently remains viable longer
+
+For AXIS research questions, that longer-lived but still sub-horizon behavior
+can already indicate:
+
+- better local regulation
+- more robust foraging
+- less destructive exploration
+- more useful predictive modulation
+
+So these plots are not just aesthetic additions; they capture an important
+analytical distinction already present in the comparison artifacts.
+
 ### Exactly which generic series-level plots are feasible now
 
 The following plots can be generated immediately from the current generic
@@ -219,6 +336,28 @@ series artifacts, without needing any new system-specific data model:
   - `run_summary.mean_final_vitality`
   - `behavior_metrics.standard_metrics.net_energy_efficiency.mean`
   - comparison survival rates
+
+- `paired-outcome-categories.png`
+  Uses:
+  - per-episode `reference_total_steps`
+  - per-episode `candidate_total_steps`
+  - configured horizon from the paired run config
+
+- `steps-lived-distribution.png`
+  Uses:
+  - per-episode `reference_total_steps`
+  - per-episode `candidate_total_steps`
+
+- `horizon-vs-lifespan-delta.png`
+  Uses:
+  - comparison survival-rate delta
+  - per-experiment mean total-steps delta
+
+- `sub-horizon-advantage.png`
+  Uses:
+  - per-episode paired step totals
+  - configured horizon
+  - filtered to pairs where both sides are below horizon
 
 #### Also available for `single_system` series with small semantic changes
 

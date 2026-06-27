@@ -24,6 +24,7 @@ Hands-on guides for using experiment workspaces to structure your work.
 | [OFAT Parameter Sweep in a Workspace](workspace-ofat-sweep.md) | investigation / single_system | Run a systematic parameter sweep and inspect results |
 | [Comparing Two Systems](workspace-system-comparison.md) | investigation / system_comparison | Compare two systems under identical conditions |
 | [Developing a System](workspace-system-development.md) | development / system_development | Build and validate a new system with baseline/candidate workflow |
+| [Running a Workspace Series](workspace-series-workflow.md) | investigation / system_comparison | Execute a declarative series, inspect one run with metrics, and render plots |
 
 ## Prerequisites
 

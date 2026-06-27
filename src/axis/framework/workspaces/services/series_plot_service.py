@@ -8,12 +8,22 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class SeriesPlotFailureSummary:
+    """Compact summary of one plot rendering failure."""
+
+    plot_id: str
+    message: str
+    system_type: str | None = None
+
+
+@dataclass(frozen=True)
 class SeriesPlotServiceResult:
     """Summary of one series plot rendering pass."""
 
     series_id: str
     generated_count: int
     failure_count: int
+    failures: tuple[SeriesPlotFailureSummary, ...]
     manifest_path: str
     report_path: str
 
@@ -43,6 +53,14 @@ class WorkspaceSeriesPlotService:
             series_id=result.series_id,
             generated_count=len(result.generated),
             failure_count=len(result.failures),
+            failures=tuple(
+                SeriesPlotFailureSummary(
+                    plot_id=failure.plot_id,
+                    message=failure.message,
+                    system_type=failure.system_type,
+                )
+                for failure in result.failures
+            ),
             manifest_path=result.manifest_path,
             report_path=result.report_path,
         )

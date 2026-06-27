@@ -13,7 +13,7 @@ class GeneratedPlotArtifact:
 
     plot_id: str
     level: str  # "series" or "experiment"
-    plot_group: str  # "series_overview" | "experiment_comparison" | "system_specific"
+    plot_group: str  # "series_overview" | "experiment_comparison" | "system_specific" | "experiment_system_specific"
     relative_output_path: str
     title: str | None = None
     description: str | None = None

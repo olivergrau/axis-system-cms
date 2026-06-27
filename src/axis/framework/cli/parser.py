@@ -350,7 +350,13 @@ examples:
         help="Experiment ID for candidate side (must exist in workspace results)")
     ws_measure_p = ws_action.add_parser(
         "measure", parents=[common],
-        help="Run the system_comparison measurement workflow and export logs",
+        help="Run one measured checkpoint: run, compare, and export text logs",
+        description=(
+            "Run one measured checkpoint for a system_comparison workspace. "
+            "This command executes the workspace, creates a comparison, and "
+            "writes the comparison log plus one run-summary log into the "
+            "workspace measurement tree."
+        ),
     )
     ws_measure_p.add_argument(
         "workspace_path", help="Path to workspace directory")
@@ -382,7 +388,13 @@ examples:
 
     ws_series_p = ws_action.add_parser(
         "run-series", parents=[common],
-        help="Run a declarative experiment series for a system_comparison workspace",
+        help="Run a declarative series of measured checkpoints",
+        description=(
+            "Execute all enabled experiments from a registered "
+            "series/<series-id>/experiment.yaml file. Each series entry runs a "
+            "measured checkpoint and updates aggregate artifacts such as "
+            "series-summary.md under the series-local measurements tree."
+        ),
     )
     ws_series_p.add_argument(
         "workspace_path", help="Path to workspace directory")
@@ -410,7 +422,13 @@ examples:
 
     ws_render_series_plots_p = ws_action.add_parser(
         "render-series-plots", parents=[common],
-        help="Render plot artifacts for a completed experiment series",
+        help="Render plots from an existing completed series",
+        description=(
+            "Render generic and system-specific plot artifacts from the "
+            "existing outputs of a completed experiment series. This command "
+            "does not rerun experiments; it only reads stored series artifacts "
+            "and writes plot files into the series-local measurements tree."
+        ),
     )
     ws_render_series_plots_p.add_argument(
         "workspace_path", help="Path to workspace directory")
@@ -468,7 +486,14 @@ examples:
 
     ws_rm_p = ws_action.add_parser(
         "run-metrics", parents=[common],
-        help="Inspect behavioral metrics for one resolved run in a workspace",
+        help="Compute or show behavioral metrics for one workspace run",
+        description=(
+            "Inspect one resolved run from a workspace-local results tree and "
+            "print its behavioral metrics. If behavior_metrics.json is missing "
+            "for that run, AXIS computes it from the stored trace artifacts "
+            "first, then displays the framework-standard and system-specific "
+            "metrics."
+        ),
     )
     ws_rm_p.add_argument(
         "workspace_path", help="Path to workspace directory")
@@ -481,7 +506,7 @@ examples:
         help="Explicit experiment ID in workspace results")
     ws_rm_p.add_argument(
         "--run", default=None,
-        help="Explicit run ID (required for sweep outputs)")
+        help="Explicit run ID (required for sweep outputs and useful for exact run selection)")
 
     ws_sr_p = ws_action.add_parser(
         "sweep-result", parents=[common],

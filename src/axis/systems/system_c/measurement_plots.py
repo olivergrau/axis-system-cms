@@ -28,6 +28,28 @@ def _save_series_plot(
     )
 
 
+def _save_experiment_plot(
+    request: SeriesMeasurementPlotRequest,
+    experiment_id: str,
+    filename: str,
+    plot_id: str,
+    title: str,
+    description: str,
+):
+    output_path = request.experiment_plot_roots[experiment_id] / "system-specific" / "system_c" / filename
+    return output_path, GeneratedPlotArtifact(
+        plot_id=plot_id,
+        level="experiment",
+        plot_group="experiment_system_specific",
+        relative_output_path=str(output_path.relative_to(request.workspace_path)),
+        title=title,
+        description=description,
+        system_type="system_c",
+        producer_kind="system_extension",
+        producer_system_type="system_c",
+    )
+
+
 @register_measurement_plot_extension("system_c")
 def system_c_measurement_plots(
     request: SeriesMeasurementPlotRequest,
@@ -96,5 +118,63 @@ def system_c_measurement_plots(
     )
     finalize_plot(fig, output_path)
     artifacts.append(artifact)
+
+    for entry in entries:
+        exp_id = entry["experiment_id"]
+        metric = entry["behavior_metrics"]["system_specific_metrics"]["system_c_prediction"]
+        comp_summary = entry["comparison_summary"]
+
+        fig, ax = create_figure(figsize=(8, 4.5))
+        ax.bar(
+            [
+                "abs_error",
+                "signed_error",
+                "confidence",
+                "frustration",
+                "mod_strength",
+            ],
+            [
+                metric["mean_prediction_error"],
+                metric["signed_prediction_error"],
+                metric["confidence_trace_mean"],
+                metric["frustration_trace_mean"],
+                metric["prediction_modulation_strength"],
+            ],
+        )
+        ax.tick_params(axis="x", rotation=20)
+        ax.set_ylabel("value")
+        output_path, artifact = _save_experiment_plot(
+            request,
+            exp_id,
+            "c-prediction-snapshot.png",
+            "c-prediction-snapshot",
+            f"{exp_id} System C Prediction Snapshot",
+            "Per-experiment snapshot of prediction error, traces, and modulation strength.",
+        )
+        finalize_plot(fig, output_path)
+        artifacts.append(artifact)
+
+        fig, ax = create_figure(figsize=(8, 4.5))
+        ax.bar(
+            ["survival_delta", "steps_delta", "vitality_delta"],
+            [
+                comp_summary["candidate_survival_rate"] - comp_summary["reference_survival_rate"],
+                comp_summary["total_steps_delta"]["mean"],
+                comp_summary["final_vitality_delta"]["mean"],
+            ],
+        )
+        ax.axhline(0.0, color="gray", linestyle="--", linewidth=1)
+        ax.tick_params(axis="x", rotation=20)
+        ax.set_ylabel("delta")
+        output_path, artifact = _save_experiment_plot(
+            request,
+            exp_id,
+            "c-outcome-deltas.png",
+            "c-outcome-deltas",
+            f"{exp_id} System C Outcome Deltas",
+            "Per-experiment comparison deltas associated with prediction behavior.",
+        )
+        finalize_plot(fig, output_path)
+        artifacts.append(artifact)
 
     return artifacts
