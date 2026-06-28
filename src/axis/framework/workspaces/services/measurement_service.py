@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,26 +88,31 @@ class WorkspaceMeasurementService:
         )
         measurement_dir.mkdir(parents=True, exist_ok=False)
 
-        run_kwargs = {
-            "config_overrides_by_role": config_overrides_by_role,
-            "override_guard": override_guard,
-            "run_notes": run_notes,
-        }
-        if progress is not None:
-            run_kwargs["progress"] = progress
-        if progress_description_prefix is not None:
-            run_kwargs["progress_description_prefix"] = progress_description_prefix
-        run_kwargs["show_workspace_progress"] = show_workspace_progress
-        run_results = self._run_service.execute(ws, **run_kwargs)
+        try:
+            run_kwargs = {
+                "config_overrides_by_role": config_overrides_by_role,
+                "override_guard": override_guard,
+                "run_notes": run_notes,
+            }
+            if progress is not None:
+                run_kwargs["progress"] = progress
+            if progress_description_prefix is not None:
+                run_kwargs["progress_description_prefix"] = progress_description_prefix
+            run_kwargs["show_workspace_progress"] = show_workspace_progress
+            run_results = self._run_service.execute(ws, **run_kwargs)
 
-        compare_kwargs = {"extension_catalog": extension_catalog}
-        if progress is not None:
-            compare_kwargs["progress"] = progress
-        if progress_description_prefix is not None:
-            compare_kwargs["progress_description"] = (
-                f"{progress_description_prefix} | Episode comparisons"
-            )
-        compare_result = self._compare_service.compare(ws, **compare_kwargs)
+            compare_kwargs = {"extension_catalog": extension_catalog}
+            if progress is not None:
+                compare_kwargs["progress"] = progress
+            if progress_description_prefix is not None:
+                compare_kwargs["progress_description"] = (
+                    f"{progress_description_prefix} | Episode comparisons"
+                )
+            compare_result = self._compare_service.compare(ws, **compare_kwargs)
+        except Exception:
+            if measurement_dir.exists() and not any(measurement_dir.iterdir()):
+                shutil.rmtree(measurement_dir)
+            raise
 
         tokens = {
             "label": effective_label,

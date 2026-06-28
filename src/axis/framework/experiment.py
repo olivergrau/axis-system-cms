@@ -15,9 +15,19 @@ from axis.framework.config import (
     set_config_value,
 )
 from axis.framework.execution_policy import ParallelismMode, TraceMode
-from axis.framework.execution_results import DeltaRunResult, LightRunResult
+from axis.framework.execution_results import (
+    LightEpisodeResult,
+    LightRunResult,
+)
 from axis.framework.progress import NullProgressReporter
-from axis.framework.run import RunConfig, RunExecutor, RunResult, RunSummary
+from axis.framework.run import (
+    EpisodeResultLike,
+    RunConfig,
+    RunExecutor,
+    RunResult,
+    RunSummary,
+)
+from axis.sdk.trace import FullEpisodeTrace
 
 if TYPE_CHECKING:
     from axis.framework.persistence import ExperimentRepository
@@ -57,7 +67,7 @@ class ExperimentResult(BaseModel):
 
     experiment_id: str
     experiment_config: ExperimentConfig
-    run_results: tuple[RunResult | LightRunResult | DeltaRunResult, ...]
+    run_results: tuple[RunResult | LightRunResult, ...]
     summary: ExperimentSummary
 
 
@@ -131,7 +141,7 @@ def _resolve_ofat(config: ExperimentConfig) -> tuple[RunConfig, ...]:
 
 def compute_experiment_summary(
     config: ExperimentConfig,
-    run_results: tuple[RunResult | LightRunResult | DeltaRunResult, ...],
+    run_results: tuple[RunResult | LightRunResult, ...],
 ) -> ExperimentSummary:
     """Build experiment summary with optional OFAT deltas."""
     baseline: RunSummary | None = None
@@ -268,7 +278,7 @@ class ExperimentExecutor:
             total=len(run_configs),
         )
 
-        results: list[RunResult | LightRunResult | DeltaRunResult]
+        results: list[RunResult | LightRunResult]
         if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
             from axis.framework.parallel_execution import execute_runs_parallel
 
@@ -359,32 +369,23 @@ class ExperimentExecutor:
             f"{prefix}Experiment runs",
             total=len(run_configs),
         )
-        run_results: list[RunResult | LightRunResult | DeltaRunResult] = []
+        run_results: list[RunResult | LightRunResult] = []
         completed_count = 0
 
         if _parallelism_mode(config) is ParallelismMode.RUNS and len(run_configs) > 1:
-            from axis.framework.parallel_execution import execute_runs_parallel
+            from axis.framework.parallel_execution import execute_runs_parallel_persisted
 
-            for i, run_config in enumerate(run_configs):
-                run_id = run_config.run_id or f"run-{i:04d}"
-                repo.create_run_dir(experiment_id, run_id)
-                repo.save_run_config(experiment_id, run_id, run_config, overwrite=True)
-                repo.save_run_metadata(
-                    experiment_id,
-                    run_id,
-                    _build_run_metadata(experiment_id, run_id, run_config, config, i),
-                )
-                repo.save_run_status(experiment_id, run_id, RunStatus.RUNNING)
             try:
-                results = execute_runs_parallel(
+                results = execute_runs_parallel_persisted(
                     run_configs,
+                    experiment_id=experiment_id,
+                    experiment_config=config,
+                    repository_root=str(repo.root),
                     trace_mode=TraceMode(config.execution.trace_mode),
                     max_workers=config.execution.max_workers,
                     progress_callback=lambda _index: progress.advance(run_task_id),
                 )
                 for i, result in enumerate(results):
-                    run_config = run_configs[i]
-                    self._persist_completed_run(experiment_id, run_config, result, i)
                     run_results.append(result)
                     completed_count += 1
             except Exception:
@@ -488,7 +489,7 @@ class ExperimentExecutor:
         *,
         progress: object | None = None,
         progress_description_prefix: str | None = None,
-    ) -> RunResult | LightRunResult | DeltaRunResult:
+    ) -> RunResult | LightRunResult:
         """Execute a single run and persist all its artifacts."""
         from axis.framework.persistence import RunMetadata, RunStatus
 
@@ -516,6 +517,13 @@ class ExperimentExecutor:
                 if progress_description_prefix
                 else f"{run_id}: episodes"
             ),
+            on_episode_complete=lambda episode_index, episode_result: self._persist_episode_result(
+                experiment_id,
+                run_id,
+                episode_index,
+                episode_result,
+            ),
+            retain_episode_payloads=False,
         )
         self._persist_completed_run(experiment_id, run_config, result, run_index)
         return result
@@ -524,7 +532,7 @@ class ExperimentExecutor:
         self,
         experiment_id: str,
         run_config: RunConfig,
-        result: RunResult | LightRunResult | DeltaRunResult,
+        result: RunResult | LightRunResult,
         run_index: int,
     ) -> None:
         """Persist a completed run result in either full or light mode."""
@@ -539,28 +547,41 @@ class ExperimentExecutor:
         repo.save_run_summary(
             experiment_id, run_id, result.summary, overwrite=True,
         )
-        if isinstance(result, RunResult):
-            for ep_idx, ep_trace in enumerate(result.episode_traces, start=1):
-                repo.save_episode_trace(
-                    experiment_id, run_id, ep_idx, ep_trace, overwrite=True,
-                )
-        elif isinstance(result, DeltaRunResult):
-            for ep_idx, ep_trace in enumerate(result.episode_traces, start=1):
-                repo.save_delta_episode_trace(
-                    experiment_id, run_id, ep_idx, ep_trace, overwrite=True,
-                )
-        else:
-            for ep_idx, ep_result in enumerate(result.episode_results, start=1):
-                repo.save_light_episode_result(
-                    experiment_id, run_id, ep_idx, ep_result, overwrite=True,
-                )
         repo.save_run_status(experiment_id, run_id, RunStatus.COMPLETED)
+
+    def _persist_episode_result(
+        self,
+        experiment_id: str,
+        run_id: str,
+        episode_index: int,
+        episode_result: EpisodeResultLike,
+    ) -> None:
+        """Persist one completed episode artifact immediately."""
+        repo = self._repository
+        assert repo is not None
+        episode_number = episode_index + 1
+
+        if isinstance(episode_result, LightEpisodeResult):
+            repo.save_light_episode_result(
+                experiment_id, run_id, episode_number, episode_result, overwrite=True,
+            )
+            return
+
+        if isinstance(episode_result, FullEpisodeTrace):
+            repo.save_full_episode_trace(
+                experiment_id, run_id, episode_number, episode_result, overwrite=True,
+            )
+            return
+
+        raise TypeError(
+            f"Unsupported episode result type for persistence: {type(episode_result)!r}"
+        )
 
     def _finalize_experiment(
         self,
         experiment_id: str,
         config: ExperimentConfig,
-        run_results: list[RunResult | LightRunResult | DeltaRunResult],
+        run_results: list[RunResult | LightRunResult],
         *,
         overwrite_summary: bool = False,
     ) -> ExperimentResult:

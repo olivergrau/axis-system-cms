@@ -9,9 +9,15 @@ import pytest
 
 from axis.framework.registry import create_system
 from axis.framework.runner import run_episode, setup_episode
+from axis.framework.execution_policy import TraceMode
 from axis.sdk.position import Position
 from axis.sdk.snapshot import WorldSnapshot
-from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace
+from axis.sdk.trace import (
+    BaseEpisodeTrace,
+    BaseStepTrace,
+    FullEpisodeTrace,
+    reconstruct_episode_trace,
+)
 from axis.sdk.world_types import BaseWorldConfig
 from axis.systems.construction_kit.types.actions import handle_consume
 from axis.systems.system_a.config import SystemAConfig
@@ -19,6 +25,8 @@ from axis.systems.system_a.system import SystemA
 from axis.world.actions import ActionRegistry, create_action_registry
 from axis.world.grid_2d.factory import create_world
 from axis.world.grid_2d.model import World
+from tests.builders.system_aw_config_builder import SystemAWConfigBuilder
+from tests.builders.system_cw_config_builder import SystemCWConfigBuilder
 from tests.builders.system_config_builder import SystemAConfigBuilder
 from tests.constants import (
     DEFAULT_GRID_HEIGHT,
@@ -52,7 +60,7 @@ def _run_default_episode(
     max_steps: int = DEFAULT_MAX_STEPS,
     seed: int = DEFAULT_SEED,
 ) -> BaseEpisodeTrace:
-    """Run an episode with default settings via the framework runner."""
+    """Run an episode and materialize the replay trace for assertions."""
     cfg = config_dict or _default_config_dict()
     wc = _world_config()
     system = create_system("system_a", cfg)
@@ -62,12 +70,14 @@ def _run_default_episode(
         Position(x=0, y=0),
         seed=seed,
     )
-    return run_episode(
+    full_trace = run_episode(
         system, world, registry,
         max_steps=max_steps,
         seed=seed,
         world_config=wc,
     )
+    assert isinstance(full_trace, FullEpisodeTrace)
+    return reconstruct_episode_trace(full_trace)
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +132,105 @@ class TestEpisodeTraceStructure:
         step = trace.steps[0]
         assert isinstance(step.agent_position_before, Position)
         assert isinstance(step.agent_position_after, Position)
+
+    def test_full_reconstructs_to_full_replay_trace(self) -> None:
+        cfg = _default_config_dict()
+        wc = _world_config().model_copy(
+            update={"resource_regen_rate": 0.2, "resource_regen_cooldown_steps": 2}
+        )
+        system = create_system("system_a", cfg)
+        world, registry = setup_episode(system, wc, Position(x=0, y=0), seed=DEFAULT_SEED)
+        full_trace = run_episode(
+            system,
+            world,
+            registry,
+            max_steps=10,
+            seed=DEFAULT_SEED,
+            trace_mode=TraceMode.FULL,
+            world_config=wc,
+        )
+
+        assert isinstance(full_trace, FullEpisodeTrace)
+        replay = reconstruct_episode_trace(full_trace)
+        assert replay.total_steps == full_trace.total_steps
+        assert replay.steps[0].intermediate_snapshots["AFTER_REGEN"].width == wc.grid_width
+
+    def test_full_slims_and_restores_system_a_buffer_snapshot(self) -> None:
+        cfg = _default_config_dict()
+        wc = _world_config().model_copy(update={"resource_regen_rate": 0.1})
+        system = create_system("system_a", cfg)
+        world, registry = setup_episode(system, wc, Position(x=0, y=0), seed=DEFAULT_SEED)
+        full_trace = run_episode(
+            system,
+            world,
+            registry,
+            max_steps=6,
+            seed=DEFAULT_SEED,
+            trace_mode=TraceMode.FULL,
+            world_config=wc,
+        )
+
+        assert isinstance(full_trace, FullEpisodeTrace)
+        raw_trace_data = full_trace.steps[0].system_data["trace_data"]
+        assert "buffer_snapshot" not in raw_trace_data
+        assert "_full_post_observation" in raw_trace_data
+
+        replay = reconstruct_episode_trace(full_trace)
+        restored_trace_data = replay.steps[0].system_data["trace_data"]
+        assert "buffer_snapshot" in restored_trace_data
+        assert "_full_post_observation" not in restored_trace_data
+
+    def test_full_slims_and_restores_system_aw_visit_map(self) -> None:
+        wc = _world_config().model_copy(update={"resource_regen_rate": 0.1})
+        system = create_system("system_aw", SystemAWConfigBuilder().build())
+        world, registry = setup_episode(system, wc, Position(x=0, y=0), seed=DEFAULT_SEED)
+        full_trace = run_episode(
+            system,
+            world,
+            registry,
+            max_steps=6,
+            seed=DEFAULT_SEED,
+            trace_mode=TraceMode.FULL,
+            world_config=wc,
+        )
+
+        assert isinstance(full_trace, FullEpisodeTrace)
+        raw_trace_data = full_trace.steps[0].system_data["trace_data"]
+        assert "visit_counts_map" not in raw_trace_data
+        assert "relative_position" not in raw_trace_data
+
+        replay = reconstruct_episode_trace(full_trace)
+        restored_trace_data = replay.steps[0].system_data["trace_data"]
+        assert "visit_counts_map" in restored_trace_data
+        assert "relative_position" in restored_trace_data
+
+    def test_full_slims_and_restores_system_cw_prediction_duplicates(self) -> None:
+        wc = _world_config().model_copy(update={"resource_regen_rate": 0.1})
+        system = create_system("system_cw", SystemCWConfigBuilder().build())
+        world, registry = setup_episode(system, wc, Position(x=0, y=0), seed=DEFAULT_SEED)
+        full_trace = run_episode(
+            system,
+            world,
+            registry,
+            max_steps=6,
+            seed=DEFAULT_SEED,
+            trace_mode=TraceMode.FULL,
+            world_config=wc,
+        )
+
+        assert isinstance(full_trace, FullEpisodeTrace)
+        raw_prediction = full_trace.steps[0].system_data["decision_data"]["prediction"]
+        assert "counterfactual_hunger_scores" not in raw_prediction
+        assert "counterfactual_curiosity_scores" not in raw_prediction
+        assert "modulated_scores" not in raw_prediction["hunger_modulation"]
+        assert "modulated_scores" not in raw_prediction["curiosity_modulation"]
+
+        replay = reconstruct_episode_trace(full_trace)
+        restored_prediction = replay.steps[0].system_data["decision_data"]["prediction"]
+        assert "counterfactual_hunger_scores" in restored_prediction
+        assert "counterfactual_curiosity_scores" in restored_prediction
+        assert "modulated_scores" in restored_prediction["hunger_modulation"]
+        assert "modulated_scores" in restored_prediction["curiosity_modulation"]
 
 
 # ---------------------------------------------------------------------------

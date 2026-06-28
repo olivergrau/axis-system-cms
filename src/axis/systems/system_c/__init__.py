@@ -46,3 +46,13 @@ def register() -> None:
             import axis.systems.system_c.metrics  # noqa: F401
         except ImportError:
             pass
+
+    from axis.framework.workspaces.plot_extensions import (
+        registered_measurement_plot_extensions,
+    )
+
+    if "system_c" not in registered_measurement_plot_extensions():
+        try:
+            import axis.systems.system_c.measurement_plots  # noqa: F401
+        except ImportError:
+            pass

@@ -25,6 +25,7 @@ from axis.framework.cli.commands.workspaces import (
     cmd_workspaces_compare_configs,
     cmd_workspaces_comparison_result,
     cmd_workspaces_measure,
+    cmd_workspaces_render_series_plots,
     cmd_workspaces_reset,
     cmd_workspaces_run_series,
     cmd_workspaces_run,
@@ -150,6 +151,13 @@ def dispatch(
                     override_guard=getattr(args, "override_guard", False),
                     update_notes=getattr(args, "update_notes", False),
                     experiment_series_service=ctx.experiment_series_service,
+                    catalogs=catalogs,
+                )
+            elif args.action == "render-series-plots":
+                cmd_workspaces_render_series_plots(
+                    args.workspace_path, output,
+                    series_id=getattr(args, "series", None),
+                    series_plot_service=ctx.series_plot_service,
                     catalogs=catalogs,
                 )
             elif args.action == "compare-configs":

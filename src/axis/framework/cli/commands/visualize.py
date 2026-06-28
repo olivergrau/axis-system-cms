@@ -24,13 +24,13 @@ def cmd_visualize(args: argparse.Namespace, repo, catalogs: dict | None = None) 
             resolve_visualization_target,
         )
         ws_experiment = args.experiment
-        experiment, run, episode_index = resolve_visualization_target(
+        experiment, run, episode_index, results_root = resolve_visualization_target(
             Path(args.workspace), episode_index,
             role=args.role, experiment=ws_experiment, run=run,
         )
-        # Visualization uses workspace-local repo.
+        # Visualization uses the resolved workspace-local results root.
         from axis.framework.persistence import ExperimentRepository
-        repo = ExperimentRepository(Path(args.workspace) / "results")
+        repo = ExperimentRepository(results_root)
 
     if not experiment or not run:
         print(

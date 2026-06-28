@@ -45,7 +45,39 @@ nav:
       - "System A+W": cheat-sheets/system-aw.md
       - "System C": cheat-sheets/system-c.md
       - "System C+W": cheat-sheets/system-cw.md
+      - "Prediction System": cheat-sheets/prediction-system.md
       - "Behavior Metrics": cheat-sheets/behavior-metrics.md
+
+  - Initiatives:
+      - initiatives/index.md
+      - "World-System Alignment":
+          - initiatives/world-system-alignment/index.md
+          - "Prediction System Recap": initiatives/world-system-alignment/prediction-system-recap.md
+          - "Prediction System World-Fit Analysis": initiatives/world-system-alignment/prediction-system-world-fit-analysis.md
+          - "Prediction System World Assessment Matrix": initiatives/world-system-alignment/prediction-system-world-assessment-matrix.md
+          - "World Ideas for Better Prediction Support": initiatives/world-system-alignment/world-ideas-for-prediction-support.md
+          - "Implementation Requirements": initiatives/world-system-alignment/implementation-requirements.md
+      - "Neural Submodules in AXIS":
+          - initiatives/neural-submodules/index.md
+          - "Initial Draft": initiatives/neural-submodules/neural-submodules-draft.md
+          - "Online Learning and Immediate Use": initiatives/neural-submodules/online-learning-and-immediate-use.md
+          - "Stabilization Principles": initiatives/neural-submodules/stabilization-principles.md
+          - "Manual vs Neural Predictor in System C and C+W": initiatives/neural-submodules/manual-vs-neural-predictor-in-c-and-cw.md
+          - "PyTorch Integration Architecture": initiatives/neural-submodules/pytorch-integration-architecture.md
+
+  - Logbook:
+      - logbook/index.md
+      - "Tags": logbook/tags.md
+      - "2026":
+          - logbook/2026/index.md
+
+  - Progress:
+      - progress/index.md
+      - "Status Overview": progress/status-overview.md
+      - "Active Initiatives": progress/active-initiatives.md
+      - "Completed Initiatives": progress/completed-initiatives.md
+      - "Roadmap": progress/roadmap.md
+      - "Decisions and Postponements": progress/decisions-and-postponements.md
 
   - Tutorials:
       - tutorials/index.md
@@ -58,6 +90,7 @@ nav:
       - "Workspace: Comparing Two Systems": tutorials/workspace-system-comparison.md
       - "Workspace: Developing a System": tutorials/workspace-system-development.md
       - "Workspace: OFAT Parameter Sweeps": tutorials/workspace-ofat-sweep.md
+      - "Workspace: Series Workflow": tutorials/workspace-series-workflow.md
 
   - Manuals:
       - manuals/index.md
@@ -67,6 +100,8 @@ nav:
       - "Visualization": manuals/visualization-manual.md
       - "Paired Trace Comparison": manuals/comparison-manual.md
       - "Experiment Series": manuals/experiment-series-manual.md
+      - "Series Measurement Artifacts": manuals/series-measurement-artifacts-manual.md
+      - "Series Measurement Plot Interpretation": manuals/series-measurement-plot-interpretation-manual.md
       - "System Development": manuals/system-dev-manual.md
       - "System A+W": manuals/system-aw-manual.md
       - "World Development": manuals/world-dev-manual.md

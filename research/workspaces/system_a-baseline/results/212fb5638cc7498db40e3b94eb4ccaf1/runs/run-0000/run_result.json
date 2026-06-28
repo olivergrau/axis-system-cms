@@ -1,0 +1,129 @@
+{
+  "result_type": "full_run",
+  "run_id": "run-0000",
+  "num_episodes": 50,
+  "summary": {
+    "num_episodes": 50,
+    "mean_steps": 241.0,
+    "std_steps": 122.2432002198895,
+    "mean_final_vitality": 0.2214800000000004,
+    "std_final_vitality": 0.36405121837455834,
+    "death_rate": 0.72
+  },
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91
+  ],
+  "config": {
+    "system_type": "system_a",
+    "system_config": {
+      "agent": {
+        "initial_energy": 100.0,
+        "max_energy": 100.0,
+        "buffer_capacity": 30
+      },
+      "policy": {
+        "selection_mode": "argmax",
+        "temperature": 1.0,
+        "stay_suppression": 0.1,
+        "consume_weight": 2.5
+      },
+      "transition": {
+        "move_cost": 1.0,
+        "consume_cost": 0.6,
+        "stay_cost": 0.3,
+        "max_consume": 1.0,
+        "energy_gain_factor": 10.0
+      }
+    },
+    "framework_config": {
+      "general": {
+        "seed": 42
+      },
+      "execution": {
+        "max_steps": 400,
+        "trace_mode": "full",
+        "parallelism_mode": "episodes",
+        "max_workers": 4
+      },
+      "world": {
+        "world_type": "grid_2d",
+        "grid_width": 20,
+        "grid_height": 20,
+        "obstacle_density": 0.2,
+        "resource_regen_rate": 0.01,
+        "resource_regen_cooldown_steps": 10,
+        "topology": "bounded",
+        "regeneration_mode": "clustered",
+        "num_clusters": 3,
+        "regen_eligible_ratio": 0.1
+      },
+      "logging": {
+        "enabled": true,
+        "console_enabled": false,
+        "jsonl_enabled": false,
+        "jsonl_path": null,
+        "include_decision_trace": true,
+        "include_transition_trace": true,
+        "verbosity": "compact"
+      }
+    },
+    "num_episodes": 50,
+    "base_seed": 42,
+    "agent_start_position": {
+      "x": 10,
+      "y": 10
+    },
+    "run_id": "run-0000",
+    "description": null
+  },
+  "episode_storage": "external"
+}

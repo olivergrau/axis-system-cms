@@ -24,6 +24,7 @@ axis experiments run experiments/configs/system-aw-baseline.yaml
 |---|---|
 | [Concepts](concepts/index.md) | Mathematical foundations and design philosophy behind AXIS agents. Start here to understand the theory. |
 | [Cheat Sheets](cheat-sheets/index.md) | Compact mathematical quick references for the main systems, including loop placement and one worked step each. |
+| [Initiatives](initiatives/index.md) | Forward-looking design and research directions that extend AXIS beyond the currently implemented systems. |
 | [Tutorials](tutorials/index.md) | Step-by-step guides that build a complete system or world from scratch, with tests alongside each chapter. |
 | [Construction Kit](construction-kit/index.md) | Reusable building blocks for systems: sensors, drives, policy, arbitration, energy, memory, and shared types. |
 | [Manuals](manuals/index.md) | Reference documentation for using and extending the framework: CLI, configuration, visualization, and developer guides. |

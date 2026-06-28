@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from axis.framework.metrics.extensions import registered_metric_extensions
 from axis.framework.registry import registered_system_types
+from axis.framework.workspaces.plot_extensions import (
+    registered_measurement_plot_extensions,
+)
 from axis.systems.system_aw import register
 
 
@@ -12,6 +15,7 @@ class TestRegistration:
         register()
         assert "system_aw" in registered_system_types()
         assert "system_aw" in registered_metric_extensions()
+        assert "system_aw" in registered_measurement_plot_extensions()
 
     def test_double_registration_idempotent(self) -> None:
         register()

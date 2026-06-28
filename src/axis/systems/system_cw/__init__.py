@@ -55,3 +55,13 @@ def register() -> None:
             import axis.systems.system_cw.comparison  # noqa: F401
         except ImportError:
             pass
+
+    from axis.framework.workspaces.plot_extensions import (
+        registered_measurement_plot_extensions,
+    )
+
+    if "system_cw" not in registered_measurement_plot_extensions():
+        try:
+            import axis.systems.system_cw.measurement_plots  # noqa: F401
+        except ImportError:
+            pass

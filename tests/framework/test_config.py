@@ -88,6 +88,10 @@ class TestExecutionConfig:
         with pytest.raises(ValidationError):
             config.max_steps = 500  # type: ignore[misc]
 
+    def test_accepts_full_trace_mode(self) -> None:
+        config = ExecutionConfig(max_steps=200, trace_mode="full")
+        assert config.trace_mode == "full"
+
 
 # ---------------------------------------------------------------------------
 # LoggingConfig

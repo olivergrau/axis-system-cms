@@ -1,0 +1,160 @@
+version: 1
+workflow_type: experiment_series
+workspace_type: system_comparison
+title: System A vs System A+W Parameter Variations
+description: >
+  Candidate-side series for comparing the System A baseline against targeted
+  System A+W parameter regimes while keeping the world, seed, and execution
+  budget fixed.
+
+defaults:
+  export:
+    comparison_summary: true
+    candidate_run_summary: true
+    reference_run_summary: false
+  notes:
+    scaffold_notes: true
+  labels:
+    measurement_label_pattern: "{experiment_id}"
+
+experiments:
+  - id: exp_01
+    label: aw-reduction-check
+    title: A+W Reduction Check
+    enabled: true
+    notes: >
+      Collapse curiosity and arbitration so the candidate approaches the
+      hunger-only System A regime. This is the structural control for the
+      whole series.
+    hypothesis:
+      - Action mismatch against System A should shrink relative to the more exploratory A+W settings.
+      - Coverage should contract and revisit rate should rise toward the System A baseline.
+      - Any residual differences should mainly reflect implementation details rather than active curiosity.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.0
+          spatial_sensory_balance: 0.5
+          explore_suppression: 0.3
+          novelty_sharpness: 1.0
+        arbitration:
+          hunger_weight_base: 1.0
+          curiosity_weight_base: 1.0
+          gating_sharpness: 2.0
+
+  - id: exp_02
+    label: aw-current-anchor
+    title: Current Workspace Anchor
+    enabled: true
+    notes: >
+      Re-run the current workspace candidate configuration as the anchor for
+      all later parameter comparisons.
+    hypothesis:
+      - The run should preserve the current moderate-exploration A+W profile.
+      - It should outperform the more aggressive explorer on survival while remaining more exploratory than System A.
+      - This serves as the local baseline for interpreting the other A+W variants.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.38
+          spatial_sensory_balance: 0.45
+          explore_suppression: 0.18
+          novelty_sharpness: 1.4
+        arbitration:
+          hunger_weight_base: 0.52
+          curiosity_weight_base: 0.65
+          gating_sharpness: 2.2
+
+  - id: exp_03
+    label: aw-conservative-forager
+    title: Conservative Foraging Explorer
+    enabled: true
+    notes: >
+      Keep curiosity present, but lower its overall pressure and give hunger a
+      firmer floor so the candidate remains closer to local foraging when
+      resources are nearby.
+    hypothesis:
+      - Death rate and final vitality should improve relative to the anchor if the current candidate still over-explores.
+      - Coverage should remain above System A, but below the more exploratory variants.
+      - Consume frequency and resource efficiency should improve if curiosity becomes less disruptive.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.24
+          spatial_sensory_balance: 0.50
+          explore_suppression: 0.28
+          novelty_sharpness: 1.4
+        arbitration:
+          hunger_weight_base: 0.62
+          curiosity_weight_base: 0.45
+          gating_sharpness: 2.6
+
+  - id: exp_04
+    label: aw-sharp-handoff
+    title: Sharp Hunger Curiosity Handoff
+    enabled: true
+    notes: >
+      Increase both curiosity headroom and gating sharpness so the candidate
+      explores clearly while satiated, then switches more abruptly into
+      hunger-led foraging.
+    hypothesis:
+      - Behavioral phases should separate more clearly than in the anchor.
+      - Early-episode coverage should rise without necessarily increasing late-episode waste.
+      - If the switch happens at the right time, survival may improve despite stronger early exploration.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.52
+          spatial_sensory_balance: 0.55
+          explore_suppression: 0.24
+          novelty_sharpness: 1.6
+        arbitration:
+          hunger_weight_base: 0.45
+          curiosity_weight_base: 0.95
+          gating_sharpness: 4.0
+
+  - id: exp_05
+    label: aw-spatial-explorer
+    title: Spatial Novelty Explorer
+    enabled: true
+    notes: >
+      Bias curiosity toward visit-count novelty so the candidate behaves more
+      like a coverage-seeking mapper than a local stimulus chaser.
+    hypothesis:
+      - Unique cells visited should increase and revisit rate should fall.
+      - Performance may suffer if the agent is pulled away from productive clusters too aggressively.
+      - Comparison traces should show larger trajectory divergence from System A than the conservative settings.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.46
+          spatial_sensory_balance: 0.90
+          explore_suppression: 0.26
+          novelty_sharpness: 1.9
+        arbitration:
+          hunger_weight_base: 0.46
+          curiosity_weight_base: 0.90
+          gating_sharpness: 2.4
+
+  - id: exp_06
+    label: aw-sensory-opportunist
+    title: Sensory Opportunist
+    enabled: true
+    notes: >
+      Tilt curiosity toward sensory contrast so the candidate reacts more to
+      changing local resource patterns than to unvisited geometry.
+    hypothesis:
+      - Revisit behavior may increase if regenerated cells stay behaviorally interesting.
+      - Resource gain can improve relative to the spatial explorer when local change correlates with food availability.
+      - Coverage should remain above System A but below the strongest spatial-novelty variant.
+    candidate_config_delta:
+      system:
+        curiosity:
+          base_curiosity: 0.42
+          spatial_sensory_balance: 0.20
+          explore_suppression: 0.16
+          novelty_sharpness: 1.3
+        arbitration:
+          hunger_weight_base: 0.50
+          curiosity_weight_base: 0.72
+          gating_sharpness: 2.0

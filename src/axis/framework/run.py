@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from math import sqrt
 from typing import Any
 
@@ -16,7 +17,6 @@ from axis.framework.execution_policy import (
     TraceMode,
 )
 from axis.framework.execution_results import (
-    DeltaRunResult,
     EpisodeSummaryLike,
     LightEpisodeResult,
     LightRunResult,
@@ -25,7 +25,7 @@ from axis.framework.progress import NullProgressReporter
 from axis.framework.registry import create_system
 from axis.framework.runner import run_episode, setup_episode
 from axis.sdk.position import Position
-from axis.sdk.trace import BaseEpisodeTrace, DeltaEpisodeTrace
+from axis.sdk.trace import FullEpisodeTrace
 
 
 # ---------------------------------------------------------------------------
@@ -64,14 +64,14 @@ class RunSummary(BaseModel):
 
 
 class RunResult(BaseModel):
-    """Complete result of a multi-episode run."""
+    """Replay-capable full result of a multi-episode run."""
 
     model_config = ConfigDict(frozen=True)
 
     result_type: str = "full_run"
     run_id: str
     num_episodes: int = Field(..., gt=0)
-    episode_traces: tuple[BaseEpisodeTrace, ...]
+    episode_traces: tuple[FullEpisodeTrace, ...]
     summary: RunSummary
     seeds: tuple[int, ...]
     config: RunConfig
@@ -80,6 +80,13 @@ class RunResult(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+EpisodeResultLike = (
+    FullEpisodeTrace
+    | LightEpisodeResult
+)
+EpisodeCompletionCallback = Callable[[int, EpisodeResultLike], None]
 
 
 def resolve_episode_seeds(
@@ -96,35 +103,64 @@ def compute_run_summary(
     episode_results: tuple[EpisodeSummaryLike, ...],
 ) -> RunSummary:
     """Compute run-level summary from episode traces."""
-    n = len(episode_results)
-    if n == 0:
-        return RunSummary(
-            num_episodes=0,
-            mean_steps=0.0,
-            std_steps=0.0,
-            mean_final_vitality=0.0,
-            std_final_vitality=0.0,
-            death_rate=0.0,
+    accumulator = RunSummaryAccumulator()
+    for episode_result in episode_results:
+        accumulator.add(episode_result)
+    return accumulator.finalize()
+
+
+class RunSummaryAccumulator:
+    """Incrementally aggregate run-level statistics from episode summaries."""
+
+    def __init__(self) -> None:
+        self._count = 0
+        self._sum_steps = 0.0
+        self._sum_steps_sq = 0.0
+        self._sum_vitality = 0.0
+        self._sum_vitality_sq = 0.0
+        self._deaths = 0
+
+    def add(self, episode_result: EpisodeSummaryLike) -> None:
+        steps = float(episode_result.total_steps)
+        vitality = float(episode_result.final_vitality)
+        self._count += 1
+        self._sum_steps += steps
+        self._sum_steps_sq += steps * steps
+        self._sum_vitality += vitality
+        self._sum_vitality_sq += vitality * vitality
+        if vitality <= 0.0:
+            self._deaths += 1
+
+    def finalize(self) -> RunSummary:
+        if self._count == 0:
+            return RunSummary(
+                num_episodes=0,
+                mean_steps=0.0,
+                std_steps=0.0,
+                mean_final_vitality=0.0,
+                std_final_vitality=0.0,
+                death_rate=0.0,
+            )
+
+        mean_steps = self._sum_steps / self._count
+        mean_vitality = self._sum_vitality / self._count
+        step_variance = max(
+            0.0,
+            (self._sum_steps_sq / self._count) - (mean_steps * mean_steps),
+        )
+        vitality_variance = max(
+            0.0,
+            (self._sum_vitality_sq / self._count) - (mean_vitality * mean_vitality),
         )
 
-    steps = [t.total_steps for t in episode_results]
-    vitalities = [t.final_vitality for t in episode_results]
-    deaths = sum(1 for t in episode_results if t.final_vitality <= 0.0)
-
-    mean_s = sum(steps) / n
-    mean_v = sum(vitalities) / n
-
-    std_s = sqrt(sum((x - mean_s) ** 2 for x in steps) / n)
-    std_v = sqrt(sum((x - mean_v) ** 2 for x in vitalities) / n)
-
-    return RunSummary(
-        num_episodes=n,
-        mean_steps=mean_s,
-        std_steps=std_s,
-        mean_final_vitality=mean_v,
-        std_final_vitality=std_v,
-        death_rate=deaths / n,
-    )
+        return RunSummary(
+            num_episodes=self._count,
+            mean_steps=mean_steps,
+            std_steps=sqrt(step_variance),
+            mean_final_vitality=mean_vitality,
+            std_final_vitality=sqrt(vitality_variance),
+            death_rate=self._deaths / self._count,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +186,9 @@ class RunExecutor:
         trace_mode_override: TraceMode | None = None,
         progress: object | None = None,
         progress_description: str | None = None,
-    ) -> RunResult | LightRunResult | DeltaRunResult:
+        on_episode_complete: EpisodeCompletionCallback | None = None,
+        retain_episode_payloads: bool = True,
+    ) -> RunResult | LightRunResult:
         """Execute a complete run: N episodes, aggregate results."""
         from axis.framework.logging import EpisodeLogger
 
@@ -174,47 +212,56 @@ class RunExecutor:
             total=config.num_episodes,
         )
 
-        if policy.parallelism_mode is ParallelismMode.EPISODES and policy.max_workers > 1:
-            episode_results = self._execute_parallel_episodes(
-                config, policy, reporter=reporter, task_id=episode_task_id,
-            )
-        else:
-            episode_results = self._execute_sequential(
-                config, seeds, policy, reporter=reporter, task_id=episode_task_id,
-            )
+        summary_accumulator = RunSummaryAccumulator()
 
-        summary = compute_run_summary(episode_results)
-        with EpisodeLogger(config.framework_config.logging, trace_mode=policy.trace_mode) as logger:
-            for ep_idx, episode_result in enumerate(episode_results, start=1):
-                logger.log_episode(episode_result, ep_idx)
+        with EpisodeLogger(
+            config.framework_config.logging, trace_mode=policy.trace_mode,
+        ) as logger:
+            def _handle_episode_completion(
+                episode_index: int,
+                episode_result: EpisodeResultLike,
+            ) -> None:
+                summary_accumulator.add(episode_result)
+                logger.log_episode(episode_result, episode_index + 1)
+                if on_episode_complete is not None:
+                    on_episode_complete(episode_index, episode_result)
+
+            if policy.parallelism_mode is ParallelismMode.EPISODES and policy.max_workers > 1:
+                episode_results = self._execute_parallel_episodes(
+                    config,
+                    policy,
+                    reporter=reporter,
+                    task_id=episode_task_id,
+                    on_episode_complete=_handle_episode_completion,
+                    retain_episode_payloads=retain_episode_payloads,
+                )
+            else:
+                episode_results = self._execute_sequential(
+                    config,
+                    seeds,
+                    policy,
+                    reporter=reporter,
+                    task_id=episode_task_id,
+                    on_episode_complete=_handle_episode_completion,
+                    retain_episode_payloads=retain_episode_payloads,
+                )
+
+        summary = summary_accumulator.finalize()
 
         if policy.trace_mode is TraceMode.LIGHT:
-            light_results = tuple(episode_results)
             return LightRunResult(
                 run_id=run_id,
                 num_episodes=config.num_episodes,
-                episode_results=light_results,  # type: ignore[arg-type]
+                episode_results=episode_results,  # type: ignore[arg-type]
                 summary=summary,
                 seeds=seeds,
                 config=config,
             )
 
-        if policy.trace_mode is TraceMode.DELTA:
-            delta_results = tuple(episode_results)
-            return DeltaRunResult(
-                run_id=run_id,
-                num_episodes=config.num_episodes,
-                episode_traces=delta_results,  # type: ignore[arg-type]
-                summary=summary,
-                seeds=seeds,
-                config=config,
-            )
-
-        full_results = tuple(episode_results)
         return RunResult(
             run_id=run_id,
             num_episodes=config.num_episodes,
-            episode_traces=full_results,  # type: ignore[arg-type]
+            episode_traces=episode_results,  # type: ignore[arg-type]
             summary=summary,
             seeds=seeds,
             config=config,
@@ -228,20 +275,27 @@ class RunExecutor:
         *,
         reporter: object,
         task_id: int,
-    ) -> tuple[BaseEpisodeTrace | LightEpisodeResult, ...]:
+        on_episode_complete: EpisodeCompletionCallback | None = None,
+        retain_episode_payloads: bool = True,
+    ) -> tuple[
+        FullEpisodeTrace | LightEpisodeResult,
+        ...
+    ]:
         """Execute episodes sequentially under the given policy."""
-        results: list[BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace] = []
+        results: list[EpisodeResultLike] = []
         for episode_index, episode_seed in enumerate(seeds):
-            results.append(
-                _execute_episode_from_config(
-                    config,
-                    episode_seed,
-                    episode_index=episode_index,
-                    trace_mode=policy.trace_mode,
-                    system_catalog=self._system_catalog,
-                    world_catalog=self._world_catalog,
-                )
+            episode_result = _execute_episode_from_config(
+                config,
+                episode_seed,
+                episode_index=episode_index,
+                trace_mode=policy.trace_mode,
+                system_catalog=self._system_catalog,
+                world_catalog=self._world_catalog,
             )
+            if on_episode_complete is not None:
+                on_episode_complete(episode_index, episode_result)
+            if retain_episode_payloads:
+                results.append(episode_result)
             reporter.advance(task_id)
         return tuple(results)
 
@@ -252,7 +306,12 @@ class RunExecutor:
         *,
         reporter: object,
         task_id: int,
-    ) -> tuple[BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace, ...]:
+        on_episode_complete: EpisodeCompletionCallback | None = None,
+        retain_episode_payloads: bool = True,
+    ) -> tuple[
+        FullEpisodeTrace | LightEpisodeResult,
+        ...
+    ]:
         """Execute episodes in parallel worker processes."""
         from axis.framework.parallel_execution import execute_episodes_parallel
 
@@ -261,6 +320,8 @@ class RunExecutor:
             trace_mode=policy.trace_mode,
             max_workers=policy.max_workers,
             progress_callback=lambda _index: reporter.advance(task_id),
+            result_callback=on_episode_complete,
+            retain_results=retain_episode_payloads,
         )
 
 
@@ -290,7 +351,7 @@ def _execute_episode_from_config(
     trace_mode: TraceMode,
     system_catalog: Any | None = None,
     world_catalog: Any | None = None,
-) -> BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace:
+) -> FullEpisodeTrace | LightEpisodeResult:
     """Run one episode from config and return either full or light output."""
     system = create_system(
         config.system_type,

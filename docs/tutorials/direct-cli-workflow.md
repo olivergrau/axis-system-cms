@@ -70,7 +70,7 @@ Before running larger workloads, it is worth choosing an execution policy in
 the config:
 
 - `trace_mode: full` for maximum replay richness
-- `trace_mode: delta` for replay-compatible compact traces
+- `trace_mode: full` for replay-compatible compact traces
 - `trace_mode: light` for fastest summary-oriented execution
 
 And optionally:
@@ -246,7 +246,7 @@ workspace manifest is involved.
 
 Important trace-mode rule:
 
-- `full` and `delta` runs can be visualized
+- `full` runs can be visualized
 - `light` runs cannot be visualized
 
 If you plan to use `axis visualize` later, do not run that experiment in

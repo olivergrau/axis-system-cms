@@ -1,0 +1,91 @@
+{
+  "artifact_type": "behavior_metrics",
+  "experiment_id": "212fb5638cc7498db40e3b94eb4ccaf1",
+  "run_id": "run-0000",
+  "system_type": "system_a",
+  "trace_mode": "full",
+  "num_episodes": 50,
+  "standard_metrics": {
+    "mean_steps": 241.0,
+    "death_rate": 0.72,
+    "mean_final_vitality": 0.2214800000000004,
+    "resource_gain_per_step": {
+      "mean": 0.4935259207123412,
+      "std": 0.40520036929165926,
+      "min": 0.0,
+      "max": 1.57,
+      "n": 50
+    },
+    "net_energy_efficiency": {
+      "mean": 0.544412437883923,
+      "std": 0.45784966838487035,
+      "min": 0.0,
+      "max": 1.7989114866800329,
+      "n": 50
+    },
+    "successful_consume_rate": {
+      "mean": 0.8,
+      "std": 0.4000000000000001,
+      "min": 0.0,
+      "max": 1.0,
+      "n": 50
+    },
+    "consume_on_empty_rate": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 50
+    },
+    "failed_movement_rate": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "n": 50
+    },
+    "action_entropy": {
+      "mean": 1.5558526418762864,
+      "std": 0.09180754566034736,
+      "min": 1.3767082239116553,
+      "max": 1.677924244740845,
+      "n": 50
+    },
+    "policy_sharpness": {
+      "mean": 0.24253690774468667,
+      "std": 0.01737056064356382,
+      "min": 0.20105215676456786,
+      "max": 0.3022225553009928,
+      "n": 50
+    },
+    "action_inertia": {
+      "mean": 0.16529662432317785,
+      "std": 0.046057541354769214,
+      "min": 0.02877697841726619,
+      "max": 0.27,
+      "n": 50
+    },
+    "unique_cells_visited": {
+      "mean": 57.52,
+      "std": 22.408248481307055,
+      "min": 22.0,
+      "max": 124.0,
+      "n": 50
+    },
+    "coverage_efficiency": {
+      "mean": 0.2851953359517752,
+      "std": 0.08465497806248548,
+      "min": 0.1312447078746827,
+      "max": 0.5084745762711864,
+      "n": 50
+    },
+    "revisit_rate": {
+      "mean": 0.689235690123593,
+      "std": 0.07778906837680936,
+      "min": 0.5,
+      "max": 0.8255813953488372,
+      "n": 50
+    }
+  },
+  "system_specific_metrics": {}
+}

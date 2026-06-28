@@ -1,0 +1,8 @@
+{
+  "num_episodes": 50,
+  "mean_steps": 241.0,
+  "std_steps": 122.2432002198895,
+  "mean_final_vitality": 0.2214800000000004,
+  "std_final_vitality": 0.36405121837455834,
+  "death_rate": 0.72
+}

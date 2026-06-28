@@ -97,7 +97,7 @@ class TestScaffold:
         data = yaml.safe_load(config_path.read_text())
         assert data["execution"] == {
             "max_steps": 200,
-            "trace_mode": "delta",
+            "trace_mode": "full",
             "parallelism_mode": "episodes",
             "max_workers": 4,
         }
@@ -132,7 +132,7 @@ class TestScaffold:
         cand_cfg = _load_config_file(ws / "configs" / "candidate-system_c.yaml")
         assert ref_cfg.world.world_type == "signal_landscape"
         assert cand_cfg.world.world_type == "grid_2d"
-        assert ref_cfg.execution.trace_mode == "delta"
+        assert ref_cfg.execution.trace_mode == "full"
         assert cand_cfg.execution.parallelism_mode == "episodes"
 
     def test_creates_valid_development(self, tmp_path):

@@ -11,10 +11,11 @@ from axis.framework.execution_results import LightEpisodeResult
 from axis.sdk.interfaces import SystemInterface
 from axis.sdk.position import Position
 from axis.sdk.trace import (
-    BaseEpisodeTrace,
     BaseStepTrace,
-    DeltaEpisodeTrace,
-    DeltaStepTrace,
+    FullEpisodeTrace,
+    FullStepTrace,
+    InternalCellState,
+    compact_full_system_payload,
     diff_world_snapshots,
 )
 from axis.sdk.world_types import BaseWorldConfig, MutableWorldProtocol
@@ -111,7 +112,7 @@ def run_episode(
     episode_index: int = 0,
     trace_mode: TraceMode = TraceMode.FULL,
     world_config: BaseWorldConfig | None = None,
-) -> BaseEpisodeTrace | LightEpisodeResult:
+) -> FullEpisodeTrace | LightEpisodeResult:
     """Run a complete episode from initialization to termination.
 
     Parameters
@@ -122,9 +123,7 @@ def run_episode(
     max_steps : Maximum step count (framework termination).
     seed : RNG seed for this episode.
 
-    Returns
-    -------
-    BaseEpisodeTrace with step-by-step traces.
+    Returns a compact full replay trace or a lightweight summary record.
     """
     if trace_mode is TraceMode.LIGHT:
         return _run_episode_light(
@@ -134,15 +133,6 @@ def run_episode(
             max_steps=max_steps,
             seed=seed,
             episode_index=episode_index,
-        )
-    if trace_mode is TraceMode.DELTA:
-        return _run_episode_delta(
-            system,
-            world,
-            registry,
-            max_steps=max_steps,
-            seed=seed,
-            world_config=world_config,
         )
     return _run_episode_full(
         system,
@@ -154,7 +144,25 @@ def run_episode(
     )
 
 
-def _run_episode_delta(
+def _capture_internal_world_state(
+    world: MutableWorldProtocol,
+) -> tuple[tuple[InternalCellState, ...], ...]:
+    rows: list[tuple[InternalCellState, ...]] = []
+    for y in range(world.height):
+        row: list[InternalCellState] = []
+        for x in range(world.width):
+            cell = world.get_internal_cell(Position(x=x, y=y))
+            row.append(
+                InternalCellState(
+                    regen_eligible=bool(getattr(cell, "regen_eligible", True)),
+                    cooldown_remaining=int(getattr(cell, "cooldown_remaining", 0) or 0),
+                )
+            )
+        rows.append(tuple(row))
+    return tuple(rows)
+
+
+def _run_episode_full(
     system: SystemInterface,
     world: MutableWorldProtocol,
     registry: ActionRegistry,
@@ -162,14 +170,19 @@ def _run_episode_delta(
     max_steps: int,
     seed: int,
     world_config: BaseWorldConfig | None = None,
-) -> DeltaEpisodeTrace:
-    """Run an episode while persisting a replay-capable delta trace."""
+) -> FullEpisodeTrace:
+    """Run an episode while persisting a compact replay-state full trace."""
+    if world_config is not None and world_config.world_type not in {"grid_2d", "toroidal"}:
+        raise ValueError(
+            "trace_mode='full' currently supports only 'grid_2d' and 'toroidal' worlds"
+        )
+
     rng = np.random.default_rng(seed)
     agent_state = system.initialize_state()
     ctx = system.action_context()
     initial_world = world.snapshot()
-    current_world = initial_world
-    steps: list[DeltaStepTrace] = []
+    initial_internal_state = _capture_internal_world_state(world)
+    steps: list[FullStepTrace] = []
 
     for timestep in range(max_steps):
         position_before = world.agent_position
@@ -202,11 +215,17 @@ def _run_episode_delta(
         vitality_after = system.vitality(agent_state)
         position_after = world.agent_position
 
+        compact_decision_data, compact_trace_data = compact_full_system_payload(
+            system_type=system.system_type(),
+            decision_data=decision_data_for_trace,
+            trace_data=transition_result.trace_data,
+            post_observation=new_observation.model_dump(),
+        )
+
         steps.append(
-            DeltaStepTrace(
+            FullStepTrace(
                 timestep=timestep,
                 action=decide_result.action,
-                regen_delta=diff_world_snapshots(current_world, world_after_regen),
                 action_delta=diff_world_snapshots(world_after_regen, world_after),
                 agent_position_before=position_before,
                 agent_position_after=position_after,
@@ -215,13 +234,12 @@ def _run_episode_delta(
                 terminated=transition_result.terminated,
                 termination_reason=transition_result.termination_reason,
                 system_data={
-                    "decision_data": decision_data_for_trace,
-                    "trace_data": transition_result.trace_data,
+                    "decision_data": compact_decision_data,
+                    "trace_data": compact_trace_data,
                 },
                 world_data=world_data,
             )
         )
-        current_world = world_after
 
         if transition_result.terminated:
             termination_reason = (
@@ -231,49 +249,10 @@ def _run_episode_delta(
     else:
         termination_reason = "max_steps_reached"
 
-    return DeltaEpisodeTrace(
+    return FullEpisodeTrace(
         system_type=system.system_type(),
         initial_world=initial_world,
-        steps=tuple(steps),
-        total_steps=len(steps),
-        termination_reason=termination_reason,
-        final_vitality=system.vitality(agent_state),
-        final_position=world.agent_position,
-        world_type=world_config.world_type if world_config else "grid_2d",
-        world_config=world_config.model_dump() if world_config else {},
-    )
-
-
-def _run_episode_full(
-    system: SystemInterface,
-    world: MutableWorldProtocol,
-    registry: ActionRegistry,
-    *,
-    max_steps: int,
-    seed: int,
-    world_config: BaseWorldConfig | None = None,
-) -> BaseEpisodeTrace:
-    """Run a full replay-rich episode."""
-    rng = np.random.default_rng(seed)
-    agent_state = system.initialize_state()
-    ctx = system.action_context()
-    steps: list[BaseStepTrace] = []
-
-    for timestep in range(max_steps):
-        agent_state, step_trace = _run_step(
-            system, world, registry, agent_state, rng, timestep,
-            action_context=ctx,
-        )
-        steps.append(step_trace)
-
-        if step_trace.terminated:
-            termination_reason = step_trace.termination_reason or "system_terminated"
-            break
-    else:
-        termination_reason = "max_steps_reached"
-
-    return BaseEpisodeTrace(
-        system_type=system.system_type(),
+        initial_internal_state=initial_internal_state,
         steps=tuple(steps),
         total_steps=len(steps),
         termination_reason=termination_reason,

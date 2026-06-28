@@ -113,6 +113,18 @@ def test_parser_accepts_workspace_run_series_arguments():
     assert args.update_notes is True
 
 
+def test_parser_accepts_workspace_render_series_plots_arguments():
+    parser = build_parser()
+    args = parser.parse_args([
+        "workspaces", "render-series-plots", "/tmp/ws",
+        "--series", "series-a",
+    ])
+    assert args.entity == "workspaces"
+    assert args.action == "render-series-plots"
+    assert args.workspace_path == "/tmp/ws"
+    assert args.series == "series-a"
+
+
 def test_parser_accepts_workspace_run_summary_arguments():
     parser = build_parser()
     args = parser.parse_args([

@@ -1,0 +1,278 @@
+workspace_id: system_a+w-baseline
+title: System A+W Baseline
+workspace_class: investigation
+workspace_type: single_system
+status: active
+lifecycle_stage: documentation
+created_at: '2026-04-21'
+question: System A+W Curiosity and Arbitration Series
+system_under_test: system_aw
+primary_configs:
+- configs/system_aw-baseline.yaml
+primary_results: []
+primary_comparisons: []
+experiment_series:
+  entries:
+  - id: curiosity-arbitration
+    path: series/curiosity-arbitration/experiment.yaml
+    generated:
+      results:
+      - path: 
+          series/curiosity-arbitration/results/d399e549ce624851ad46de2b8aa6ae84
+        timestamp: '2026-05-04T07:36:57'
+        config: 
+          series/curiosity-arbitration/results/d399e549ce624851ad46de2b8aa6ae84/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Disable curiosity to verify that A+W collapses toward the hunger-only
+          behavioral regime. This is a structural control experiment.\n"
+      - path: 
+          series/curiosity-arbitration/results/f6007c77281445359cd80f28805f8f35
+        timestamp: '2026-05-04T07:39:07'
+        config: 
+          series/curiosity-arbitration/results/f6007c77281445359cd80f28805f8f35/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Neutral A+W baseline anchor. Curiosity is active, but not over-amplified.
+          The arbitration curve should allow an interpretable transition between exploration
+          and hunger-driven foraging.\n"
+      - path: 
+          series/curiosity-arbitration/results/b9dd7afa48f04cf5be38754a7792b713
+        timestamp: '2026-05-04T07:41:30'
+        config: 
+          series/curiosity-arbitration/results/b9dd7afa48f04cf5be38754a7792b713/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Increase curiosity influence and reduce the hunger floor to create
+          a more aggressive exploration regime.\n"
+      - path: 
+          series/curiosity-arbitration/results/15df429bdbbe49bdadaf9ce30a863f7e
+        timestamp: '2026-05-04T07:44:05'
+        config: 
+          series/curiosity-arbitration/results/15df429bdbbe49bdadaf9ce30a863f7e/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Raise the hunger floor and reduce curiosity dominance to test
+          whether a more conservative motivational hierarchy improves survival.\n"
+      - path: 
+          series/curiosity-arbitration/results/00eb967e98ed4bdd8c75fe7d6f337324
+        timestamp: '2026-05-04T07:46:23'
+        config: 
+          series/curiosity-arbitration/results/00eb967e98ed4bdd8c75fe7d6f337324/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Increase gating sharpness to create more distinct behavioral phases:
+          exploration while satiated, foraging when hungry.\n"
+      - path: 
+          series/curiosity-arbitration/results/c8651ddfa1cc43a1a37de55abf66e480
+        timestamp: '2026-05-04T07:48:41'
+        config: 
+          series/curiosity-arbitration/results/c8651ddfa1cc43a1a37de55abf66e480/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Reduce gating sharpness to keep hunger and curiosity simultaneously
+          active across a wider energy range.\n"
+      - path: 
+          series/curiosity-arbitration/results/d3545525ae5c45f994d87f6f8dd64bb8
+        timestamp: '2026-05-04T07:50:44'
+        config: 
+          series/curiosity-arbitration/results/d3545525ae5c45f994d87f6f8dd64bb8/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Bias curiosity strongly toward visit-count based spatial novelty
+          rather than sensory contrast.\n"
+      - path: 
+          series/curiosity-arbitration/results/bee2ea945d4f4f42b19eba41d940e903
+        timestamp: '2026-05-04T07:52:40'
+        config: 
+          series/curiosity-arbitration/results/bee2ea945d4f4f42b19eba41d940e903/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Bias curiosity toward sensory contrast from the observation buffer
+          rather than spatial unfamiliarity.\n"
+      measurement_runs:
+      - path: series/curiosity-arbitration/measurements/experiment_1
+        timestamp: '2026-05-04T07:36:57'
+        label: aw-a-reduction-check
+      - path: series/curiosity-arbitration/measurements/experiment_2
+        timestamp: '2026-05-04T07:39:07'
+        label: aw-baseline
+      - path: series/curiosity-arbitration/measurements/experiment_3
+        timestamp: '2026-05-04T07:41:30'
+        label: aw-exploration-biased
+      - path: series/curiosity-arbitration/measurements/experiment_4
+        timestamp: '2026-05-04T07:44:05'
+        label: aw-survival-biased
+      - path: series/curiosity-arbitration/measurements/experiment_5
+        timestamp: '2026-05-04T07:46:23'
+        label: aw-sharp-maslow-switch
+      - path: series/curiosity-arbitration/measurements/experiment_6
+        timestamp: '2026-05-04T07:48:41'
+        label: aw-soft-blended-drives
+      - path: series/curiosity-arbitration/measurements/experiment_7
+        timestamp: '2026-05-04T07:50:44'
+        label: aw-spatial-novelty-dominant
+      - path: series/curiosity-arbitration/measurements/experiment_8
+        timestamp: '2026-05-04T07:52:40'
+        label: aw-sensory-novelty-dominant
+      comparisons:
+      - series/curiosity-arbitration/comparisons/comparison-001.json
+      - series/curiosity-arbitration/comparisons/comparison-002.json
+      - series/curiosity-arbitration/comparisons/comparison-003.json
+      - series/curiosity-arbitration/comparisons/comparison-004.json
+      - series/curiosity-arbitration/comparisons/comparison-005.json
+      - series/curiosity-arbitration/comparisons/comparison-006.json
+      - series/curiosity-arbitration/comparisons/comparison-007.json
+      - series/curiosity-arbitration/comparisons/comparison-008.json
+  - id: world-variations
+    path: series/world-variations/experiment.yaml
+    generated:
+      results:
+      - path: series/world-variations/results/71a2431c5fb346ef8e76caaacac14120
+        timestamp: '2026-05-04T08:12:14'
+        config: 
+          series/world-variations/results/71a2431c5fb346ef8e76caaacac14120/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Re-run the fixed exp_08 agent in the unchanged baseline world
+          so the world-only series has its own clean anchor point.\n"
+      - path: series/world-variations/results/67c7cfc07f574b12ab6b1efcfa0ef50b
+        timestamp: '2026-05-04T08:14:41'
+        config: 
+          series/world-variations/results/67c7cfc07f574b12ab6b1efcfa0ef50b/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Reduce obstacles and switch to all-traversable, faster regeneration
+          to create a highly fluid and information-rich environment.\n"
+      - path: series/world-variations/results/d1091c6a75c2425a9b1fdb684b2f0c2b
+        timestamp: '2026-05-04T08:17:33'
+        config: 
+          series/world-variations/results/d1091c6a75c2425a9b1fdb684b2f0c2b/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Keep the bounded grid but make regenerating cells rarer and slower,
+          so the agent must discover and return to a smaller set of viable zones.\n"
+      - path: series/world-variations/results/7d2027b618e64bd4a9a352020ea8899c
+        timestamp: '2026-05-04T08:19:30'
+        config: 
+          series/world-variations/results/7d2027b618e64bd4a9a352020ea8899c/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Concentrate stronger regeneration into fewer, richer islands to
+          test whether sensory novelty helps the agent repeatedly lock onto dynamic
+          hubs.\n"
+      - path: series/world-variations/results/c2c7f8643bbb491ba0a014d0ef72b38a
+        timestamp: '2026-05-04T08:22:07'
+        config: 
+          series/world-variations/results/c2c7f8643bbb491ba0a014d0ef72b38a/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Keep the general resource structure close to baseline, but replace
+          hard boundaries with wraparound movement and sensing.\n"
+      - path: series/world-variations/results/5230a706beaa497aabea8fd966d6b1df
+        timestamp: '2026-05-04T08:25:22'
+        config: 
+          series/world-variations/results/5230a706beaa497aabea8fd966d6b1df/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Scale the map up and make it slightly more open to test whether
+          the fixed sensory-novelty policy still maintains coherent exploration at
+          larger scale.\n"
+      - path: series/world-variations/results/1cb0b70772f647dbb5daea50795d3d4b
+        timestamp: '2026-05-04T08:29:23'
+        config: 
+          series/world-variations/results/1cb0b70772f647dbb5daea50795d3d4b/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Shrink the world and move to moderate uniform regeneration so
+          local sensory changes happen more often in a tighter loop.\n"
+      - path: series/world-variations/results/2d92173320224b1bafa14f7e7438dd48
+        timestamp: '2026-05-04T08:31:02'
+        config: 
+          series/world-variations/results/2d92173320224b1bafa14f7e7438dd48/experiment_config.json
+        role: system_under_test
+        output_form: point
+        trace_mode: full
+        system_type: system_aw
+        primary_run_id: run-0000
+        run_notes: "Keep the clustered resource layout but greatly lengthen the post-depletion
+          cooldown so recently exploited cells stay static for much longer.\n"
+      measurement_runs:
+      - path: series/world-variations/measurements/experiment_1
+        timestamp: '2026-05-04T08:12:14'
+        label: world-baseline-anchor
+      - path: series/world-variations/measurements/experiment_2
+        timestamp: '2026-05-04T08:14:41'
+        label: world-open-fast-regen
+      - path: series/world-variations/measurements/experiment_3
+        timestamp: '2026-05-04T08:17:33'
+        label: world-sparse-scarcity
+      - path: series/world-variations/measurements/experiment_4
+        timestamp: '2026-05-04T08:19:30'
+        label: world-rich-cluster-islands
+      - path: series/world-variations/measurements/experiment_5
+        timestamp: '2026-05-04T08:22:07'
+        label: world-toroidal-wrap
+      - path: series/world-variations/measurements/experiment_6
+        timestamp: '2026-05-04T08:25:22'
+        label: world-large-open-field
+      - path: series/world-variations/measurements/experiment_7
+        timestamp: '2026-05-04T08:29:23'
+        label: world-compact-dense-feedback
+      - path: series/world-variations/measurements/experiment_8
+        timestamp: '2026-05-04T08:31:02'
+        label: world-long-cooldown
+      comparisons:
+      - series/world-variations/comparisons/comparison-001.json
+      - series/world-variations/comparisons/comparison-002.json
+      - series/world-variations/comparisons/comparison-003.json
+      - series/world-variations/comparisons/comparison-004.json
+      - series/world-variations/comparisons/comparison-005.json
+      - series/world-variations/comparisons/comparison-006.json
+      - series/world-variations/comparisons/comparison-007.json
+      - series/world-variations/comparisons/comparison-008.json

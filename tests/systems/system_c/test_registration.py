@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from axis.framework.metrics.extensions import registered_metric_extensions
 from axis.framework.registry import register_system, registered_system_types
+from axis.framework.workspaces.plot_extensions import (
+    registered_measurement_plot_extensions,
+)
 from axis.systems.system_c import register
 from axis.systems.system_c.system import SystemC
 from tests.builders.system_c_config_builder import SystemCConfigBuilder
@@ -15,6 +18,7 @@ class TestRegistration:
         register()
         assert "system_c" in registered_system_types()
         assert "system_c" in registered_metric_extensions()
+        assert "system_c" in registered_measurement_plot_extensions()
 
     def test_factory_creates_system_c(self) -> None:
         register()

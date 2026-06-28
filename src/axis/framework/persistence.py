@@ -12,7 +12,6 @@ from pydantic import BaseModel, ConfigDict
 from axis.framework.config import ExperimentConfig
 from axis.framework.experiment import ExperimentSummary
 from axis.framework.execution_results import (
-    DeltaRunResult,
     LightEpisodeResult,
     LightRunResult,
 )
@@ -20,7 +19,7 @@ from axis.framework.metrics.types import RunBehaviorMetrics
 from axis.framework.run import RunConfig, RunResult, RunSummary
 from axis.sdk.trace import (
     BaseEpisodeTrace,
-    DeltaEpisodeTrace,
+    FullEpisodeTrace,
     reconstruct_episode_trace,
 )
 
@@ -68,7 +67,7 @@ class ExperimentMetadata(BaseModel):
 
     # --- Experiment Output Abstraction fields ---
     output_form: str | None = None          # "point" or "sweep"
-    trace_mode: str | None = None           # "full", "light", or "delta"
+    trace_mode: str | None = None           # "full" or "light"
     primary_run_id: str | None = None       # for point outputs
     baseline_run_id: str | None = None      # for sweep outputs
 
@@ -203,6 +202,14 @@ class ExperimentRepository:
             / f"episode_{episode_index:04d}.json"
         )
 
+    def light_episode_path(
+        self, experiment_id: str, run_id: str, episode_index: int,
+    ) -> Path:
+        return (
+            self.episodes_dir(experiment_id, run_id)
+            / f"episode_{episode_index:04d}.light.json"
+        )
+
     # -- Directory creation -------------------------------------------------
 
     def create_experiment_dir(self, experiment_id: str) -> Path:
@@ -257,11 +264,15 @@ class ExperimentRepository:
         self,
         experiment_id: str,
         run_id: str,
-        result: RunResult | LightRunResult | DeltaRunResult,
+        result: RunResult | LightRunResult,
         *, overwrite: bool = False,
     ) -> Path:
         p = self.run_result_path(experiment_id, run_id)
-        _save_json(p, result.model_dump(mode="json"), overwrite=overwrite)
+        if self._has_external_episode_payloads(experiment_id, run_id, result):
+            data = self._build_compact_run_result_payload(result)
+        else:
+            data = result.model_dump(mode="json")
+        _save_json(p, data, overwrite=overwrite)
         return p
 
     def save_behavior_metrics(
@@ -293,16 +304,16 @@ class ExperimentRepository:
         *,
         overwrite: bool = False,
     ) -> Path:
-        p = self.episodes_dir(experiment_id, run_id) / f"episode_{episode_index:04d}.light.json"
+        p = self.light_episode_path(experiment_id, run_id, episode_index)
         _save_json(p, result.model_dump(mode="json"), overwrite=overwrite)
         return p
 
-    def save_delta_episode_trace(
+    def save_full_episode_trace(
         self,
         experiment_id: str,
         run_id: str,
         episode_index: int,
-        trace: DeltaEpisodeTrace,
+        trace: FullEpisodeTrace,
         *,
         overwrite: bool = False,
     ) -> Path:
@@ -394,13 +405,15 @@ class ExperimentRepository:
         self,
         experiment_id: str,
         run_id: str,
-    ) -> RunResult | LightRunResult | DeltaRunResult:
+    ) -> RunResult | LightRunResult:
         data = _load_json(self.run_result_path(experiment_id, run_id))
         if data.get("result_type") == "light_run":
-            return LightRunResult.model_validate(data)
-        if data.get("result_type") == "delta_run":
-            return DeltaRunResult.model_validate(data)
-        return RunResult.model_validate(data)
+            if "episode_results" in data:
+                return LightRunResult.model_validate(data)
+            return self._load_compact_light_run_result(experiment_id, run_id, data)
+        if "episode_traces" in data:
+            return RunResult.model_validate(data)
+        return self._load_compact_full_run_result(experiment_id, run_id, data)
 
     def load_behavior_metrics(
         self,
@@ -415,9 +428,9 @@ class ExperimentRepository:
         self, experiment_id: str, run_id: str, episode_index: int,
     ) -> BaseEpisodeTrace:
         data = _load_json(self.episode_path(experiment_id, run_id, episode_index))
-        if data.get("result_type") == "delta_episode":
-            delta_trace = DeltaEpisodeTrace.model_validate(data)
-            return reconstruct_episode_trace(delta_trace)
+        if data.get("result_type") in {"full_episode", "delta_opt_episode"}:
+            full_trace = FullEpisodeTrace.model_validate(data)
+            return reconstruct_episode_trace(full_trace)
         return BaseEpisodeTrace.model_validate(data)
 
     # -- Discovery ----------------------------------------------------------
@@ -446,6 +459,75 @@ class ExperimentRepository:
             return []
         return sorted(ep_dir.glob("episode_*.json"))
 
+    def list_light_episode_files(
+        self, experiment_id: str, run_id: str,
+    ) -> list[Path]:
+        """Return sorted light episode artifact file paths."""
+        ep_dir = self.episodes_dir(experiment_id, run_id)
+        if not ep_dir.exists():
+            return []
+        return sorted(ep_dir.glob("episode_*.light.json"))
+
     def artifact_exists(self, path: Path) -> bool:
         """Check whether an artifact file exists."""
         return path.exists()
+
+    # -- Internal compact run result helpers -------------------------------
+
+    def _build_compact_run_result_payload(
+        self,
+        result: RunResult | LightRunResult,
+    ) -> dict[str, Any]:
+        data = result.model_dump(
+            mode="json",
+            exclude={"episode_traces", "episode_results"},
+        )
+        data["episode_storage"] = "external"
+        return data
+
+    def _has_external_episode_payloads(
+        self,
+        experiment_id: str,
+        run_id: str,
+        result: RunResult | LightRunResult,
+    ) -> bool:
+        if isinstance(result, LightRunResult):
+            expected = result.num_episodes
+            return all(
+                self.light_episode_path(experiment_id, run_id, episode_index).exists()
+                for episode_index in range(1, expected + 1)
+            )
+
+        expected = result.num_episodes
+        return all(
+            self.episode_path(experiment_id, run_id, episode_index).exists()
+            for episode_index in range(1, expected + 1)
+        )
+
+    def _load_compact_full_run_result(
+        self,
+        experiment_id: str,
+        run_id: str,
+        data: dict[str, Any],
+    ) -> RunResult:
+        episode_traces = tuple(
+            FullEpisodeTrace.model_validate(_load_json(path))
+            for path in self.list_episode_files(experiment_id, run_id)
+        )
+        data = dict(data)
+        data["episode_traces"] = episode_traces
+        return RunResult.model_validate(data)
+
+    def _load_compact_light_run_result(
+        self,
+        experiment_id: str,
+        run_id: str,
+        data: dict[str, Any],
+    ) -> LightRunResult:
+        episode_results = tuple(
+            LightEpisodeResult.model_validate(_load_json(path))
+            for path in self.list_light_episode_files(experiment_id, run_id)
+        )
+        data = dict(data)
+        data["episode_results"] = episode_results
+        return LightRunResult.model_validate(data)

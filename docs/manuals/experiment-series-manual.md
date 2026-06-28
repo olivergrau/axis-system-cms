@@ -502,7 +502,60 @@ In short:
 - `measure` = one measured checkpoint
 - `run-series` = a declared sequence of measured checkpoints
 
+## Relationship To `run-metrics`
+
+`run-metrics` is a different kind of command.
+
+Use:
+
+```bash
+axis workspaces run-metrics <workspace-path> --role <role>
+```
+
+when you want the full behavioral-metrics readout for one selected run from
+workspace-local results.
+
+Important distinction:
+
+- `run-series` executes many measured checkpoints and writes series artifacts
+- `run-metrics` inspects one already persisted run in detail
+
+Why `run-series` does not simply call `run-metrics` for every produced run:
+
+- the series command already creates the per-experiment logs and aggregate
+  series summaries it needs
+- bulk metric inspection for every run would make the CLI noisier and less
+  targeted for normal series execution
+- `run-metrics` stays available as an explicit post-hoc inspection step when
+  one specific run deserves deeper analysis
+
+Depending on what has already been materialized, `run-metrics` may also compute
+and persist `behavior_metrics.json` for the selected run before printing it.
+
+## Relationship To `render-series-plots`
+
+Use:
+
+```bash
+axis workspaces render-series-plots <workspace-path> --series <series-id>
+```
+
+after a completed series when you want visual artifacts.
+
+This command:
+
+- reads existing series measurement artifacts
+- renders generic and system-specific plots
+- does not rerun the series itself
+
+So the common lifecycle is:
+
+1. `run-series` to execute the campaign
+2. `run-metrics` for any specific run you want to inspect deeply
+3. `render-series-plots` when you want visual summaries across the campaign
+
 ## See Also
 
 - [Experiment Workspaces](workspace-manual.md)
 - [CLI User Guide](cli-manual.md)
+- [Series Measurement Artifacts](series-measurement-artifacts-manual.md)

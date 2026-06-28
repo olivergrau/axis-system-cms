@@ -40,6 +40,9 @@ class CLIContext:
     experiment_series_service: object = field(default=None)
     """``WorkspaceExperimentSeriesService`` instance."""
 
+    series_plot_service: object = field(default=None)
+    """``WorkspaceSeriesPlotService`` instance."""
+
     inspection_service: object = field(default=None)
     """``WorkspaceInspectionService`` instance."""
 
@@ -74,6 +77,12 @@ def build_context(root: Path) -> CLIContext:
     )
     from axis.framework.workspaces.services.experiment_series_service import (
         WorkspaceExperimentSeriesService,
+    )
+    from axis.framework.workspaces.services.series_plot_service import (
+        WorkspaceSeriesPlotService,
+    )
+    from axis.framework.workspaces.series_plot_rendering import (
+        render_series_measurement_plots,
     )
     from axis.framework.workspaces.services.compare_service import (
         WorkspaceCompareService,
@@ -131,6 +140,9 @@ def build_context(root: Path) -> CLIContext:
             load_manifest_fn=load_manifest,
             load_experiment_series_fn=load_experiment_series,
             export_measurement_reports_fn=export_measurement_reports,
+        ),
+        series_plot_service=WorkspaceSeriesPlotService(
+            render_fn=render_series_measurement_plots,
         ),
         inspection_service=WorkspaceInspectionService(
             summarize_fn=summarize_workspace,

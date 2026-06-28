@@ -1,0 +1,39 @@
+{
+  "series_title": "System A+W Curiosity and Arbitration Series",
+  "series_description": "A compact single-system series for System A+W that probes how curiosity, arbitration, novelty style, and survival pressure reshape behavior relative to a neutral A+W baseline configuration.\n",
+  "experiment_order": [
+    "exp_01",
+    "exp_02",
+    "exp_03",
+    "exp_04",
+    "exp_05",
+    "exp_06",
+    "exp_07",
+    "exp_08"
+  ],
+  "measurement_directories": [
+    "series/curiosity-arbitration/measurements/experiment_1",
+    "series/curiosity-arbitration/measurements/experiment_2",
+    "series/curiosity-arbitration/measurements/experiment_3",
+    "series/curiosity-arbitration/measurements/experiment_4",
+    "series/curiosity-arbitration/measurements/experiment_5",
+    "series/curiosity-arbitration/measurements/experiment_6",
+    "series/curiosity-arbitration/measurements/experiment_7",
+    "series/curiosity-arbitration/measurements/experiment_8"
+  ],
+  "comparison_outputs": [
+    "series/curiosity-arbitration/comparisons/comparison-001.json",
+    "series/curiosity-arbitration/comparisons/comparison-002.json",
+    "series/curiosity-arbitration/comparisons/comparison-003.json",
+    "series/curiosity-arbitration/comparisons/comparison-004.json",
+    "series/curiosity-arbitration/comparisons/comparison-005.json",
+    "series/curiosity-arbitration/comparisons/comparison-006.json",
+    "series/curiosity-arbitration/comparisons/comparison-007.json",
+    "series/curiosity-arbitration/comparisons/comparison-008.json"
+  ],
+  "aggregate_outputs": {
+    "markdown": "series/curiosity-arbitration/measurements/series-summary.md",
+    "json": "series/curiosity-arbitration/measurements/series-summary.json",
+    "csv": "series/curiosity-arbitration/measurements/series-metrics.csv"
+  }
+}

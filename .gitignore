@@ -15,6 +15,26 @@ build/
 Agents.md
 resume.txt
 
+research/workspaces/*
+!research/workspaces/system_a_vs_system_aw/
+!research/workspaces/system_a_vs_system_aw/**
+research/workspaces/system_a_vs_system_aw/results/
+research/workspaces/system_a_vs_system_aw/series/system-parameter-variations/results/
+research/workspaces/system_a_vs_system_aw/series/world-variations/results/
+
+!research/workspaces/system_a_vs_system_c/
+!research/workspaces/system_a_vs_system_c/**
+research/workspaces/system_a_vs_system_c/results/
+
+!research/workspaces/system_a-baseline/
+!research/workspaces/system_a-baseline/**
+
+!research/workspaces/system_aw-baseline/
+!research/workspaces/system_aw-baseline/**
+research/workspaces/system_aw-baseline/results/
+research/workspaces/system_aw-baseline/series/curiosity-arbitration/results/
+research/workspaces/system_aw-baseline/series/world-variations/results/
+
 workspaces/*
 !workspaces/system_a_vs_system_aw/
 !workspaces/system_a_vs_system_aw/**
@@ -30,3 +50,4 @@ workspaces/system_a_vs_system_c/results/
 !src/axis/framework/workspaces/**
 __pycache__/
 scripts/
+results.zip

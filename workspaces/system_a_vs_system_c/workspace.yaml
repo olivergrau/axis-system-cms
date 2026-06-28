@@ -19,7 +19,7 @@ primary_results:
   config: results/a250935f690449aabe2a1e6d46b28ae1/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
 - path: results/5c5052c77919413cbce1fe80d9c56532
@@ -27,7 +27,7 @@ primary_results:
   config: results/5c5052c77919413cbce1fe80d9c56532/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
 - path: results/81869bb0d9b34107af664be6ca9f4099
@@ -35,7 +35,7 @@ primary_results:
   config: results/81869bb0d9b34107af664be6ca9f4099/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
 - path: results/a4987edf243d4206a2a0fd1eec012881
@@ -43,7 +43,7 @@ primary_results:
   config: results/a4987edf243d4206a2a0fd1eec012881/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   config_changes:
@@ -53,7 +53,7 @@ primary_results:
   config: results/f8f3dfe1218e4722bd4b36a2226e3941/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: My notes for this run
@@ -62,7 +62,7 @@ primary_results:
   config: results/ec4e2d4df6e7417fbcfb211745a59e36/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: My notes for this run
@@ -71,7 +71,7 @@ primary_results:
   config: results/04756a72c1064cf79827f0ea3938f497/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Doubled resource rate for both environments
@@ -83,7 +83,7 @@ primary_results:
   config: results/82fa7a77949b41c9b581903b90bdfe98/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Doubled resource rate for both environments
@@ -95,7 +95,7 @@ primary_results:
   config: results/81105f0beaf246ed9c227e971f177faa/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Nearly deactivated prediction.
@@ -104,7 +104,7 @@ primary_results:
   config: results/7416d80c5e5244b9822c13948a0f34e0/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Nearly deactivated prediction.
@@ -123,7 +123,7 @@ primary_results:
   config: results/240bb9f843824a099d9074140a4012d5/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Now prediction should really be off (set modulation mode to 
@@ -133,7 +133,7 @@ primary_results:
   config: results/ad569fd340a04d40aa5229ed7f84267f/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Now prediction should really be off (set modulation mode to 
@@ -152,7 +152,7 @@ primary_results:
   config: results/bb01e125a7fd434293bb4d349cf6d336/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test
@@ -161,7 +161,7 @@ primary_results:
   config: results/517e0d31d9244b47b7760ecbb7be4356/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test
@@ -178,7 +178,7 @@ primary_results:
   config: results/e881af12b7f04ba7a5e103343593172c/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test - reinforced
@@ -187,7 +187,7 @@ primary_results:
   config: results/864485e584494b94a935f9fb001062d6/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test - reinforced
@@ -204,7 +204,7 @@ primary_results:
   config: results/4b7b69ee45194413b658f35031022341/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test - reinforced second try
@@ -213,7 +213,7 @@ primary_results:
   config: results/bc6597486e984dffa5cc7bc421bf5575/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test - reinforced second try
@@ -227,7 +227,7 @@ primary_results:
   config: results/80b4cd2ee303424f8cfd771ff1467127/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test - reinforced 3rd
@@ -236,7 +236,7 @@ primary_results:
   config: results/4f0cb907212b44e3a15cf814829510ce/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: Gentle additive tie-breaker test - reinforced 3rd
@@ -250,7 +250,7 @@ primary_results:
   config: results/5dba113959f64f21b148a8dab5142409/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: New world resource pattern (clustered)
@@ -263,7 +263,7 @@ primary_results:
   config: results/e9bd2f66674c44c99962d9811225667c/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: New world resource pattern (clustered)
@@ -276,7 +276,7 @@ primary_results:
   config: results/9bc16d949a6b494dadb92411ebdb3d69/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: 1. Cluster Confidence Boost
@@ -285,7 +285,7 @@ primary_results:
   config: results/208e161e939d4bfd845fb3f901966113/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: 1. Cluster Confidence Boost
@@ -320,7 +320,7 @@ primary_results:
   config: results/2c0bdba7b76f484ca4147d24734a679e/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: 1. Cluster Confidence Boost (more modulation)
@@ -329,7 +329,7 @@ primary_results:
   config: results/1f3a8b4b98c84a23bd047618a0716918/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: 1. Cluster Confidence Boost (more modulation)
@@ -363,7 +363,7 @@ primary_results:
   config: results/15f6a6bcc8d04fda8ac232b57dcd2f8f/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: 1. Cluster Confidence Boost (smooth out only, no new search pathes)
@@ -372,7 +372,7 @@ primary_results:
   config: results/2fecde933722475bbeb2f10f9f7da40e/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: 1. Cluster Confidence Boost (smooth out only, no new search pathes)
@@ -404,7 +404,7 @@ primary_results:
   config: results/49d4f8e474e54a05b34092f4a194cecb/experiment_config.json
   role: reference
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_a
   primary_run_id: run-0000
   run_notes: 2. Cluster Edge Explorer
@@ -413,7 +413,7 @@ primary_results:
   config: results/d1926268ede946b4a4f1115e04fec604/experiment_config.json
   role: candidate
   output_form: point
-  trace_mode: delta
+  trace_mode: full
   system_type: system_c
   primary_run_id: run-0000
   run_notes: 2. Cluster Edge Explorer

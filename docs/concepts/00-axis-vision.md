@@ -120,13 +120,39 @@ AXIS does not claim to solve it.
 
 But it takes a position:
 
-> Consciousness should not be treated as a starting point, but as a phenomenon that may emerge from sufficiently structured processes.
+> Consciousness should not be treated as a starting point, but as a phenomenon that may develop gradually out of increasingly structured processes.
 
 The working assumption is:
 
 * if cognition can be understood mechanistically
-* and if self-referential processes can be constructed
-* then consciousness may become approachable as a **derived phenomenon**, not a primitive mystery
+* and if increasingly rich internal organization and self-referential processing can be constructed
+* then consciousness may become approachable as a **derived and graded phenomenon**, not a primitive mystery
+
+AXIS therefore does **not** assume a plop-like transition in which
+consciousness suddenly appears fully formed once some threshold is crossed.
+
+Its current position is closer to a developmental view:
+
+* cognition can become more structured in degrees
+* subjective organization may also develop in degrees
+* there may be many intermediate stages between minimal reactivity and felt experience
+
+At some point in that continuum, a system may begin to **feel** or
+**undergo experience**.
+
+Where that point lies is unknown.
+
+AXIS treats this as a genuine open problem -- effectively a kind of
+singularity in our present understanding. No one currently knows where the
+transition from increasingly complex process to actual experience occurs, or
+what exact structural conditions are sufficient for it.
+
+What AXIS does claim is more modest:
+
+> By reconstructing cognition as layered mechanism, we may at least become
+> able to describe the path along which consciousness could gradually
+> develop, even if we still cannot identify the decisive threshold with
+> certainty.
 
 ---
 
@@ -317,6 +343,10 @@ AXIS is, at its core, an attempt to take cognition seriously as a **system that 
 Not by analogy, not by imitation, but by construction.
 
 Whether this path leads to an explanation of consciousness is open.
+
+But AXIS assumes that if consciousness exists in synthetic or biological
+systems, it is more likely to be reached through a long gradient of
+organizational development than through a sudden unexplained jump.
 
 But without such a structured approach, the question remains vague.
 

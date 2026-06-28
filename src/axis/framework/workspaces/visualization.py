@@ -16,7 +16,7 @@ def resolve_visualization_target(
     role: str | None = None,
     experiment: str | None = None,
     run: str | None = None,
-) -> tuple[str, str, int]:
+) -> tuple[str, str, int, Path]:
     """Resolve a workspace into visualization coordinates.
 
     Uses the Experiment Output abstraction to resolve run IDs.
@@ -41,8 +41,8 @@ def resolve_visualization_target(
 
     Returns
     -------
-    Tuple of (experiment_id, run_id, episode_index) suitable for
-    passing to the existing visualization launch infrastructure.
+    Tuple of (experiment_id, run_id, episode_index, results_root)
+    suitable for passing to the visualization launch infrastructure.
 
     Raises
     ------
@@ -56,10 +56,9 @@ def resolve_visualization_target(
 
     ws = Path(workspace_path)
     manifest = load_manifest(ws)
-    repo = ExperimentRepository(ws / "results")
-
-    experiments = repo.list_experiments()
-    if not experiments:
+    repo_roots = _discover_workspace_results_roots(ws)
+    experiment_locations = _discover_workspace_experiments(repo_roots)
+    if not experiment_locations:
         raise ValueError(
             f"No execution results in workspace "
             f"'{manifest.workspace_id}'. Run 'axis workspaces run' first."
@@ -67,30 +66,34 @@ def resolve_visualization_target(
 
     # Explicit experiment ID provided.
     if experiment:
-        if experiment not in experiments:
+        repo_root = experiment_locations.get(experiment)
+        if repo_root is None:
             raise ValueError(
                 f"Experiment '{experiment}' not found in workspace results. "
-                f"Available: {experiments}"
+                f"Available: {sorted(experiment_locations)}"
             )
+        repo = ExperimentRepository(repo_root)
         rid = _resolve_run_for_viz(repo, experiment, explicit_run=run)
-        return experiment, rid, episode
+        return experiment, rid, episode, repo_root
 
     # Auto-resolve: filter by role if applicable.
-    candidates = experiments
+    candidates = list(experiment_locations)
     if role:
         # For development workspaces, use manifest fields to resolve
         if role == "baseline" and manifest.baseline_results:
             for rpath in manifest.baseline_results:
                 eid = _extract_eid(rpath)
-                if eid and eid in experiments:
+                if eid and eid in experiment_locations:
+                    repo = ExperimentRepository(experiment_locations[eid])
                     rid = _resolve_run_for_viz(repo, eid, explicit_run=run)
-                    return eid, rid, episode
+                    return eid, rid, episode, experiment_locations[eid]
 
         if role == "candidate" and manifest.current_candidate_result:
             eid = _extract_eid(manifest.current_candidate_result)
-            if eid and eid in experiments:
+            if eid and eid in experiment_locations:
+                repo = ExperimentRepository(experiment_locations[eid])
                 rid = _resolve_run_for_viz(repo, eid, explicit_run=run)
-                return eid, rid, episode
+                return eid, rid, episode, experiment_locations[eid]
 
         # Match experiments by the system_type declared for this role.
         target_system = None
@@ -103,8 +106,9 @@ def resolve_visualization_target(
 
         if target_system:
             filtered = []
-            for eid in experiments:
+            for eid in candidates:
                 try:
+                    repo = ExperimentRepository(experiment_locations[eid])
                     meta = repo.load_experiment_metadata(eid)
                     if meta.system_type == target_system:
                         filtered.append(eid)
@@ -119,8 +123,9 @@ def resolve_visualization_target(
 
     if len(candidates) == 1:
         eid = candidates[0]
+        repo = ExperimentRepository(experiment_locations[eid])
         rid = _resolve_run_for_viz(repo, eid, explicit_run=run)
-        return eid, rid, episode
+        return eid, rid, episode, experiment_locations[eid]
 
     # Multiple candidates — try manifest ordering.
     if manifest.primary_results and len(manifest.primary_results) >= 1:
@@ -133,12 +138,14 @@ def resolve_visualization_target(
                 ordered.append(eid)
         if role == "reference" and ordered:
             eid = ordered[0]
+            repo = ExperimentRepository(experiment_locations[eid])
             rid = _resolve_run_for_viz(repo, eid, explicit_run=run)
-            return eid, rid, episode
+            return eid, rid, episode, experiment_locations[eid]
         elif role == "candidate" and len(ordered) >= 2:
             eid = ordered[1]
+            repo = ExperimentRepository(experiment_locations[eid])
             rid = _resolve_run_for_viz(repo, eid, explicit_run=run)
-            return eid, rid, episode
+            return eid, rid, episode, experiment_locations[eid]
 
     # Still ambiguous — annotate with output form for easier selection.
     labeled = []
@@ -156,6 +163,40 @@ def resolve_visualization_target(
         f"Multiple experiments found in workspace results: {labeled}. "
         f"Use --experiment <id> to select one."
     )
+
+
+def _discover_workspace_results_roots(workspace_path: Path) -> list[Path]:
+    """Return all workspace-local results roots relevant to visualization."""
+    ws = Path(workspace_path)
+    roots: list[Path] = []
+    primary_root = ws / "results"
+    if primary_root.is_dir():
+        roots.append(primary_root)
+
+    series_root = ws / "series"
+    if series_root.is_dir():
+        for path in sorted(series_root.glob("*/results")):
+            if path.is_dir():
+                roots.append(path)
+    return roots
+
+
+def _discover_workspace_experiments(repo_roots: list[Path]) -> dict[str, Path]:
+    """Map experiment IDs to the unique results root containing them."""
+    from axis.framework.persistence import ExperimentRepository
+
+    locations: dict[str, Path] = {}
+    for repo_root in repo_roots:
+        repo = ExperimentRepository(repo_root)
+        for experiment_id in repo.list_experiments():
+            previous = locations.get(experiment_id)
+            if previous is not None and previous != repo_root:
+                raise ValueError(
+                    f"Experiment '{experiment_id}' appears in multiple workspace "
+                    f"results roots: '{previous}' and '{repo_root}'."
+                )
+            locations[experiment_id] = repo_root
+    return locations
 
 
 def _extract_eid(path_str: str) -> str | None:

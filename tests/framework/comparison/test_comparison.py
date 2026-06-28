@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from axis.framework.comparison.actions import compute_action_usage
 from axis.framework.comparison.alignment import compute_alignment, iter_aligned_steps
-from axis.framework.comparison.compare import compare_episode_traces
+from axis.framework.comparison.compare import (
+    _resolve_comparison_max_workers,
+    compare_episode_traces,
+    compare_runs,
+)
 from axis.framework.comparison.extensions import (
     _EXTENSION_REGISTRY,
     build_system_specific_analysis,
@@ -665,3 +671,165 @@ class TestRunSummary:
         restored = RunComparisonResult.model_validate(data)
         assert restored.summary.num_valid_pairs == 2
         assert len(restored.episode_results) == 2
+
+
+class TestRunComparisonExecution:
+    def test_resolve_comparison_max_workers_uses_minimum_run_budget(self):
+        ref_config = RunConfig(
+            system_type="system_a",
+            system_config={},
+            framework_config=FrameworkConfig(
+                general=GeneralConfig(seed=1),
+                execution=ExecutionConfig(max_steps=100, max_workers=6),
+                world=BaseWorldConfig(),
+            ),
+            num_episodes=1,
+            base_seed=42,
+        )
+        cand_config = RunConfig(
+            system_type="system_c",
+            system_config={},
+            framework_config=FrameworkConfig(
+                general=GeneralConfig(seed=1),
+                execution=ExecutionConfig(max_steps=100, max_workers=2),
+                world=BaseWorldConfig(),
+            ),
+            num_episodes=1,
+            base_seed=42,
+        )
+
+        resolved = _resolve_comparison_max_workers(
+            50,
+            reference_run_config=ref_config,
+            candidate_run_config=cand_config,
+        )
+
+        assert resolved == 2
+
+    def test_resolve_comparison_max_workers_honors_explicit_override(self):
+        resolved = _resolve_comparison_max_workers(
+            50,
+            reference_run_config=None,
+            candidate_run_config=None,
+            requested_max_workers=3,
+        )
+
+        assert resolved == 3
+
+    def test_compare_runs_preserves_episode_order_under_parallel_completion(
+        self,
+        monkeypatch,
+    ):
+        class FakeRepo:
+            def list_episode_files(self, experiment_id, run_id):
+                return [object(), object(), object()]
+
+            def load_run_config(self, experiment_id, run_id):
+                raise RuntimeError("unused in this test")
+
+            def load_run_metadata(self, experiment_id, run_id):
+                raise RuntimeError("unused in this test")
+
+        def delayed_pair_loader(
+            repo,
+            reference_experiment_id,
+            reference_run_id,
+            candidate_experiment_id,
+            candidate_run_id,
+            episode_index,
+            **kwargs,
+        ):
+            time.sleep(0.02 * (4 - episode_index))
+            ref = make_episode([make_step(0)])
+            cand = make_episode([make_step(0)], system_type="system_c")
+            result = compare_episode_traces(
+                ref,
+                cand,
+                reference_episode_index=episode_index,
+                candidate_episode_index=episode_index,
+            )
+            return ref.system_type, cand.system_type, result
+
+        monkeypatch.setattr(
+            "axis.framework.comparison.compare._load_and_compare_episode_pair",
+            delayed_pair_loader,
+        )
+        monkeypatch.setattr(
+            "axis.framework.comparison.compare.os.cpu_count",
+            lambda: 4,
+        )
+
+        result = compare_runs(
+            FakeRepo(),
+            "exp-ref",
+            "run-0000",
+            "exp-cand",
+            "run-0000",
+        )
+
+        assert [
+            episode_result.identity.reference_episode_index
+            for episode_result in result.episode_results
+        ] == [1, 2, 3]
+
+    def test_compare_runs_parallelizes_with_injected_extension_catalog(
+        self,
+        monkeypatch,
+    ):
+        class FakeRepo:
+            def list_episode_files(self, experiment_id, run_id):
+                return [object(), object()]
+
+            def load_run_config(self, experiment_id, run_id):
+                raise RuntimeError("unused in this test")
+
+            def load_run_metadata(self, experiment_id, run_id):
+                raise RuntimeError("unused in this test")
+
+        class DummyCatalog:
+            def get_optional(self, key):
+                return None
+
+        called_episode_indices: list[int] = []
+
+        def delayed_pair_loader(
+            repo,
+            reference_experiment_id,
+            reference_run_id,
+            candidate_experiment_id,
+            candidate_run_id,
+            episode_index,
+            **kwargs,
+        ):
+            called_episode_indices.append(episode_index)
+            ref = make_episode([make_step(0)])
+            cand = make_episode([make_step(0)], system_type="system_c")
+            result = compare_episode_traces(
+                ref,
+                cand,
+                reference_episode_index=episode_index,
+                candidate_episode_index=episode_index,
+                extension_catalog=kwargs.get("extension_catalog"),
+            )
+            return ref.system_type, cand.system_type, result
+
+        monkeypatch.setattr(
+            "axis.framework.comparison.compare._load_and_compare_episode_pair",
+            delayed_pair_loader,
+        )
+        monkeypatch.setattr(
+            "axis.framework.comparison.compare.os.cpu_count",
+            lambda: 4,
+        )
+
+        result = compare_runs(
+            FakeRepo(),
+            "exp-ref",
+            "run-0000",
+            "exp-cand",
+            "run-0000",
+            extension_catalog=DummyCatalog(),
+        )
+
+        assert called_episode_indices == [1, 2]
+        assert len(result.episode_results) == 2

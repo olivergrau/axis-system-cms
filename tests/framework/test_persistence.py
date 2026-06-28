@@ -28,7 +28,7 @@ from axis.framework.persistence import (
     RunMetadata,
     RunStatus,
 )
-from axis.framework.execution_results import DeltaRunResult, LightRunResult
+from axis.framework.execution_results import LightRunResult
 from axis.framework.run import (
     RunConfig,
     RunExecutor,
@@ -262,7 +262,7 @@ class TestRoundtrip:
         loaded = repo.load_run_result("exp", "run")
         assert isinstance(loaded, LightRunResult)
 
-    def test_delta_run_result(self, tmp_path: Path) -> None:
+    def test_full_run_result(self, tmp_path: Path) -> None:
         repo = ExperimentRepository(tmp_path)
         repo.create_run_dir("exp", "run")
         result = RunExecutor().execute(
@@ -272,7 +272,7 @@ class TestRoundtrip:
                 framework_config=(
                     FrameworkConfigBuilder()
                     .with_max_steps(10)
-                    .with_trace_mode("delta")
+                    .with_trace_mode("full")
                     .build()
                 ),
                 num_episodes=1,
@@ -281,18 +281,9 @@ class TestRoundtrip:
         )
         repo.save_run_result("exp", "run", result)
         loaded = repo.load_run_result("exp", "run")
-        assert isinstance(loaded, DeltaRunResult)
+        assert isinstance(loaded, RunResult)
 
-    def test_episode_trace(self, tmp_path: Path) -> None:
-        repo = ExperimentRepository(tmp_path)
-        repo.create_run_dir("exp", "run")
-        result = _run_result()
-        trace = result.episode_traces[0]
-        repo.save_episode_trace("exp", "run", 1, trace)
-        loaded = repo.load_episode_trace("exp", "run", 1)
-        assert loaded.system_type == trace.system_type
-
-    def test_delta_episode_trace_loads_as_base_trace(self, tmp_path: Path) -> None:
+    def test_compact_run_result_roundtrip_uses_external_episode_artifacts(self, tmp_path: Path) -> None:
         repo = ExperimentRepository(tmp_path)
         repo.create_run_dir("exp", "run")
         result = RunExecutor().execute(
@@ -302,15 +293,54 @@ class TestRoundtrip:
                 framework_config=(
                     FrameworkConfigBuilder()
                     .with_max_steps(10)
-                    .with_trace_mode("delta")
+                    .with_trace_mode("full")
                     .build()
                 ),
                 num_episodes=1,
                 base_seed=42,
             )
         )
-        assert isinstance(result, DeltaRunResult)
-        repo.save_delta_episode_trace("exp", "run", 1, result.episode_traces[0])
+        assert isinstance(result, RunResult)
+        repo.save_full_episode_trace("exp", "run", 1, result.episode_traces[0])
+        repo.save_run_result("exp", "run", result)
+
+        raw = json.loads(repo.run_result_path("exp", "run").read_text())
+        assert raw["episode_storage"] == "external"
+        assert "episode_traces" not in raw
+
+        loaded = repo.load_run_result("exp", "run")
+        assert isinstance(loaded, RunResult)
+        assert len(loaded.episode_traces) == 1
+        assert loaded.episode_traces[0].total_steps == result.episode_traces[0].total_steps
+
+    def test_episode_trace(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = _run_result()
+        trace = result.episode_traces[0]
+        repo.save_full_episode_trace("exp", "run", 1, trace)
+        loaded = repo.load_episode_trace("exp", "run", 1)
+        assert loaded.system_type == trace.system_type
+
+    def test_full_episode_trace_loads_as_base_trace(self, tmp_path: Path) -> None:
+        repo = ExperimentRepository(tmp_path)
+        repo.create_run_dir("exp", "run")
+        result = RunExecutor().execute(
+            RunConfig(
+                system_type="system_a",
+                system_config=SystemAConfigBuilder().build(),
+                framework_config=(
+                    FrameworkConfigBuilder()
+                    .with_max_steps(10)
+                    .with_trace_mode("full")
+                    .build()
+                ),
+                num_episodes=1,
+                base_seed=42,
+            )
+        )
+        assert isinstance(result, RunResult)
+        repo.save_full_episode_trace("exp", "run", 1, result.episode_traces[0])
         loaded = repo.load_episode_trace("exp", "run", 1)
         assert loaded.system_type == result.episode_traces[0].system_type
         assert loaded.total_steps == result.episode_traces[0].total_steps

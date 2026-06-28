@@ -13,8 +13,7 @@ from axis.framework.run import (
     resolve_episode_seeds,
 )
 from axis.framework.execution_results import LightRunResult
-from axis.framework.execution_results import DeltaRunResult
-from axis.sdk.trace import BaseEpisodeTrace, DeltaEpisodeTrace
+from axis.sdk.trace import FullEpisodeTrace
 from tests.builders.config_builder import FrameworkConfigBuilder
 from tests.builders.system_config_builder import SystemAConfigBuilder
 
@@ -154,12 +153,12 @@ class TestRunExecutor:
         assert isinstance(result, LightRunResult)
         assert len(result.episode_results) == 3
 
-    def test_delta_mode_returns_delta_run_result(self) -> None:
+    def test_full_mode_returns_full_run_result(self) -> None:
         executor = RunExecutor()
-        result = executor.execute(_default_run_config(trace_mode="delta"))
-        assert isinstance(result, DeltaRunResult)
+        result = executor.execute(_default_run_config(trace_mode="full"))
+        assert isinstance(result, RunResult)
         assert len(result.episode_traces) == 3
-        assert isinstance(result.episode_traces[0], DeltaEpisodeTrace)
+        assert isinstance(result.episode_traces[0], FullEpisodeTrace)
 
     def test_parallel_episode_mode_matches_sequential_summary(self) -> None:
         executor = RunExecutor()
@@ -179,6 +178,37 @@ class TestRunExecutor:
             sequential.summary.mean_final_vitality
             == parallel.summary.mean_final_vitality
         )
+
+    def test_on_episode_complete_callback_receives_each_episode(self) -> None:
+        executor = RunExecutor()
+        seen: list[tuple[int, str]] = []
+
+        def _capture(episode_index: int, episode_result: FullEpisodeTrace) -> None:
+            seen.append((episode_index, episode_result.termination_reason))
+
+        result = executor.execute(
+            _default_run_config(num_episodes=3, trace_mode="full"),
+            on_episode_complete=_capture,
+        )
+
+        assert isinstance(result, RunResult)
+        assert seen == [
+            (0, result.episode_traces[0].termination_reason),
+            (1, result.episode_traces[1].termination_reason),
+            (2, result.episode_traces[2].termination_reason),
+        ]
+
+    def test_can_discard_episode_payloads_while_still_computing_summary(self) -> None:
+        executor = RunExecutor()
+        result = executor.execute(
+            _default_run_config(num_episodes=2, trace_mode="full"),
+            retain_episode_payloads=False,
+        )
+
+        assert isinstance(result, RunResult)
+        assert result.num_episodes == 2
+        assert result.summary.num_episodes == 2
+        assert result.episode_traces == ()
 
 
 # ---------------------------------------------------------------------------

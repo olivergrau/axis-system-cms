@@ -326,17 +326,17 @@ def cmd_workspaces_show(
                     f" ({series.path})"
                 )
                 _print_artifact_section(
-                    "Series results",
+                    f"Series results [{series.id}]",
                     series.results,
                     out=out,
                 )
                 _print_artifact_section(
-                    "Series comparisons",
+                    f"Series comparisons [{series.id}]",
                     series.comparisons,
                     out=out,
                 )
                 _print_artifact_section(
-                    "Series measurements",
+                    f"Series measurements [{series.id}]",
                     series.measurement_runs,
                     out=out,
                 )
@@ -647,6 +647,57 @@ def cmd_workspaces_run_series(
         out.kv("Series CSV", ws / result.series_metrics_csv_path)
         out.kv("Series manifest", ws / result.series_manifest_json_path)
         out.kv("Notes updated", "yes" if result.notes_updated else "no")
+
+
+def cmd_workspaces_render_series_plots(
+    workspace_path: str,
+    output: str,
+    *,
+    series_id: str,
+    series_plot_service: object = None,
+    catalogs: dict | None = None,
+) -> None:
+    """Render plot artifacts for a completed workspace series."""
+    ws = Path(workspace_path)
+    result = series_plot_service.render(
+        ws,
+        series_id=series_id,
+        extension_catalog=(
+            catalogs.get("measurement_plot_extensions") if catalogs else None
+        ),
+    )
+
+    if output == "json":
+        print(json.dumps({
+            "series_id": result.series_id,
+            "generated_count": result.generated_count,
+            "failure_count": result.failure_count,
+            "failures": [
+                {
+                    "plot_id": failure.plot_id,
+                    "message": failure.message,
+                    "system_type": failure.system_type,
+                }
+                for failure in result.failures
+            ],
+            "manifest_path": result.manifest_path,
+            "report_path": result.report_path,
+        }, indent=2))
+    else:
+        out = stdout_output()
+        out.success("series plot rendering completed")
+        out.kv("Series", result.series_id)
+        out.kv("Generated plots", result.generated_count)
+        out.kv("Failures", result.failure_count)
+        out.kv("Manifest", ws / result.manifest_path)
+        out.kv("Report", ws / result.report_path)
+        if result.failures:
+            out.section("Failure Details")
+            for failure in result.failures:
+                label = failure.plot_id
+                if failure.system_type:
+                    label = f"{label} [{failure.system_type}]"
+                out.list_row(label, failure.message)
 
 
 def cmd_workspaces_compare_configs(

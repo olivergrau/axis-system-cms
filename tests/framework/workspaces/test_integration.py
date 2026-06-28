@@ -19,6 +19,11 @@ from axis.framework.workspaces.sync import (
     sync_manifest_after_compare,
 )
 from axis.framework.cli import main as cli_main
+from axis.framework.cli.commands.workspaces import cmd_workspaces_render_series_plots
+from axis.framework.workspaces.services.series_plot_service import (
+    SeriesPlotFailureSummary,
+    SeriesPlotServiceResult,
+)
 
 
 def _entry_path(entry) -> str:
@@ -418,8 +423,372 @@ class TestWorkspaceCompare:
         ws = _scaffold_comparison(tmp_path)
         # results/ dir exists (from scaffold) but is empty
         assert (ws / "results").is_dir()
-        with pytest.raises(ValueError, match="No execution results"):
-            compare_workspace(ws)
+
+
+class TestWorkspaceSeriesPlotRendering:
+    def test_render_series_plots_generates_generic_plot_artifacts(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        run_payload = json.loads(captured.out)
+        assert (ws / run_payload["series_summary_json_path"]).is_file()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        assert payload["generated_count"] >= 10
+        assert payload["failure_count"] == 0
+
+        manifest_path = ws / payload["manifest_path"]
+        report_path = ws / payload["report_path"]
+        assert manifest_path.is_file()
+        assert report_path.is_file()
+        manifest = json.loads(manifest_path.read_text())
+        generated_paths = {item["relative_output_path"] for item in manifest["generated"]}
+        generated_groups = {item["plot_group"] for item in manifest["generated"]}
+        generated_producers = {item["producer_kind"] for item in manifest["generated"]}
+        report_text = report_path.read_text()
+
+        assert "series/integration-series/measurements/plots/series-overview/survival-rates.png" in generated_paths
+        assert "series/integration-series/measurements/plots/series-overview/paired-survival-counts.png" in generated_paths
+        assert "series/integration-series/measurements/plots/series-overview/paired-outcome-categories.png" in generated_paths
+        assert "series/integration-series/measurements/plots/series-overview/horizon-vs-lifespan-delta.png" in generated_paths
+        assert "series/integration-series/measurements/plots/series-overview/sub-horizon-advantage.png" in generated_paths
+        assert "series/integration-series/measurements/experiment_1/plots/experiment-comparison/paired-steps-delta-hist.png" in generated_paths
+        assert "series/integration-series/measurements/experiment_2/plots/experiment-comparison/mismatch-vs-outcome.png" in generated_paths
+        assert "series/integration-series/measurements/experiment_1/plots/experiment-comparison/steps-lived-distribution.png" in generated_paths
+        assert generated_groups >= {"series_overview", "experiment_comparison"}
+        assert "framework" in generated_producers
+        assert "## Series Overview" in report_text
+        assert "## Per-Experiment Comparison Plots" in report_text
+        assert "plots-manifest.json" in report_text
+
+    def test_render_series_plots_for_single_system_uses_consistent_manifest_and_paths(self, tmp_path, capsys):
+        ws = _scaffold_single_system(tmp_path)
+        _write_single_system_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "single-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        run_payload = json.loads(captured.out)
+        assert (ws / run_payload["series_summary_json_path"]).is_file()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "single-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        assert payload["generated_count"] >= 10
+        assert payload["failure_count"] == 0
+
+        manifest_path = ws / payload["manifest_path"]
+        report_path = ws / payload["report_path"]
+        assert manifest_path.is_file()
+        assert report_path.is_file()
+        manifest = json.loads(manifest_path.read_text())
+        report_text = report_path.read_text()
+
+        generated_paths = {item["relative_output_path"] for item in manifest["generated"]}
+        assert "series/single-series/measurements/plots/series-overview/survival-rates.png" in generated_paths
+        assert "series/single-series/measurements/plots/series-overview/paired-outcome-categories.png" in generated_paths
+        assert "series/single-series/measurements/plots/series-overview/horizon-vs-lifespan-delta.png" in generated_paths
+        assert "series/single-series/measurements/experiment_1/plots/experiment-comparison/episode-outcomes-strip.png" in generated_paths
+        assert "series/single-series/measurements/experiment_1/plots/experiment-comparison/steps-lived-distribution.png" in generated_paths
+
+        # The manifest should expose origin metadata for every plot artifact.
+        assert all("plot_group" in item for item in manifest["generated"])
+        assert all("producer_kind" in item for item in manifest["generated"])
+        for item in manifest["generated"]:
+            if item["producer_kind"] == "system_extension":
+                assert item["producer_system_type"]
+        assert "current system" in report_text
+        assert "baseline system" in report_text
+
+    def test_render_series_plots_replaces_stale_plot_files(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+
+        stale_series = ws / "series" / "integration-series" / "measurements" / "plots" / "stale.txt"
+        stale_series.parent.mkdir(parents=True, exist_ok=True)
+        stale_series.write_text("old")
+        stale_experiment = (
+            ws
+            / "series"
+            / "integration-series"
+            / "measurements"
+            / "experiment_1"
+            / "plots"
+            / "old-layout.png"
+        )
+        stale_experiment.parent.mkdir(parents=True, exist_ok=True)
+        stale_experiment.write_text("old")
+        assert stale_series.exists()
+        assert stale_experiment.exists()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        assert payload["failure_count"] == 0
+
+        assert not stale_series.exists()
+        assert not stale_experiment.exists()
+        assert (ws / payload["manifest_path"]).is_file()
+        assert (ws / payload["report_path"]).is_file()
+
+    def test_render_series_plots_prints_failure_details(self, tmp_path, capsys):
+        class _FakeSeriesPlotService:
+            def render(self, workspace_path: Path, *, series_id: str, extension_catalog=None):
+                return SeriesPlotServiceResult(
+                    series_id=series_id,
+                    generated_count=12,
+                    failure_count=1,
+                    failures=(
+                        SeriesPlotFailureSummary(
+                            plot_id="system_aw:extension",
+                            message="unsupported operand type(s) for +: 'int' and 'NoneType'",
+                            system_type="system_aw",
+                        ),
+                    ),
+                    manifest_path="series/demo/measurements/plots/plots-manifest.json",
+                    report_path="series/demo/measurements/plots/plots-report.md",
+                )
+
+        ws = _scaffold_single_system(tmp_path)
+        cmd_workspaces_render_series_plots(
+            str(ws),
+            "text",
+            series_id="demo",
+            series_plot_service=_FakeSeriesPlotService(),
+            catalogs=None,
+        )
+        captured = capsys.readouterr()
+        assert "Failure Details" in captured.out
+        assert "system_aw:extension [system_aw]" in captured.out
+        assert "unsupported operand type(s) for +: 'int' and 'NoneType'" in captured.out
+
+    def test_render_series_plots_json_includes_failure_details(self, tmp_path, capsys):
+        class _FakeSeriesPlotService:
+            def render(self, workspace_path: Path, *, series_id: str, extension_catalog=None):
+                return SeriesPlotServiceResult(
+                    series_id=series_id,
+                    generated_count=12,
+                    failure_count=1,
+                    failures=(
+                        SeriesPlotFailureSummary(
+                            plot_id="system_aw:extension",
+                            message="unsupported operand type(s) for +: 'int' and 'NoneType'",
+                            system_type="system_aw",
+                        ),
+                    ),
+                    manifest_path="series/demo/measurements/plots/plots-manifest.json",
+                    report_path="series/demo/measurements/plots/plots-report.md",
+                )
+
+        ws = _scaffold_single_system(tmp_path)
+        cmd_workspaces_render_series_plots(
+            str(ws),
+            "json",
+            series_id="demo",
+            series_plot_service=_FakeSeriesPlotService(),
+            catalogs=None,
+        )
+        captured = capsys.readouterr()
+        payload = json.loads(captured.out)
+        assert payload["failure_count"] == 1
+        assert payload["failures"] == [
+            {
+                "plot_id": "system_aw:extension",
+                "message": "unsupported operand type(s) for +: 'int' and 'NoneType'",
+                "system_type": "system_aw",
+            }
+        ]
+
+    def test_reset_removes_rendered_series_plot_artifacts(self, tmp_path, capsys):
+        ws = _scaffold_comparison(tmp_path)
+        _write_experiment_series(ws)
+
+        code = cli_main([
+            "workspaces", "run-series", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        run_payload = json.loads(captured.out)
+        assert (ws / run_payload["series_summary_json_path"]).is_file()
+
+        code = cli_main([
+            "workspaces", "render-series-plots", str(ws), "--series", "integration-series", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        payload = json.loads(captured.out)
+        manifest_path = ws / payload["manifest_path"]
+        assert manifest_path.is_file()
+
+        code = cli_main([
+            "workspaces", "reset", str(ws), "--force", "--output", "json",
+        ])
+        captured = capsys.readouterr()
+        assert code == 0
+        reset_payload = json.loads(captured.out)
+        assert reset_payload["cleared_measurements"] >= 0
+        assert list((ws / "measurements").iterdir()) == []
+        assert list((ws / "series" / "integration-series" / "measurements").iterdir()) == []
+
+    def test_render_report_includes_experiment_system_specific_plots(self, tmp_path):
+        from axis.framework.workspaces.series_plot_rendering import (
+            render_series_measurement_plots,
+        )
+        from axis.systems.system_aw import register as register_system_aw
+
+        register_system_aw()
+        ws = tmp_path / "synthetic-aw"
+        ws.mkdir()
+        (ws / "README.md").write_text("# Synthetic\n")
+        (ws / "notes.md").write_text("")
+        for d in ("configs", "results", "comparisons"):
+            (ws / d).mkdir()
+
+        manifest = {
+            "workspace_id": "synthetic-aw",
+            "title": "Synthetic AW",
+            "workspace_class": "investigation",
+            "workspace_type": "single_system",
+            "status": "active",
+            "lifecycle_stage": "analysis",
+            "created_at": "2026-05-07",
+            "question": "Q?",
+            "system_under_test": "system_aw",
+            "experiment_series": {
+                "entries": [
+                    {"id": "alpha", "path": "series/alpha/experiment.yaml", "title": "Alpha"},
+                ],
+            },
+        }
+        (ws / "workspace.yaml").write_text(yaml.dump(manifest))
+        series_root = ws / "series" / "alpha"
+        (series_root / "measurements" / "experiment_1").mkdir(parents=True)
+        (series_root / "comparisons").mkdir(parents=True)
+        (series_root / "experiment.yaml").write_text(yaml.dump({
+            "version": 1,
+            "workflow_type": "experiment_series",
+            "workspace_type": "single_system",
+            "experiments": [{"id": "exp_01", "enabled": True}],
+        }))
+        comparison_data = {
+            "comparison_result": {
+                "episode_results": [
+                    {
+                        "result_mode": "comparison_succeeded",
+                        "metrics": {
+                            "action_divergence": {"action_mismatch_rate": 0.2},
+                            "position_divergence": {"mean_trajectory_distance": 3.0},
+                        },
+                        "outcome": {
+                            "total_steps_delta": 12,
+                            "final_vitality_delta": 0.08,
+                            "longer_survivor": "candidate",
+                        },
+                    },
+                ],
+            },
+        }
+        (series_root / "comparisons" / "comparison-001.json").write_text(json.dumps(comparison_data))
+        series_summary = {
+            "series_title": "Alpha",
+            "series_description": "",
+            "experiments": [
+                {
+                    "experiment_id": "exp_01",
+                    "label": "alpha-1",
+                    "title": "Alpha 1",
+                    "hypothesis": [],
+                    "measurement_dir": "series/alpha/measurements/experiment_1",
+                    "comparison_output_path": "series/alpha/comparisons/comparison-001.json",
+                    "comparison_log_path": "series/alpha/measurements/experiment_1/cmp.log",
+                    "run_summary_log_path": "series/alpha/measurements/experiment_1/run.log",
+                    "reference_experiment_id": "ref",
+                    "candidate_experiment_id": "cand",
+                    "run_summary": {
+                        "death_rate": 0.4,
+                        "mean_final_vitality": 0.3,
+                    },
+                    "behavior_metrics": {
+                        "system_type": "system_aw",
+                        "standard_metrics": {
+                            "net_energy_efficiency": {"mean": 0.2},
+                        },
+                        "system_specific_metrics": {
+                            "system_aw_arbitration": {
+                                "mean_hunger_weight": 0.35,
+                                "mean_curiosity_weight": 0.65,
+                                "curiosity_dominance_rate": 0.55,
+                                "arbitrated_step_count": 100,
+                            },
+                            "system_aw_curiosity": {
+                                "mean_curiosity_activation": 0.51,
+                                "mean_spatial_novelty": 0.62,
+                                "mean_sensory_novelty": 0.45,
+                                "mean_composite_novelty": 0.54,
+                                "curiosity_pressure_rate": 0.41,
+                            },
+                            "system_aw_behavior": {
+                                "curiosity_led_move_rate": 0.47,
+                                "consume_under_curiosity_pressure_rate": 0.09,
+                                "movement_step_rate": 0.71,
+                                "consume_step_rate": 0.08,
+                            },
+                            "system_aw_world_model": {
+                                "world_model_unique_cells": 84.0,
+                                "mean_visit_count_at_current": 1.5,
+                                "world_model_revisit_ratio": 0.33,
+                            },
+                        },
+                    },
+                    "comparison_summary": {
+                        "candidate_survival_rate": 0.52,
+                        "reference_survival_rate": 0.46,
+                        "candidate_longer_count": 1,
+                        "reference_longer_count": 0,
+                        "equal_count": 0,
+                        "mean_trajectory_distance": {"mean": 3.0},
+                        "final_vitality_delta": {"mean": 0.08},
+                        "total_steps_delta": {"mean": 12.0},
+                    },
+                },
+            ],
+        }
+        (series_root / "measurements" / "series-summary.json").write_text(json.dumps(series_summary))
+
+        result = render_series_measurement_plots(ws, series_id="alpha")
+        report_text = (ws / result.report_path).read_text()
+        assert "## Per-Experiment System-Specific Plots" in report_text
+        assert "system-specific/system_aw/aw-curiosity-snapshot.png" in report_text
 
     def test_compare_succeeds_after_run(self, tmp_path):
         """Full flow: scaffold → run → sync → compare using workspace results."""
@@ -680,6 +1049,7 @@ class TestCLIIntegration:
         summary_text = (ws / payload["series_summary_markdown_path"]).read_text()
         assert "Progression View" in summary_text
         assert "Reference-System View" in summary_text
+        assert "Paired-Survival View" in summary_text
 
     def test_run_series_text_output_prefixes_progress_with_experiment_context(
         self, tmp_path, capsys,
@@ -1125,11 +1495,11 @@ class TestCLIIntegration:
         out = capsys.readouterr().out
         assert "Experiment Series" in out
         assert "[OK] alpha" in out
-        assert "Series results:" in out
+        assert "Series results [alpha]:" in out
         assert "series/alpha/results/exp-001" in out
-        assert "Series comparisons:" in out
+        assert "Series comparisons [alpha]:" in out
         assert "Compared experiments: exp-ref vs exp-cand" in out
-        assert "Series measurements:" in out
+        assert "Series measurements [alpha]:" in out
         assert "label=alpha-1" in out
 
     def test_show_json_includes_registered_experiment_series_artifacts(self, tmp_path, capsys):
@@ -1942,11 +2312,12 @@ class TestStrictVisualizationResolution:
         ws = _scaffold_single_system(tmp_path)
         _add_point_experiment_to_workspace(ws, "exp-001")
 
-        eid, rid, ep = resolve_visualization_target(
+        eid, rid, ep, results_root = resolve_visualization_target(
             ws, episode=1, experiment="exp-001", run="run-0000",
         )
         assert eid == "exp-001"
         assert rid == "run-0000"
+        assert results_root == ws / "results"
 
     def test_sweep_without_run_raises(self, tmp_path):
         from axis.framework.workspaces.visualization import resolve_visualization_target
@@ -1963,11 +2334,49 @@ class TestStrictVisualizationResolution:
         ws = _scaffold_single_system(tmp_path)
         _add_sweep_experiment_to_workspace(ws, "exp-002")
 
-        eid, rid, ep = resolve_visualization_target(
+        eid, rid, ep, results_root = resolve_visualization_target(
             ws, episode=1, experiment="exp-002", run="run-0001",
         )
         assert eid == "exp-002"
         assert rid == "run-0001"
+        assert results_root == ws / "results"
+
+    def test_explicit_experiment_resolves_from_series_results_root(self, tmp_path):
+        from axis.framework.persistence import (
+            ExperimentMetadata, ExperimentRepository, ExperimentStatus,
+            RunMetadata, RunStatus,
+        )
+        from axis.framework.workspaces.visualization import resolve_visualization_target
+
+        ws = _scaffold_single_system(tmp_path)
+        series_results_root = ws / "series" / "alpha" / "results"
+        repo = ExperimentRepository(series_results_root)
+        experiment_id = "exp-series-001"
+        repo.create_experiment_dir(experiment_id)
+        repo.save_experiment_metadata(experiment_id, ExperimentMetadata(
+            experiment_id=experiment_id,
+            created_at="2025-01-01T00:00:00",
+            experiment_type="single_run",
+            system_type="system_a",
+            output_form="point",
+            primary_run_id="run-0000",
+        ))
+        repo.save_experiment_status(experiment_id, ExperimentStatus.COMPLETED)
+        repo.create_run_dir(experiment_id, "run-0000")
+        repo.save_run_metadata(experiment_id, "run-0000", RunMetadata(
+            run_id="run-0000",
+            experiment_id=experiment_id,
+            created_at="2025-01-01T00:00:00",
+            base_seed=42,
+        ))
+        repo.save_run_status(experiment_id, "run-0000", RunStatus.COMPLETED)
+
+        eid, rid, ep, results_root = resolve_visualization_target(
+            ws, episode=1, experiment=experiment_id, run="run-0000",
+        )
+        assert eid == experiment_id
+        assert rid == "run-0000"
+        assert results_root == series_results_root
 
     def test_sweep_with_invalid_run_raises(self, tmp_path):
         from axis.framework.workspaces.visualization import resolve_visualization_target

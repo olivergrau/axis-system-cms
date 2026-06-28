@@ -185,6 +185,19 @@ The command writes aggregate outputs such as:
 - `series/<series-id>/measurements/series-summary.json`
 - `series/<series-id>/measurements/series-metrics.csv`
 
+After a completed series, two related post-hoc commands are often useful:
+
+- `axis workspaces run-metrics <workspace> --role <role> --experiment <id>`
+  when you want the full behavioral-metrics view for one specific run
+- `axis workspaces render-series-plots <workspace> --series <id>` when you want
+  fresh plot artifacts from the already completed series
+
+`run-series` itself does not act like a bulk `run-metrics` command for every
+produced run. It already creates the per-experiment logs and aggregate series
+artifacts it needs. `run-metrics` remains a focused inspection command for one
+selected run when you want to drill into framework-standard and
+system-specific metrics directly.
+
 See the dedicated manual for the full schema and workflow:
 
 - [Experiment Series](experiment-series-manual.md)
@@ -423,6 +436,16 @@ resolution rules as `run-summary`, then computes or loads:
 - framework-standard behavioral metrics
 - optional system-specific extension metrics
 
+Practical purpose:
+
+- use `run-summary` when you want the compact aggregate run outcome
+- use `run-metrics` when you want the richer behavioral interpretation layer
+- use it after `run`, `measure`, or `run-series` when you want to inspect one
+  specific run in more detail than the exported measurement logs provide
+
+If `behavior_metrics.json` is missing for the selected run, AXIS computes it
+from the stored replay-capable trace artifacts first, then prints the result.
+
 Examples:
 
 ```bash
@@ -441,9 +464,31 @@ axis workspaces run-metrics workspaces/my-workspace \
 Behavioral metrics require replay-capable traces:
 
 - `full`
-- `delta`
 
 `light` runs are not supported.
+
+### Render plots for a completed series
+
+```bash
+axis workspaces render-series-plots workspaces/my-workspace --series my-series
+```
+
+This command is a post-hoc render step for a completed series.
+
+It:
+
+1. reads the stored series summary and per-experiment comparison artifacts
+2. renders generic overview plots
+3. renders any available system-specific plots
+4. writes image files and plot manifests into the series-local measurements tree
+
+It does **not** rerun experiments.
+
+Use it when:
+
+- the series already finished and you now want visual artifacts
+- plot renderers changed and you want fresh outputs
+- system-specific plot extensions were added after the series was run
 
 ### Visualize from a workspace
 
@@ -461,7 +506,7 @@ Visualization uses the workspace-local results — the experiment ID must exist 
 
 Trace-mode rule:
 
-- `full` and `delta` workspace results are visualizable
+- `full` workspace results are visualizable
 - `light` workspace results are not visualizable
 
 If a workspace run was executed in `light` mode, AXIS will reject visualization

@@ -126,7 +126,7 @@ def compare_workspace(
             candidate_config=cand_config,
             comparison_result=result.model_dump(mode="json"),
         )
-        output_path.write_text(json.dumps(envelope.model_dump(mode="json"), indent=2))
+        output_path.write_text(envelope.model_dump_json())
         return envelope, str(output_path.relative_to(ws))
 
     # Use the workspace-local repository for loading traces.
@@ -185,8 +185,6 @@ def compare_workspace(
         comparison_result=result.model_dump(mode="json"),
     )
 
-    output_path.write_text(
-        json.dumps(envelope.model_dump(mode="json"), indent=2),
-    )
+    output_path.write_text(envelope.model_dump_json())
 
     return envelope, str(output_path.relative_to(ws))

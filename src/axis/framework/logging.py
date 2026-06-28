@@ -14,7 +14,10 @@ from typing import IO
 from axis.framework.config import LoggingConfig
 from axis.framework.execution_policy import TraceMode
 from axis.framework.execution_results import LightEpisodeResult
-from axis.sdk.trace import BaseEpisodeTrace, BaseStepTrace, DeltaEpisodeTrace
+from axis.sdk.trace import (
+    BaseStepTrace,
+    FullEpisodeTrace,
+)
 
 
 class EpisodeLogger:
@@ -58,7 +61,7 @@ class EpisodeLogger:
 
     def log_episode(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: FullEpisodeTrace | LightEpisodeResult,
         episode_index: int,
     ) -> None:
         """Log every step in *trace* followed by an episode summary."""
@@ -66,7 +69,7 @@ class EpisodeLogger:
             return
         if self._config.console_enabled:
             self._print_episode_start(trace, episode_index)
-        if isinstance(trace, BaseEpisodeTrace):
+        if isinstance(trace, FullEpisodeTrace):
             for step in trace.steps:
                 self.log_step(step, episode_index)
         self.log_episode_summary(trace, episode_index)
@@ -85,7 +88,7 @@ class EpisodeLogger:
 
     def log_episode_summary(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: FullEpisodeTrace | LightEpisodeResult,
         episode_index: int,
     ) -> None:
         if self._noop:
@@ -103,7 +106,7 @@ class EpisodeLogger:
 
     def _print_episode_start(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: FullEpisodeTrace | LightEpisodeResult,
         ep: int,
     ) -> None:
         print(
@@ -141,7 +144,7 @@ class EpisodeLogger:
 
     def _print_episode_summary(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: FullEpisodeTrace | LightEpisodeResult,
         ep: int,
     ) -> None:
         fp = trace.final_position
@@ -188,7 +191,7 @@ class EpisodeLogger:
 
     def _write_episode_summary_jsonl(
         self,
-        trace: BaseEpisodeTrace | LightEpisodeResult | DeltaEpisodeTrace,
+        trace: FullEpisodeTrace | LightEpisodeResult,
         ep: int,
     ) -> None:
         record = {
@@ -199,7 +202,7 @@ class EpisodeLogger:
             "final_vitality": trace.final_vitality,
             "final_position": [trace.final_position.x, trace.final_position.y],
         }
-        if isinstance(trace, BaseEpisodeTrace):
+        if isinstance(trace, FullEpisodeTrace):
             record["system_type"] = trace.system_type
         else:
             record["result_type"] = trace.result_type
