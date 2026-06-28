@@ -428,6 +428,19 @@ Interpretation:
 - downward has a little
 - left and right have none
 
+```text
+Local 3x3 intuition before the action
+
+          [ UP:    0.8 ]
+[ LEFT: 0.0 ] [ AGENT: 0.2 ] [ RIGHT: 0.0 ]
+         [ DOWN:  0.1 ]
+
+Chosen action: UP
+
+So the agent currently sits on a weak cell, but sees a much stronger resource
+signal directly above.
+```
+
 The context encoder maps this to some discrete context \(s_t\).
 
 Suppose the chosen action is `UP` and the stored prediction for this
@@ -440,7 +453,7 @@ context-action pair is:
 After moving, the actual next observation is:
 
 \[
-y_{t+1} = (0.3, 0.9, 0.0, 0.0, 0.0)
+y_{t+1} = (0.8, 0.9, 0.0, 0.0, 0.0)
 \]
 
 ### Step 1: Positive and negative component errors
@@ -448,17 +461,17 @@ y_{t+1} = (0.3, 0.9, 0.0, 0.0, 0.0)
 Component-wise:
 
 \[
-\delta_t^+ = \max(y_{t+1} - \hat y_{t+1}, 0) = (0.0, 0.6, 0.0, 0.0, 0.0)
+\delta_t^+ = \max(y_{t+1} - \hat y_{t+1}, 0) = (0.2, 0.6, 0.0, 0.0, 0.0)
 \]
 
 \[
-\delta_t^- = \max(\hat y_{t+1} - y_{t+1}, 0) = (0.3, 0.0, 0.1, 0.0, 0.0)
+\delta_t^- = \max(\hat y_{t+1} - y_{t+1}, 0) = (0.0, 0.0, 0.1, 0.0, 0.0)
 \]
 
 Interpretation:
 
-- the upward resource feature was much better than expected
-- the current-cell feature under-delivered
+- the new current-cell feature was better than expected
+- the upward-neighbor feature was much better than expected
 - the downward feature under-delivered a little
 
 ### Step 2: Aggregate to scalar surprise
@@ -472,14 +485,14 @@ w^+ = w^- = (0.5, 0.125, 0.125, 0.125, 0.125)
 Then:
 
 \[
-\varepsilon_t^+ = 0.5\cdot0.0 + 0.125\cdot0.6 + 0.125\cdot0.0 = 0.075
+\varepsilon_t^+ = 0.5\cdot0.2 + 0.125\cdot0.6 + 0.125\cdot0.0 = 0.175
 \]
 
 \[
-\varepsilon_t^- = 0.5\cdot0.3 + 0.125\cdot0.0 + 0.125\cdot0.1 = 0.1625
+\varepsilon_t^- = 0.5\cdot0.0 + 0.125\cdot0.0 + 0.125\cdot0.1 = 0.0125
 \]
 
-So this step was overall more disappointing than confirming.
+So this step was overall more confirming than disappointing.
 
 ### Step 3: Update frustration and confidence
 
@@ -498,18 +511,18 @@ and the rates are:
 Then:
 
 \[
-f_{t+1} = 0.8\cdot0.20 + 0.2\cdot0.1625 = 0.1925
+f_{t+1} = 0.8\cdot0.20 + 0.2\cdot0.0125 = 0.1625
 \]
 
 \[
-c_{t+1} = 0.85\cdot0.10 + 0.15\cdot0.075 = 0.09625
+c_{t+1} = 0.85\cdot0.10 + 0.15\cdot0.175 = 0.11125
 \]
 
 So in this concrete step:
 
-- frustration stays meaningful
-- confidence stays weaker
-- the pair remains somewhat mistrusted overall
+- frustration decreases because the action under-delivered only slightly
+- confidence increases because the realized outcome was better than expected on the most important channels
+- the pair may still remain somewhat mistrusted overall because older frustration is still present
 
 ### Step 4: Modulate future action scores
 
@@ -522,25 +535,26 @@ Assume:
 Then:
 
 \[
-\sigma_t(UP) = 1.0\cdot0.09625 - 1.5\cdot0.1925 = -0.1925
+\sigma_t(UP) = 1.0\cdot0.11125 - 1.5\cdot0.1625 = -0.1325
 \]
 
 \[
-\mu_t(UP) = \exp(-0.1925) \approx 0.825
+\mu_t(UP) = \exp(-0.1325) \approx 0.876
 \]
 
-So a future positive base score for `UP` would be reduced by about 17.5% in
-multiplicative mode.
+So a future positive base score for `UP` would still be reduced, but only by
+about 12.4% in multiplicative mode.
 
-This is the operational meaning of prediction-derived distrust.
+This is the operational meaning of prediction-derived inertia: one confirming
+step can weaken prior distrust without erasing it immediately.
 
 ```text
 example causal chain
 
 move UP in context s_t
-        -> observed outcome under-delivers overall
-        -> epsilon^- dominates epsilon^+
-        -> frustration stays higher than confidence
+        -> observed outcome confirms the move overall
+        -> epsilon^+ dominates epsilon^-
+        -> old frustration is reduced, but still stays higher than confidence
         -> sigma(UP) becomes negative
         -> mu(UP) < 1
         -> future UP scores are suppressed in this local context

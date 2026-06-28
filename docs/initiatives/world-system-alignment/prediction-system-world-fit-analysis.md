@@ -143,6 +143,25 @@ but rather:
 This is not a small edge case. It is likely to happen frequently in simple
 resource worlds with depletion and revisit.
 
+```text
+Depleted-resource revisit intuition
+
+First encounter before RIGHT:          Later encounter before RIGHT:
+
+          [ UP: 0.0 ]                            [ UP: 0.0 ]
+[ L: 0.0 ] [ A: 0.1 ] [ R: 0.8 ]      [ L: 0.0 ] [ A: 0.1 ] [ R: 0.8 ]
+        [ DOWN: 0.0 ]                          [ DOWN: 0.0 ]
+
+move RIGHT                                 move RIGHT
+
+new current often rich                     new current now depleted
+
+y_(t+1)^(1) current = 0.8                  y_(t+1)^(2) current = 0.1
+
+Local appearance before the move can look the same, while the hidden world
+history makes the actual outcome very different.
+```
+
 ## 4. Case Analysis by World Type
 
 The following sections analyze the main existing or natural AXIS world classes.
@@ -182,6 +201,17 @@ h_t(UP)=0.1,\quad h_t(RIGHT)=0.8,\quad h_t(DOWN)=0.0,\quad h_t(LEFT)=0.0
 If `RIGHT` reliably leads to the locally richest outcome, then prediction will
 only relearn what the current observation already indicates.
 
+```text
+Uniform-world intuition
+
+          [ UP: low ]
+[ L: low ] [ A: here ] [ R: high ]
+         [ DOWN: low ]
+
+Baseline hunger already says: move RIGHT.
+If RIGHT reliably stays the best local move, prediction adds little.
+```
+
 #### Verdict
 
 **Very low expected advantage** unless additional stochastic or deceptive
@@ -217,7 +247,7 @@ If the context encoder does not separate them, prediction learns an average.
 First encounter:
 
 \[
-y_t = (0.0, 0.0, 0.0, 0.0, 0.7), \qquad y_{t+1}^{(1)} = (0.8,0.4,0.0,0.0,0.0)
+y_t = (0.0, 0.0, 0.0, 0.0, 0.7), \qquad y_{t+1}^{(1)} = (0.7,0.4,0.0,0.0,0.0)
 \]
 
 Later encounter after local harvest:
@@ -228,6 +258,23 @@ y_t' \approx y_t, \qquad y_{t+1}^{(2)} = (0.1,0.0,0.0,0.0,0.0)
 
 Prediction average becomes less informative, while frustration may rise for the
 wrong conceptual reason.
+
+```text
+Cluster-fringe revisit intuition
+
+Early visit before RIGHT:                Later visit before RIGHT:
+
+          [ UP: 0.0 ]                            [ UP: 0.0 ]
+[ L: 0.0 ] [ A: 0.0 ] [ R: 0.7 ]      [ L: 0.0 ] [ A: 0.0 ] [ R: 0.7 ]
+        [ DOWN: 0.0 ]                          [ DOWN: 0.0 ]
+
+move RIGHT                                 move RIGHT
+
+new current = 0.7                          new current = 0.1
+
+The pre-action local pattern can recur, but the patch has changed state due to
+prior harvesting.
+```
 
 #### Verdict
 
@@ -305,6 +352,18 @@ Reason:
 
 Prediction then mostly becomes redundant bookkeeping.
 
+```text
+Deterministic-world intuition
+
+current observation + chosen action
+                |
+                v
+        next local observation
+        is already almost fixed
+
+Little hidden uncertainty -> little extra value for prediction.
+```
+
 #### Verdict
 
 **No meaningful advantage expected**.
@@ -350,6 +409,19 @@ Now repeated disappointment is not a conceptual error. It really is:
 
 > this action in this local context is less reliable than it appears
 
+```text
+Stochastic-transition intuition
+
+Same local context s, same action UP
+
+trial 1 -> good landing / good next local state
+trial 2 -> slip / weak next local state
+trial 3 -> good landing / good next local state
+trial 4 -> slip / weak next local state
+
+Prediction can learn the average reliability of UP in that context.
+```
+
 #### Verdict
 
 **Strong fit**. This is one of the clearest world classes where the current
@@ -387,6 +459,17 @@ But repeated post-action observations produce large negative surprise:
 \]
 
 Then frustration for `(s, RIGHT)` grows, which dampens that action.
+
+```text
+Deceptive-local-attractor intuition
+
+visible now:         action seems attractive
+realized next step:  local outcome repeatedly disappointing
+
+appearance  ---------------->  optimistic baseline score
+experience  ---------------->  growing frustration for (s, RIGHT)
+combined    ---------------->  damped future RIGHT tendency
+```
 
 #### Caveat
 
@@ -499,6 +582,18 @@ Expected fit: **negligible**
 
 Reason:
 - current observation already nearly determines the next useful choice
+
+```text
+World-fit summary
+
+uniform resources                 -> prediction-neutral
+clustered + depletion             -> prediction-fragile
+cooldown / hidden regrowth        -> often prediction-misleading
+deterministic local transitions   -> prediction-redundant
+stochastic local transitions      -> prediction-favorable
+local deceptive transitions       -> prediction-favorable
+long-horizon delayed benefit      -> outside current prediction competence
+```
 
 ## 7. Interim Conclusion
 

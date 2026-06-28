@@ -50,3 +50,4 @@ workspaces/system_a_vs_system_c/results/
 !src/axis/framework/workspaces/**
 __pycache__/
 scripts/
+results.zip
