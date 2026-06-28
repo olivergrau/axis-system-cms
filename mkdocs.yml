@@ -47,6 +47,18 @@ nav:
       - "System C+W": cheat-sheets/system-cw.md
       - "Behavior Metrics": cheat-sheets/behavior-metrics.md
 
+  - Initiatives:
+      - initiatives/index.md
+      - "Neural Submodules in AXIS":
+          - initiatives/neural-submodules/index.md
+          - "Initial Draft": initiatives/neural-submodules/neural-submodules-draft.md
+          - "Online Learning and Immediate Use": initiatives/neural-submodules/online-learning-and-immediate-use.md
+          - "Stabilization Principles": initiatives/neural-submodules/stabilization-principles.md
+          - "Manual vs Neural Predictor in System C and C+W": initiatives/neural-submodules/manual-vs-neural-predictor-in-c-and-cw.md
+          - "Prediction System Recap": initiatives/neural-submodules/prediction-system-recap.md
+          - "Prediction System World-Fit Analysis": initiatives/neural-submodules/prediction-system-world-fit-analysis.md
+          - "PyTorch Integration Architecture": initiatives/neural-submodules/pytorch-integration-architecture.md
+
   - Tutorials:
       - tutorials/index.md
       - "CLI basic Usage": tutorials/direct-cli-workflow.md

@@ -459,6 +459,27 @@ The framework does not aim to produce high-performing agents. It aims
 to produce **understood** agents -- systems whose behavior we can
 predict, explain, and modify with precision.
 
+This should also be read as a limit statement with respect to
+consciousness:
+
+AXIS CMS does **not** claim that its current systems are conscious, nor that
+consciousness appears all at once once behavior becomes sufficiently
+interesting.
+
+The broader AXIS working position is that consciousness, if it arises at
+all, likely develops **gradually** across many levels of cognitive and
+organizational complexity. The exact point at which a system begins to feel
+or experience anything remains unknown.
+
+Within that broader view, AXIS CMS has a narrower role:
+
+> implement simple mechanistic cognitive patterns, study what kinds of
+> behavior emerge from them, and examine what functional advantages those
+> patterns confer.
+
+So the current systems should be understood as early points on a mechanistic
+ladder of cognition, not as direct claims about consciousness itself.
+
 ---
 
 > **Next:** [Math as a Modeling Tool](02-math-as-modeling.md) --
